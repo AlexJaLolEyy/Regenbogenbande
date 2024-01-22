@@ -1,7 +1,9 @@
 export interface Video {
     title: string,
     description?: string,
+    video: File,
     id: number,
+    thumbnail: File // or change to Picture?
     participants: User[],
     uploadedBy: User,
     uploadedAt: Date,
@@ -9,7 +11,9 @@ export interface Video {
 }
 
 export interface Picture {
-    img: string, // img saved as string
+    title: string,
+    description?: string,
+    img: File, // or save as string?
     id: number,
     participants: User[],
     uploadedBy: User,
@@ -17,13 +21,20 @@ export interface Picture {
     createdAt: Date,
 }
 
+// a quote got multiple singleQuote to represent the full chat history
 export interface Quote {
-    quote: string,
+    fullQuote: singleQuote[],
     id: number,
     participants: User[]
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+}
+
+// a single Quote represents a single msg from a user
+export interface singleQuote {
+    msg: string,
+    user: User,
 }
 
 export interface User {
