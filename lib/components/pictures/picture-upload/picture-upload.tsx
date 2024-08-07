@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Video } from "../../../types/types"
-import { getDate } from "../video-upload/_actions"
+import { Picture } from "../../../types/types"
 
-export default function VideoUpload({ video }: { video?: Video }
+export default function PictureUpload({ picture }: { picture?: Picture }
 ) {
 
     const [preview, setPreview] = useState<File | null>(null);
@@ -19,35 +18,23 @@ export default function VideoUpload({ video }: { video?: Video }
 
     return (
         <div>
-            <p>You are currently at Video-Upload!</p>
+            <p>You are currently at Picture-Upload!</p>
 
             <form>
-                <h3>Video-Upload:</h3>
+                <h3>Picture-Upload:</h3>
 
                 <div>
-                    <label htmlFor="file">Upload Video here:</label>
+                    <label htmlFor="file">Upload Picture here:</label>
                     <input type="file" id="file" onChange={handleChange}></input>
                 </div>
 
-                {preview?.type === "image/jpeg" || "image/png" ?
+                {preview?.type === "image/jpeg" || "image/png" || "image/webp" ?
                     <div>
                         <label htmlFor="preview"></label>
                         <img id="preview"
                             src={preview === null ? "" : URL.createObjectURL(preview)}
                             alt="preview could not be loaded"
                             width={"500"} height={"400"} />
-                    </div>
-                    : ""}
-                    
-                {preview?.type === "video/mp4" ?
-                    <div>
-                        <label htmlFor="preview"></label>
-                        <video width={"500"} height={"400"} controls>
-                            <source id="preview"
-                                src={preview === null ? "" : URL.createObjectURL(preview)}
-                                type="video/mp4" />
-                            <p>Error while loading Video</p>
-                        </video>
                     </div>
                     : ""}
             </form>
