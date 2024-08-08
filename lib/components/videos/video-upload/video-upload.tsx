@@ -1,13 +1,25 @@
 "use client"
 
 import { useState } from "react"
-import { Video } from "../../../types/types"
-import { getDate } from "../video-upload/_actions"
+import type { Picture, Video } from "../../../types/types"
+import { getExamplePictures } from "@/app/current-storage/storage";
+import PictureComponent from "../../pictures/picture/picture";
+import { log } from "console";
 
 export default function VideoUpload({ video }: { video?: Video }
 ) {
-
+  
     const [preview, setPreview] = useState<File | null>(null);
+
+    const [pictures, setPictures] = useState<Picture[]| null>(null);
+    //var pictures: Picture[] = []
+    //var test = getExamplePictures().then((data) => pictures.push(...data));
+
+    console.log("hello", pictures)
+    if(pictures != null) {
+    console.log("123: ", pictures[0].img)
+}
+    
 
 
     // TODO search for way of getting creating-date (if not -> Desktop App)
@@ -39,6 +51,7 @@ export default function VideoUpload({ video }: { video?: Video }
                     </div>
                     : ""}
                     
+                    
                 {preview?.type === "video/mp4" ?
                     <div>
                         <label htmlFor="preview"></label>
@@ -51,6 +64,27 @@ export default function VideoUpload({ video }: { video?: Video }
                     </div>
                     : ""}
             </form>
+
+            <div className="test">
+                <p>test</p>
+                <button onClick={() => {getExamplePictures().then((data) => setPictures(data))}}>Click me</button>
+               
+                { pictures != null ? (
+                    (pictures).map((pic) => 
+                       <div>
+                        <p>Test</p>
+                        <p>pic: {JSON.stringify(pic)}</p>
+                        <PictureComponent picture={pic}></PictureComponent>
+                     
+                       </div>
+                          
+                    )
+                    
+
+                )
+                
+                 : "empty"}
+            </div>
 
         </div>
     )
