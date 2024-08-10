@@ -4,12 +4,27 @@ import { Picture, Quote, User, Video } from "@/lib/types/types";
 import pic1 from "@/app/current-storage/examplePictures/pictureColorBlue.png";
 import fs from 'fs';
 
+
 export async function getExampleVideos() : Video[] {
 
         var videos: Video[] = [];
 
        return videos;
   }
+
+  export async function getBufferFromPictures(): Promise<Buffer[]> {
+    const buffer1 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorBlue.png");
+    const buffer2 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorGreenBlue.png");
+    const buffer3 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorLightGreen.png");
+    const buffer4 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorPurple.png");
+
+    const buffers = [buffer1, buffer2 , buffer3 , buffer4];
+    return JSON.parse(JSON.stringify(buffers));
+  }
+
+  
+
+  
 
 // TODO optimize return and adjust test data
   export async function getExamplePictures() : Promise<Picture[]> {
@@ -85,21 +100,39 @@ export async function getExampleVideos() : Video[] {
 
     var pictures: Picture[] = [picture1, picture2, picture3, picture4];
     var convertedPictures = JSON.parse(JSON.stringify(pictures));
+
     console.log("before: ", convertedPictures[0]);
-    (convertedPictures).map((pic) => (pic.img = {
+
+    /*(convertedPictures).map((pic) => (pic.img = 
+        reader.readAsText(pic.img)
+  ))*/
+
+
+  /*async function fileToString(filePath: string): Promise<string> {
+    try {
+      const data = await fs.promises.readFile(filePath, 'utf-8');
+      return data;
+    } catch (err) {
+      console.error("Failed to read the file:", err);
+      throw err; 
+    }
+  }
+
+  const fileContent = await fileToString('./path/to/your/file.txt');*/
+
+ 
+
+    /*(convertedPictures).map((pic) => (pic.img = {
         'lastModified'     : picture4.img.lastModified,
+        'lastModifiedDate' : picture4.img.lastModified,
         'name'             : picture4.img.name,
         'size'             : picture4.img.size,
         'type'             : picture4.img.type
-  }))
+  }))*/
   console.log("after: ", convertedPictures[0])
     
 
     console.log("Pics: ", pictures)
-
-    console.log("JSON STRING: ", JSON.parse(JSON.stringify(picture1)))
-    console.log("IMG STRING: ", (JSON.stringify(file1)))
-    console.log("Normal File: ", file1)
 
    return convertedPictures;
 }
