@@ -1,33 +1,67 @@
 'use server'
 
 import { Picture, Quote, User, Video } from "@/lib/types/types";
-import pic1 from "@/app/current-storage/examplePictures/pictureColorBlue.png";
 import fs from 'fs';
 
 
-export async function getExampleVideos() : Video[] {
+export async function getExampleVideos(): Promise<Video[]> {
 
-        var videos: Video[] = [];
+    const user1: User = {
+        username: "ObiWan",
+        password: "Highground",
+        profilepicture: "tbc",
+        id: 34
+    }
+    const user2: User = {
+        username: "General Grievous",
+        password: "spider",
+        profilepicture: "tbc",
+        id: 35
+    }
 
-       return videos;
-  }
+    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispiel_v1.mp4");
+    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispiel_v1.mp4");
 
-  export async function getBufferFromPictures(): Promise<Buffer[]> {
-    const buffer1 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorBlue.png");
-    const buffer2 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorGreenBlue.png");
-    const buffer3 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorLightGreen.png");
-    const buffer4 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorPurple.png");
+    function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
+        const blob = new Blob([buffer], { type: mimeType });
+        return new File([blob], filename, { type: mimeType });
+    }
 
-    const buffers = [buffer1, buffer2 , buffer3 , buffer4];
-    return JSON.parse(JSON.stringify(buffers));
-  }
+    const file1 = bufferToFile(buffer1, "beispiel_v1.mp4", 'video/mp4');
+    const file2 = bufferToFile(buffer2, "beispiel_v2.mp4", 'video/mp4');
 
-  
+    const video1: Video = {
+        title: "beispiel 1",
+        description: "beispiel video 1",
+        video: file1,
+        thumbnail: file1,
+        id: 1,
+        participants: [user1, user2],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-01"),
+        createdAt: new Date("2023-06-01")
+    }
 
-  
+    const video2: Video = {
+        title: "beispiel 2",
+        description: "beispiel video 2",
+        video: file2,
+        thumbnail: file2,
+        id: 2,
+        participants: [user1],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-01"),
+        createdAt: new Date("2023-06-01")
+    }
 
-// TODO optimize return and adjust test data
-  export async function getExamplePictures() : Promise<Picture[]> {
+    var videos: Video[] = [video1, video2];
+
+    return JSON.parse(JSON.stringify(videos));
+}
+
+
+// TODO: optimize return and adjust test data
+export async function getExamplePictures(): Promise<Picture[]> {
 
     const user1: User = {
         username: "ObiWan",
@@ -37,23 +71,23 @@ export async function getExampleVideos() : Video[] {
     }
 
     // just for implementing test data for now (getting removed as soon as i have all components)
+    // can be removed now, but then i need a different way of creating placeholder files
     const buffer1 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorBlue.png");
     const buffer2 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorGreenBlue.png");
     const buffer3 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorLightGreen.png");
     const buffer4 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorPurple.png");
-  
+
     function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
         const blob = new Blob([buffer], { type: mimeType });
         return new File([blob], filename, { type: mimeType });
-      }
+    }
 
-      const file1 = bufferToFile(buffer1, "pictureColorBlue.png", 'image/png'); 
-      const file2 = bufferToFile(buffer2, "pictureColorGreenBlue.png", 'image/png'); 
-      const file3 = bufferToFile(buffer3, "pictureColorLightGreen.png", 'image/png'); 
-      const file4 = bufferToFile(buffer4, "pictureColorPurple.png", 'image/png'); 
+    const file1 = bufferToFile(buffer1, "pictureColorBlue.png", 'image/png');
+    const file2 = bufferToFile(buffer2, "pictureColorGreenBlue.png", 'image/png');
+    const file3 = bufferToFile(buffer3, "pictureColorLightGreen.png", 'image/png');
+    const file4 = bufferToFile(buffer4, "pictureColorPurple.png", 'image/png');
 
-  console.log("All Files: " + file1 + file2 + file3 + file4);
-  console.log("File1 pre: ", file1);
+    console.log("All Files: " + file1 + file2 + file3 + file4);
 
     const picture1: Picture = {
         title: "blue",
@@ -65,7 +99,6 @@ export async function getExampleVideos() : Video[] {
         uploadedAt: new Date("2023-06-01"),
         createdAt: new Date("2023-06-01")
     }
-    console.log("Pic1 pre: ", picture1);
 
     const picture2: Picture = {
         title: "greenBlue",
@@ -99,46 +132,13 @@ export async function getExampleVideos() : Video[] {
     }
 
     var pictures: Picture[] = [picture1, picture2, picture3, picture4];
-    var convertedPictures = JSON.parse(JSON.stringify(pictures));
+    console.log("Pics: ", pictures);
 
-    console.log("before: ", convertedPictures[0]);
-
-    /*(convertedPictures).map((pic) => (pic.img = 
-        reader.readAsText(pic.img)
-  ))*/
-
-
-  /*async function fileToString(filePath: string): Promise<string> {
-    try {
-      const data = await fs.promises.readFile(filePath, 'utf-8');
-      return data;
-    } catch (err) {
-      console.error("Failed to read the file:", err);
-      throw err; 
-    }
-  }
-
-  const fileContent = await fileToString('./path/to/your/file.txt');*/
-
- 
-
-    /*(convertedPictures).map((pic) => (pic.img = {
-        'lastModified'     : picture4.img.lastModified,
-        'lastModifiedDate' : picture4.img.lastModified,
-        'name'             : picture4.img.name,
-        'size'             : picture4.img.size,
-        'type'             : picture4.img.type
-  }))*/
-  console.log("after: ", convertedPictures[0])
-    
-
-    console.log("Pics: ", pictures)
-
-   return convertedPictures;
+    return JSON.parse(JSON.stringify(pictures));
 }
 
-// TODO optimize return and adjust test data
-export async function getExampleQuotes() : Quote[] {
+// TODO: optimize return and adjust test data
+export async function getExampleQuotes(): Promise<Quote[]> {
 
     const user1: User = {
         username: "ObiWan",
@@ -169,7 +169,41 @@ export async function getExampleQuotes() : Quote[] {
         createdAt: new Date("2023-06-01")
     }
 
-    var quotes: Quote[] = [quote1];
+    const quote2: Quote = {
+        fullQuote: [{
+            msg: "Test1234",
+            user: user1
+        },
+        {
+            msg: "Check!",
+            user: user2
+        }],
+        id: 2,
+        participants: [user1, user2],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-02"),
+        createdAt: new Date("2023-06-02")
+    }
 
-   return quotes;
+    const quote3: Quote = {
+        fullQuote: [{
+            msg: "Hallo wie gehts dir?",
+            user: user1
+        },
+        {
+            msg: "Mir geht es gut und wie geht es dir?",
+            user: user2
+        },
+        {
+            msg: "Same here, danke der Nachfrage!",
+            user: user1
+        }],
+        id: 3,
+        participants: [user1, user2],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-05"),
+        createdAt: new Date("2023-06-05")
+    }
+
+    return [quote1, quote2, quote3];
 }
