@@ -1,5 +1,5 @@
 import Navigation from "@/lib/components/Navigation/navigation";
-import VideoUpload from "@/lib/components/videos/video-upload/video-upload";
+import VideoEdit from "@/lib/components/videos/video-edit/video-edit";
 
 
 export default function Page() {
@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <div>
       <Navigation></Navigation>
-      <VideoUpload></VideoUpload>
+      <VideoEdit></VideoEdit>
     </div>
   )
 }
