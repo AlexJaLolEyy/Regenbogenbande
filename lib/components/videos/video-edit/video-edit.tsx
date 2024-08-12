@@ -20,7 +20,7 @@ export default function VideoEdit({ video }: { video: Video }
                     <input type="text" id="description" defaultValue={video.description}></input>
                 </div>
 
-                {/* TODO change default value for types */}
+                {/* TODO: change default value for types */}
                 <div>
                     <label htmlFor="participants">Participants</label>
                     <input type="text" id="participants" defaultValue={video.participants}></input>

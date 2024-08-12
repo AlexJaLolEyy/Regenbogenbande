@@ -14,10 +14,10 @@ export default function Navigation({ }: {}
     return (
         <div>
 
-            {/* TODO replace with navbar component */}
+            {/* TODO: replace with navbar component */}
             <div className="navbar">
                 <Link href="/home">Home</Link>
-                <Link href="/videos">Videos</Link>
+                <Link href="/videos/list">Videos</Link>
                 <Link href="/pictures">Pictures</Link>
                 <Link href="/quotes">Quote</Link>
             </div>

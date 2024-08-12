@@ -9,13 +9,14 @@ export default function PictureUpload({ picture }: { picture?: Picture }
     const [preview, setPreview] = useState<File | null>(null);
 
 
-    // TODO search for way of getting creating-date (if not -> Desktop App)
+    // TODO: search for way of getting creating-date (if not -> Desktop App)
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!event.target.files) return;
         setPreview(event.target.files[0]);
         console.log("file: ", event.target.files[0])
     }
 
+    // TODO: add that you can only upload .png files (or any video formats) -> dont accept others
     return (
         <div>
             <p>You are currently at Picture-Upload!</p>

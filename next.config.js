@@ -18,4 +18,4 @@ const nextConfig = {
   };
   
   module.exports = nextConfig;
-  
+  // TODO: remove after switching to real data
