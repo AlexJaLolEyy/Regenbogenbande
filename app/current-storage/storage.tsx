@@ -9,26 +9,30 @@ export async function getExampleVideos(): Promise<Video[]> {
     const user1: User = {
         username: "ObiWan",
         password: "Highground",
-        profilepicture: "tbc",
+        profilepicture: "https://nextui.org/images/album-cover.png",
         id: 34
     }
     const user2: User = {
         username: "General Grievous",
         password: "spider",
-        profilepicture: "tbc",
+        profilepicture: "https://nextui.org/images/hero-card-complete.jpeg",
         id: 35
     }
-
-    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispiel_v1.mp4");
-    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispiel_v1.mp4");
 
     function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
         const blob = new Blob([buffer], { type: mimeType });
         return new File([blob], filename, { type: mimeType });
     }
 
-    const file1 = bufferToFile(buffer1, "beispiel_v1.mp4", 'video/mp4');
-    const file2 = bufferToFile(buffer2, "beispiel_v2.mp4", 'video/mp4');
+    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV1.mp4");
+    const file1 = bufferToFile(buffer1, "beispielV1.mp4", 'video/mp4');
+
+    console.log("buffer1: ", file1);
+
+    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV2.mp4");
+    const file2 = bufferToFile(buffer2, "beispielV2.mp4", 'video/mp4');
+
+    console.log("buffer2: ", file2);
 
     const video1: Video = {
         title: "beispiel 1",
@@ -66,7 +70,7 @@ export async function getExamplePictures(): Promise<Picture[]> {
     const user1: User = {
         username: "ObiWan",
         password: "Highground",
-        profilepicture: "tbc",
+        profilepicture: "https://nextui.org/images/album-cover.png",
         id: 34
     }
 
@@ -143,13 +147,13 @@ export async function getExampleQuotes(): Promise<Quote[]> {
     const user1: User = {
         username: "ObiWan",
         password: "Highground",
-        profilepicture: "tbc",
+        profilepicture: "https://nextui.org/images/album-cover.png",
         id: 34
     }
     const user2: User = {
         username: "General Grievous",
         password: "spider",
-        profilepicture: "tbc",
+        profilepicture: "https://nextui-docs-v2.vercel.app/images/hero-card-complete.jpeg",
         id: 35
     }
 
@@ -180,7 +184,7 @@ export async function getExampleQuotes(): Promise<Quote[]> {
         }],
         id: 2,
         participants: [user1, user2],
-        uploadedBy: user1,
+        uploadedBy: user2,
         uploadedAt: new Date("2023-06-02"),
         createdAt: new Date("2023-06-02")
     }
@@ -206,4 +210,64 @@ export async function getExampleQuotes(): Promise<Quote[]> {
     }
 
     return [quote1, quote2, quote3];
+}
+
+
+export async function getExampleVideosServerSide(): Promise<Video[]> {
+
+    const user1: User = {
+        username: "ObiWan",
+        password: "Highground",
+        profilepicture: "https://nextui.org/images/album-cover.png",
+        id: 34
+    }
+    const user2: User = {
+        username: "General Grievous",
+        password: "spider",
+        profilepicture: "https://nextui.org/images/hero-card-complete.jpeg",
+        id: 35
+    }
+
+    function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
+        const blob = new Blob([buffer], { type: mimeType });
+        return new File([blob], filename, { type: mimeType });
+    }
+
+    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV1.mp4");
+    const file1 = bufferToFile(buffer1, "beispielV1.mp4", 'video/mp4');
+
+    console.log("buffer1: ", file1);
+
+    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV2.mp4");
+    const file2 = bufferToFile(buffer2, "beispielV2.mp4", 'video/mp4');
+
+    console.log("buffer2: ", file2);
+
+    const video1: Video = {
+        title: "beispiel 1",
+        description: "beispiel video 1",
+        video: file1,
+        thumbnail: file1,
+        id: 1,
+        participants: [user1, user2],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-01"),
+        createdAt: new Date("2023-06-01")
+    }
+
+    const video2: Video = {
+        title: "beispiel 2",
+        description: "beispiel video 2",
+        video: file2,
+        thumbnail: file2,
+        id: 2,
+        participants: [user1],
+        uploadedBy: user1,
+        uploadedAt: new Date("2023-06-01"),
+        createdAt: new Date("2023-06-01")
+    }
+
+    var videos: Video[] = [video1, video2];
+
+    return videos;
 }
