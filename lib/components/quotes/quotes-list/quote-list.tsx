@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Quote } from "../../../types/types"
-import { getExampleQuotes} from "@/app/current-storage/storage";
+import { getExampleQuotes } from "@/app/current-storage/storage";
 import QuoteComponent from "../quote/quote";
 import Link from "next/link";
+
+import "./quote-list.css";
 
 // TODO: remove the "?" from quotes and supply data from page"
 export default function QuoteList({ quotes }: { quotes?: Quote[] }) {
@@ -18,15 +20,13 @@ export default function QuoteList({ quotes }: { quotes?: Quote[] }) {
 
     return (
         <div>
-            <p>You are currently at Quote-List!</p>
-
             <Link href="/quotes/upload">Go to Upload</Link>
-
-            {fakeQuotes != null ?
-                fakeQuotes.map((quote) => (
-                    <QuoteComponent quote={quote}></QuoteComponent>
-                )) : ""}
-
+            <div className="quoteList">
+                {fakeQuotes != null ?
+                    fakeQuotes.map((quote) => (
+                        <QuoteComponent quote={quote}></QuoteComponent>
+                    )) : ""}
+            </div>
         </div>
     )
 }
