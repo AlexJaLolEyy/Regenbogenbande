@@ -3,15 +3,19 @@
 import { Picture } from "../../../types/types"
 import Link from "next/link";
 
-import { Card, CardHeader, CardBody, Image, CardFooter, Button } from "@nextui-org/react";
+import Image from 'next/image'
 
+import { useEffect } from "react";
 
-// TODO: remove the "?" from pictures and supply data from page"
 export default function PictureView({ picture }: { picture: Picture }
 ) {
 
+  useEffect(() => {
+    console.log("PictureView: ", picture);
+  }, []);
+
   return (
-    <div style={{backgroundColor: "lightblue"}}>
+    <div>
       <p>You are currently at Picture-View!</p>
 
       <Link href="/pictures/upload">Go to Upload</Link>
@@ -19,7 +23,7 @@ export default function PictureView({ picture }: { picture: Picture }
       <Image
         alt="Picture"
         className="object-cover none"
-        src={picture.img === null ? "Kein Img vorhanden!" : URL.createObjectURL(picture.img)}
+        src={picture.img === null ? "Kein Img vorhanden!" : picture.img}
         width={1280}
         height={720}
       />
