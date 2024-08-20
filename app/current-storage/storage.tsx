@@ -1,7 +1,6 @@
 'use server'
 
 import { Picture, Quote, User, Video } from "@/lib/types/types";
-import fs from 'fs';
 
 
 export async function getExampleVideos(): Promise<Video[]> {
@@ -19,26 +18,11 @@ export async function getExampleVideos(): Promise<Video[]> {
         id: 35
     }
 
-    function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
-        const blob = new Blob([buffer], { type: mimeType });
-        return new File([blob], filename, { type: mimeType });
-    }
-
-    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV1.mp4");
-    const file1 = bufferToFile(buffer1, "beispielV1.mp4", 'video/mp4');
-
-    console.log("buffer1: ", file1);
-
-    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV2.mp4");
-    const file2 = bufferToFile(buffer2, "beispielV2.mp4", 'video/mp4');
-
-    console.log("buffer2: ", file2);
-
     const video1: Video = {
         title: "beispiel 1",
         description: "beispiel video 1",
-        video: file1,
-        thumbnail: file1,
+        video: "/exampleVideos/beispielV1.mp4",
+        thumbnail: "/examplePictures/exampleThumbnail.jpg",
         id: 1,
         participants: [user1, user2],
         uploadedBy: user1,
@@ -49,8 +33,8 @@ export async function getExampleVideos(): Promise<Video[]> {
     const video2: Video = {
         title: "beispiel 2",
         description: "beispiel video 2",
-        video: file2,
-        thumbnail: file2,
+        video: "/exampleVideos/beispielV2.mp4",
+        thumbnail: "/examplePictures/exampleThumbnail.jpg",
         id: 2,
         participants: [user1],
         uploadedBy: user1,
@@ -74,29 +58,10 @@ export async function getExamplePictures(): Promise<Picture[]> {
         id: 34
     }
 
-    // just for implementing test data for now (getting removed as soon as i have all components)
-    // can be removed now, but then i need a different way of creating placeholder files
-    const buffer1 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorBlue.png");
-    const buffer2 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorGreenBlue.png");
-    const buffer3 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorLightGreen.png");
-    const buffer4 = fs.readFileSync("./app/current-storage/examplePictures/pictureColorPurple.png");
-
-    function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
-        const blob = new Blob([buffer], { type: mimeType });
-        return new File([blob], filename, { type: mimeType });
-    }
-
-    const file1 = bufferToFile(buffer1, "pictureColorBlue.png", 'image/png');
-    const file2 = bufferToFile(buffer2, "pictureColorGreenBlue.png", 'image/png');
-    const file3 = bufferToFile(buffer3, "pictureColorLightGreen.png", 'image/png');
-    const file4 = bufferToFile(buffer4, "pictureColorPurple.png", 'image/png');
-
-    console.log("All Files: " + file1 + file2 + file3 + file4);
-
     const picture1: Picture = {
         title: "blue",
         description: "blue picture",
-        img: file1,
+        img: "/examplePictures/pictureColorBlue.png",
         id: 22,
         participants: [user1],
         uploadedBy: user1,
@@ -107,7 +72,7 @@ export async function getExamplePictures(): Promise<Picture[]> {
     const picture2: Picture = {
         title: "greenBlue",
         description: "greenBlue picture",
-        img: file2,
+        img: "/examplePictures/pictureColorGreenBlue.png",
         id: 23,
         participants: [user1],
         uploadedBy: user1,
@@ -117,7 +82,7 @@ export async function getExamplePictures(): Promise<Picture[]> {
     const picture3: Picture = {
         title: "lightGreen",
         description: "lightGreen picture",
-        img: file3,
+        img: "/examplePictures/pictureColorLightGreen.png",
         id: 24,
         participants: [user1],
         uploadedBy: user1,
@@ -127,16 +92,14 @@ export async function getExamplePictures(): Promise<Picture[]> {
     const picture4: Picture = {
         title: "purple",
         description: "purple picture",
-        img: file4,
+        img: "/examplePictures/pictureColorPurple.png",
         id: 25,
         participants: [user1],
         uploadedBy: user1,
         uploadedAt: new Date("2023-06-01"),
         createdAt: new Date("2023-06-01")
     }
-
     var pictures: Picture[] = [picture1, picture2, picture3, picture4];
-    console.log("Pics: ", pictures);
 
     return JSON.parse(JSON.stringify(pictures));
 }
@@ -212,62 +175,17 @@ export async function getExampleQuotes(): Promise<Quote[]> {
     return [quote1, quote2, quote3];
 }
 
+// info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
+export async function getQuoteById(id: number): Promise<Quote> {
+    return (await getExampleQuotes()).filter((quote) => quote.id == id)[0];
+}
 
-export async function getExampleVideosServerSide(): Promise<Video[]> {
+// info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
+export async function getPictureById(id: number): Promise<Picture> {
+    return (await getExamplePictures()).filter((picture) => picture.id == id)[0];
+}
 
-    const user1: User = {
-        username: "ObiWan",
-        password: "Highground",
-        profilepicture: "https://nextui.org/images/album-cover.png",
-        id: 34
-    }
-    const user2: User = {
-        username: "General Grievous",
-        password: "spider",
-        profilepicture: "https://nextui.org/images/hero-card-complete.jpeg",
-        id: 35
-    }
-
-    function bufferToFile(buffer: Buffer, filename: string, mimeType: string): File {
-        const blob = new Blob([buffer], { type: mimeType });
-        return new File([blob], filename, { type: mimeType });
-    }
-
-    const buffer1 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV1.mp4");
-    const file1 = bufferToFile(buffer1, "beispielV1.mp4", 'video/mp4');
-
-    console.log("buffer1: ", file1);
-
-    const buffer2 = fs.readFileSync("./app/current-storage/exampleVideos/beispielV2.mp4");
-    const file2 = bufferToFile(buffer2, "beispielV2.mp4", 'video/mp4');
-
-    console.log("buffer2: ", file2);
-
-    const video1: Video = {
-        title: "beispiel 1",
-        description: "beispiel video 1",
-        video: file1,
-        thumbnail: file1,
-        id: 1,
-        participants: [user1, user2],
-        uploadedBy: user1,
-        uploadedAt: new Date("2023-06-01"),
-        createdAt: new Date("2023-06-01")
-    }
-
-    const video2: Video = {
-        title: "beispiel 2",
-        description: "beispiel video 2",
-        video: file2,
-        thumbnail: file2,
-        id: 2,
-        participants: [user1],
-        uploadedBy: user1,
-        uploadedAt: new Date("2023-06-01"),
-        createdAt: new Date("2023-06-01")
-    }
-
-    var videos: Video[] = [video1, video2];
-
-    return videos;
+// info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
+export async function getVideoById(id: number): Promise<Video> {
+    return (await getExampleVideos()).filter((video) => video.id == id)[0];
 }
