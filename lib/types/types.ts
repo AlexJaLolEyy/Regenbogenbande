@@ -1,9 +1,9 @@
 export interface Video {
     title: string,
     description?: string,
-    video: File,
+    video: string,
     id: number,
-    thumbnail: File // or change to Picture?
+    thumbnail: string // or change to Picture?
     participants: User[],
     uploadedBy: User,
     uploadedAt: Date,
@@ -13,7 +13,7 @@ export interface Video {
 export interface Picture {
     title: string,
     description?: string,
-    img: File, // or save as string?
+    img: string,
     id: number,
     participants: User[],
     uploadedBy: User,
