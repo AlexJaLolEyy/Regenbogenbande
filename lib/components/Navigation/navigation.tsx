@@ -3,9 +3,7 @@
 import React from "react";
 import { useParams, usePathname } from "next/navigation";
 
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, DropdownItem, DropdownTrigger, Dropdown, DropdownMenu, Avatar } from "@nextui-org/react";
-import "./navigation.css"
-
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, DropdownItem, DropdownTrigger, Dropdown, DropdownMenu, Avatar, Button } from "@nextui-org/react";
 
 
 // maybe add currentPath as variable
@@ -17,12 +15,13 @@ export default function Navigation() {
 
     return (
         <div>
+
+
             <Navbar>
                 <NavbarBrand>
                     <p className="font-bold text-inherit">ACME</p>
                 </NavbarBrand>
-
-                <NavbarContent className="hidden sm:flex gap-4" justify="center">
+                <NavbarContent className="sm:flex gap-4" justify="center">
                     <NavbarItem>
                         <Link color="foreground" href="/home">
                             Home
@@ -53,7 +52,6 @@ export default function Navigation() {
                                 as="button"
                                 className="transition-transform"
                                 color="secondary"
-                                name="Jason Hughes"
                                 size="sm"
                                 src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
                             />

@@ -1,8 +1,0 @@
-.navbar {
-    padding: 1em;
-    background-color: lightgray;
-    display: flex;
-    flex-direction: row;
-    gap: 2em;
-    justify-content: center;
-}
