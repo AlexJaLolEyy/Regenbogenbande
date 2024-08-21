@@ -6,20 +6,16 @@ import { Input, Textarea } from "@nextui-org/react";
 
 import EXIF from 'exif-js';
 
-/* FIXME: bug: if picture selected via upload, then the upload is pressed again to select a new picture, 
- and you tab out of the select = boom */
-
 export default function PictureUpload({ picture }: { picture?: Picture }
 ) {
 
     // TODO: add "accept" for videos and pictures
 
     const [preview, setPreview] = useState<File | null>(null);
-
     const [creationDate, setCreationDate] = useState<string | null>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        console.log("start");
+        // to prevent the bug of expecting picture without upload
         const file = event.target.files?.[0];
 
         if (file) {
@@ -39,8 +35,7 @@ export default function PictureUpload({ picture }: { picture?: Picture }
                     console.log("no arraybuffer")
                 }
             };
-
-            reader.readAsArrayBuffer(file); // Make sure you're using ArrayBuffer
+            reader.readAsArrayBuffer(file);
         } else {
             console.log('No file selected');
         }
