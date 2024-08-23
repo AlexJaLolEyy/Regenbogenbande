@@ -2,17 +2,21 @@ import { Card, CardBody, CardFooter, CardHeader, Image, Divider } from "@nextui-
 import { Quote } from "../../../types/types"
 
 import "./quote.css";
+import { useRouter } from "next/navigation";
 
-export default function QuoteComponent({ quote }: { quote: Quote }
+export default function QuoteComponent({ quote }: { quote: Quote }) {
 
     // TODO: replace html with card component + styling
     // TODO: add "isPressable" to card (might need to redo styling)
 
-) {
+    const router = useRouter();
+
     return (
         <div className="quote">
 
-            <Card className="py-4">
+            <Card className="py-4" isPressable onPress={() => {
+                router.push('/quotes/' + quote.id);
+            }}>
                 <CardHeader className="pb-0 pt-2 px-4 flex-col items-start">
                     <h4 className="font-bold text-large">Quote #{quote.id}</h4>
                 </CardHeader>
@@ -23,11 +27,7 @@ export default function QuoteComponent({ quote }: { quote: Quote }
                             <small className="text-default-500">{singleQuote.msg}</small>
                         </div>
                     ))}
-
                 </CardBody>
-
-                {/* <Divider/> */}
-
                 <CardFooter className="cardFooter">
                     <div className="flex gap-2 items-center">
                         <Image
