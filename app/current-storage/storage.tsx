@@ -175,6 +175,49 @@ export async function getExampleQuotes(): Promise<Quote[]> {
     return [quote1, quote2, quote3];
 }
 
+export async function getAllUsers(): Promise<User[]> {
+    var users: User[] = [
+        {
+            username: "Alex Ja Lol Eyy",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 1
+        },
+        {
+            username: "Thylon",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 2
+        },
+        {
+            username: "T1 Sensei",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 3
+        },
+        {
+            username: "Jesse",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 4
+        },
+        {
+            username: "Achel aka BigBrainGamer420",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 5
+        },
+        {
+            username: "Marla",
+            password: "12345",
+            profilepicture: "https://nextui.org/images/album-cover.png",
+            id: 6
+        }
+    ];
+    return users;
+}
+
+
 // info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
 export async function getQuoteById(id: number): Promise<Quote> {
     return (await getExampleQuotes()).filter((quote) => quote.id == id)[0];
@@ -188,4 +231,8 @@ export async function getPictureById(id: number): Promise<Picture> {
 // info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
 export async function getVideoById(id: number): Promise<Video> {
     return (await getExampleVideos()).filter((video) => video.id == id)[0];
+}
+// info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
+export async function getUserById(id: number): Promise<User> {
+    return (await getAllUsers()).filter((user) => user.id == id)[0];
 }
