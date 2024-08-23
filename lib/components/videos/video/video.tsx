@@ -1,62 +1,51 @@
 'use client'
 
-import { useEffect, useState } from "react";
 import type { Video } from "../../../types/types";
+import { Card, CardHeader, CardBody, Image, CardFooter, Button } from "@nextui-org/react";
+import { useRouter } from "next/navigation";
+
+import "./video.css";
 
 export default function VideoComponent({ video }: { video: Video }) {
 
   // TODO: replace html with card component + styling
 
-  // TODO: NEW IDEA! -> Switch type from File to File | string and then just import all videos somewhere and save the link
-
-  const [videoURL, setVideoURL] = useState<string | null>(null);
-
-  useEffect(() => {
-
-    console.log("test: ", video)
-    if (video.video) {
-      console.log("valid file")
-      const url = URL.createObjectURL(video.video);
-      setVideoURL(url);
-
-      // Clean up the object URL when component unmounts or file changes
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [video.video]);
+  const router = useRouter();
 
   return (
 
-    <div>
-      {video.video !== undefined ?
-        <div>
-          <div className="video">
-            <p>FILE TYPE: {video.video.type}</p>
-            <p>Video Thumbnail: </p>
-            <img
-              src={""}
-              alt="error while loading thumbnail"
-              width={"150"}
-              height={"150"}
-            ></img>
-            <p>Video: </p>
-            <video width="320" height="240" controls>
-              <source src={URL.createObjectURL(video.video)} type="video/mp4"></source>
-              Video cant be displayed due to error...
-            </video>
-          </div>
-          <div className="videoTitle">
-            <p>Video Title: {video.title}</p>
-          </div>
-          <div className="videoMetaData">
-            <p>Video CreatedAt: {video.createdAt.toString()}</p>
-            <p>Video UploadedBy: {video.uploadedBy.username}</p>
-          </div>
-          <hr></hr>
+    <div className="video">
 
-          <button onClick={() => console.log("rendered vid: ", video)}>GET DATA</button>
-        </div>
+      <Card className="py-4" isPressable onPress={() => {
+        router.push('/videos/' + video.id);
+      }}>
+        <CardBody className="overflow-visible py-2">
+          <Image
+            isZoomed
+            alt="Card background"
+            className="object-cover"
+            src={video.thumbnail === null ? "Fehler" : video.thumbnail}
+            width={270}
+          />
+        </CardBody>
+        <CardHeader className="pb-0 pt-0 px-4 flex-col items-start">
+          <h4 className="font-bold text-large">{video.title}</h4>
+        </CardHeader>
+        <CardFooter className="cardFooter">
+          <div className="flex gap-2 items-center">
+            <Image
+              alt="User Profile"
+              className="object-cover none"
+              src={video.uploadedBy.profilepicture === null ? "Fehler" : video.uploadedBy.profilepicture}
+              width={35}
+            />
+            <p className="text-tiny uppercase font-bold">{video.uploadedBy.username}</p>
+          </div>
+          <small className="text-default-500">Likes</small>
+          <small className="text-default-500">Views</small>
+        </CardFooter>
+      </Card>
 
-        : ""}
     </div>
 
   );
