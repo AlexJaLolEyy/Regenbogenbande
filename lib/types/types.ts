@@ -63,3 +63,26 @@ export function Userlist(): User[] {
         id: 3,
     },]
 }
+
+export interface UploadPicture {
+    title: string,
+    description?: string,
+    img: File,
+    id: number,
+    participants: User[],
+    uploadedBy: User,
+    uploadedAt: Date,
+    createdAt: Date,
+}
+
+export interface UploadVideo {
+    title: string,
+    description?: string,
+    video: File,
+    id: number,
+    thumbnail: File // or change to Picture?
+    participants: User[],
+    uploadedBy: User,
+    uploadedAt: Date,
+    createdAt: Date,
+}
