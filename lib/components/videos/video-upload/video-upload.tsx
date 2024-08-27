@@ -1,22 +1,50 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Video, User } from "../../../types/types";
+import type { Video, User, UploadVideo } from "../../../types/types";
 import { Input, Textarea, User, DateInput, Select, SelectItem, Avatar, Chip, SelectedItems, CircularProgress, Skeleton, Image } from "@nextui-org/react";
 import MP4Box from 'mp4box';
-import { getAllUsers } from "@/app/current-storage/storage";
+import { getAllUsers, getUserById } from "@/app/current-storage/storage";
+import { useForm, SubmitHandler, Controller } from "react-hook-form"
 
+import { getLocalTimeZone, parseDate, today, CalendarDate, fromDate } from "@internationalized/date";
 
-// TODO: try to adjust the setPreview so that the old preview stays consistent when input triggered again, but closed
-
-// FIXME: video is not getting updated after the first input..
 
 export default function VideoUpload({ video }: { video?: Video }) {
 
+  const {
+    register,
+    handleSubmit,
+    watch,
+    control,
+    formState: { errors },
+  } = useForm<UploadVideo>()
+  const onSubmit: SubmitHandler<UploadVideo> = (data) => {
+    console.log("errors: ", errors);
+
+    // participants should be User[] but form return a string
+    const selectedUsers = (data.participants.split(",")).map((id: string) =>
+      users.find((user) => user.id === parseInt(id))
+    );
+    data.participants = selectedUsers;
+
+    console.log('Selected users:', selectedUsers);
+    console.log("created: ", data.createdAt.toLocaleString());
+    console.log("createdv2: ", creationDate?.toLocaleDateString());
+    console.log("data: ", data);
+  }
+
   const [preview, setPreview] = useState<File | null>(null);
   const [creationDate, setCreationDate] = useState<Date | null>(null);
-
   const [users, setUsers] = useState<User[]>([]);
+
+  var currentDate = new Date();
+  console.log("c date: ", currentDate);
+  console.log("c date2: ", fromDate(currentDate, getLocalTimeZone()));
+  var currentDateString = (currentDate.getFullYear().toString() + "-" + (currentDate.getMonth() + 1).toString() + "-" + currentDate.getDate().toString());
+
+
+
 
   useEffect(() => {
     getAllUsers().then((users) => {
@@ -25,6 +53,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
   }, []);
 
   const getCreationDate = (file: File) => {
+
     if (file) {
       const fileReader = new FileReader();
       fileReader.readAsArrayBuffer(file);
@@ -39,6 +68,8 @@ export default function VideoUpload({ video }: { video?: Video }) {
         mp4boxFile.onReady = function (info) {
           console.log(info);
           setCreationDate(info.created);
+          console.log("creationDate: ", info.created);
+          console.log("creationDate parsed: ", fromDate(info.created, getLocalTimeZone()))
         };
         mp4boxFile.appendBuffer(buffer);
         mp4boxFile.flush();
@@ -59,7 +90,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
     <div>
       <p>You are currently at Video-Upload!</p>
 
-      <form>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <h3>Video-Upload:</h3>
 
         {preview ? (
@@ -79,18 +110,27 @@ export default function VideoUpload({ video }: { video?: Video }) {
 
 
         <div className="fileUpload">
-          <Input type="file" label="Upload File" onChange={handleFileChange} variant="bordered"
-            accept="video/*" />
+          <Input type="file" isRequired label="Upload File" variant="bordered"
+            accept="video/*"
+            {...register("video", { required: true, onChange: (e) => handleFileChange(e) })} />
         </div>
 
         <div className="title">
-          <Input type="text" label="Title" variant="bordered"
+          <Input type="text" isRequired isClearable label="Title" variant="bordered"
             isInvalid={false} errorMessage="Please enter a valid Title!"
+            {...register("title", { required: true })}
           />
         </div>
 
         <div className="participants">
           <Select
+            {...register("participants", {
+              setValueAs: v => [v],
+              value: [],
+              onChange: e => console.log("participants: ", e),
+
+            })}
+            isRequired
             items={users}
             label="Participants"
             variant="bordered"
@@ -127,6 +167,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
 
         <div className="description">
           <Textarea
+            {...register("description")}
             label="Description"
             placeholder="Enter your description"
             variant="bordered"
@@ -139,6 +180,11 @@ export default function VideoUpload({ video }: { video?: Video }) {
 
         <div className="uploadedBy">
           <Select
+            isRequired
+            {...register("uploadedBy", {
+              required: true,
+            }
+            )}
             items={users}
             label="Uploaded By"
             placeholder="Select a user"
@@ -178,18 +224,71 @@ export default function VideoUpload({ video }: { video?: Video }) {
         </div>
 
         <div className="uploadedAt">
-          <DateInput label="Uploaded At"
-            variant="bordered"
-            className="max-w-sm" />
+          <Controller
+            name="uploadedAt"
+            control={control}
+            rules={{
+              // required: true,
+            }} 
+
+
+
+            // label="Uploaded At"
+            //     isRequired
+            //     variant="bordered"
+            //     className="max-w-sm"
+            //     value={field.value ? fromDate(field.value, getLocalTimeZone()) : fromDate(new Date(), getLocalTimeZone())} // Set value
+            //     onChange={(newDate) => {
+            //       field.onChange(parseDate(newDate.toString())); // Update form state
+            //     }}
+
+            render={({ field }) => (
+              <DateInput
+                label="Uploaded At"
+                isRequired
+                variant="bordered"
+                className="max-w-sm"
+                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : today(getLocalTimeZone())}
+                onChange={(date) => {
+                  console.log("date change: ", date);
+                  field.onChange(date);
+                }}
+              />
+            )}
+          />
         </div>
 
         <div className="createdAt">
-          <DateInput label="Created At"
-            variant="bordered"
-            className="max-w-sm" />
+          <Controller
+            name="createdAt"
+            control={control}
+            render={({ field }) => (
+              <DateInput
+                label="Created At"
+                isRequired
+                {...register("createdAt", {
+                  valueAsDate: true,
+                  required: true,
+                  onChange: (e) => console.log("createdDate: ", e)
+                })}
+                variant="bordered"
+                defaultValue={fromDate(new Date(), getLocalTimeZone())}
+                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : today(getLocalTimeZone())}
+                className="max-w-sm"
+              />
+            )}
+          />
         </div>
 
+        {errors ? (
+          <div><p>Errors: {JSON.stringify(errors)}</p></div>
+        ) : "keine error"}
 
+        {/* value={fromDate(field.value || new Date())} // Convert JS Date to CalendarDate
+        onChange={(newDate) => {
+           field.onChange(toDate(newDate));  */}
+
+        <input type="submit" />
       </form>
 
     </div>
