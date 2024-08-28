@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Video, User, UploadVideo } from "../../../types/types";
-import { Input, Textarea, User, DateInput, Select, SelectItem, Avatar, Chip, SelectedItems, CircularProgress, Skeleton, Image } from "@nextui-org/react";
+import { getAllUsers } from "@/app/current-storage/storage";
+import { Avatar, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Textarea } from "@nextui-org/react";
+import { useEffect, useState } from "react";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { fromDate, getLocalTimeZone } from "@internationalized/date";
+import type { UploadVideo, User, Video } from "../../../types/types";
 import MP4Box from 'mp4box';
-import { getAllUsers, getUserById } from "@/app/current-storage/storage";
-import { useForm, SubmitHandler, Controller } from "react-hook-form"
-
-import { getLocalTimeZone, parseDate, today, CalendarDate, fromDate } from "@internationalized/date";
-
 
 export default function VideoUpload({ video }: { video?: Video }) {
 
@@ -17,11 +15,19 @@ export default function VideoUpload({ video }: { video?: Video }) {
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
-  } = useForm<UploadVideo>()
+  } = useForm<UploadVideo>({
+    defaultValues: {
+      // createdAt: new Date(),
+      uploadedAt: new Date(),
+      participants: [],
+    }
+  })
   const onSubmit: SubmitHandler<UploadVideo> = (data) => {
     console.log("errors: ", errors);
 
+    // TODO: move this to server side? since its okay to just have the ID's on the client
     // participants should be User[] but form return a string
     const selectedUsers = (data.participants.split(",")).map((id: string) =>
       users.find((user) => user.id === parseInt(id))
@@ -29,8 +35,6 @@ export default function VideoUpload({ video }: { video?: Video }) {
     data.participants = selectedUsers;
 
     console.log('Selected users:', selectedUsers);
-    console.log("created: ", data.createdAt.toLocaleString());
-    console.log("createdv2: ", creationDate?.toLocaleDateString());
     console.log("data: ", data);
   }
 
@@ -38,19 +42,15 @@ export default function VideoUpload({ video }: { video?: Video }) {
   const [creationDate, setCreationDate] = useState<Date | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
-  var currentDate = new Date();
-  console.log("c date: ", currentDate);
-  console.log("c date2: ", fromDate(currentDate, getLocalTimeZone()));
-  var currentDateString = (currentDate.getFullYear().toString() + "-" + (currentDate.getMonth() + 1).toString() + "-" + currentDate.getDate().toString());
-
-
-
-
   useEffect(() => {
     getAllUsers().then((users) => {
       setUsers(users);
     });
-  }, []);
+    // TODO: other option?
+    if (creationDate) {
+      setValue('createdAt', creationDate);
+    }
+  }, [creationDate, setValue]);
 
   const getCreationDate = (file: File) => {
 
@@ -67,9 +67,15 @@ export default function VideoUpload({ video }: { video?: Video }) {
         mp4boxFile.onError = console.error;
         mp4boxFile.onReady = function (info) {
           console.log(info);
-          setCreationDate(info.created);
+          if (info.created.toLocaleDateString() === "1/1/1904") {
+            console.log("wrong creation Date!");
+            setCreationDate(new Date(file.lastModified));
+          }
+          else {
+            console.log("not wrong");
+            setCreationDate(info.created);
+          }
           console.log("creationDate: ", info.created);
-          console.log("creationDate parsed: ", fromDate(info.created, getLocalTimeZone()))
         };
         mp4boxFile.appendBuffer(buffer);
         mp4boxFile.flush();
@@ -78,11 +84,17 @@ export default function VideoUpload({ video }: { video?: Video }) {
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
     const file = event.target.files?.[0];
     if (file) {
       setPreview(file);
       getCreationDate(file);
       console.log("file: ", file);
+    }
+    // TODO: try to optimize
+    if (creationDate != null) {
+      console.log("---- not null ----");
+      setValue("createdAt", creationDate);
     }
   };
 
@@ -125,10 +137,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
         <div className="participants">
           <Select
             {...register("participants", {
-              setValueAs: v => [v],
-              value: [],
-              onChange: e => console.log("participants: ", e),
-
+              required: true,
             })}
             isRequired
             items={users}
@@ -228,52 +237,39 @@ export default function VideoUpload({ video }: { video?: Video }) {
             name="uploadedAt"
             control={control}
             rules={{
-              // required: true,
-            }} 
-
-
-
-            // label="Uploaded At"
-            //     isRequired
-            //     variant="bordered"
-            //     className="max-w-sm"
-            //     value={field.value ? fromDate(field.value, getLocalTimeZone()) : fromDate(new Date(), getLocalTimeZone())} // Set value
-            //     onChange={(newDate) => {
-            //       field.onChange(parseDate(newDate.toString())); // Update form state
-            //     }}
-
+              required: true,
+            }}
             render={({ field }) => (
               <DateInput
-                label="Uploaded At"
                 isRequired
+                isReadOnly
+                label="Uploaded At"
                 variant="bordered"
                 className="max-w-sm"
-                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : today(getLocalTimeZone())}
-                onChange={(date) => {
-                  console.log("date change: ", date);
-                  field.onChange(date);
-                }}
+                defaultValue={fromDate(field.value, getLocalTimeZone())}
               />
             )}
           />
         </div>
 
+        <span>value: {JSON.stringify(watch("createdAt"))}</span>
+
         <div className="createdAt">
           <Controller
             name="createdAt"
             control={control}
+            rules={{
+              required: true,
+            }}
+            defaultValue={creationDate ? creationDate : undefined}
             render={({ field }) => (
               <DateInput
-                label="Created At"
                 isRequired
-                {...register("createdAt", {
-                  valueAsDate: true,
-                  required: true,
-                  onChange: (e) => console.log("createdDate: ", e)
-                })}
+                isReadOnly
+                label="Created At"
                 variant="bordered"
-                defaultValue={fromDate(new Date(), getLocalTimeZone())}
-                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : today(getLocalTimeZone())}
+                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
+                onChange={field.onChange}
                 className="max-w-sm"
               />
             )}
@@ -283,10 +279,6 @@ export default function VideoUpload({ video }: { video?: Video }) {
         {errors ? (
           <div><p>Errors: {JSON.stringify(errors)}</p></div>
         ) : "keine error"}
-
-        {/* value={fromDate(field.value || new Date())} // Convert JS Date to CalendarDate
-        onChange={(newDate) => {
-           field.onChange(toDate(newDate));  */}
 
         <input type="submit" />
       </form>
