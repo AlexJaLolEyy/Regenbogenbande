@@ -2,82 +2,83 @@
 
 import React, { useEffect } from "react";
 import { useState } from "react"
-import { Picture, User } from "../../../types/types"
+import { Picture, UploadPicture, UploadVideo, User } from "../../../types/types"
 import { Input, Textarea, User, DateInput, Select, SelectItem, Avatar, Chip, SelectedItems, CircularProgress, Skeleton, Image } from "@nextui-org/react";
 
 import NextImage from "next/image";
 
 import EXIF from 'exif-js';
 import { getAllUsers } from "@/app/current-storage/storage";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
+import { fromDate, getLocalTimeZone } from "@internationalized/date";
 
-export default function PictureUpload({ picture }: { picture?: Picture }
-) {
+export default function PictureUpload({ picture }: { picture?: Picture }) {
 
-    // TODO: add "accept" for videos and pictures
+    const {
+        register,
+        handleSubmit,
+        watch,
+        control,
+        setValue,
+        formState: { errors },
+    } = useForm<UploadPicture>({
+        defaultValues: {
+            // createdAt: new Date(),
+            uploadedAt: new Date(),
+            participants: [],
+        }
+    })
+    const onSubmit: SubmitHandler<UploadPicture> = (data) => {
+        console.log("errors: ", errors);
+
+        console.log("data: ", data);
+    }
 
     const [preview, setPreview] = useState<File | null>(null);
-    const [creationDate, setCreationDate] = useState<string | null>(null);
+    const [creationDate, setCreationDate] = useState<Date | null>(null);
     const [users, setUsers] = useState<User[]>([]);
 
     useEffect(() => {
         getAllUsers().then((users) => {
             setUsers(users);
         });
-    }, []);
+        // TODO: other option?
+        if (creationDate) {
+            setValue('createdAt', creationDate);
+        }
+    }, [creationDate, setValue]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        // to prevent the bug of expecting picture without upload
         const file = event.target.files?.[0];
 
         if (file) {
             setPreview(file);
-            const reader = new FileReader();
-
-            reader.onload = () => {
-                console.log("on load");
-                const arrayBuffer = reader.result;
-                if (arrayBuffer) {
-                    console.log("arraybuffer is there")
-                    EXIF.getData(arrayBuffer, function () {
-                        const date = EXIF.getTag(this, 'DateTimeOriginal');
-                        setCreationDate(date || 'No EXIF data found');
-                    });
-                }
-                else {
-                    console.log("no arraybuffer")
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            console.log('No file selected');
+            // file could potentially have a creationDate
+            if (file.type === "image/jpeg" || file.type === "image/jpg") {
+                // @ts-ignore: Ignore type checking for this line
+                EXIF.getData(file, function () {
+                    const creationDate = EXIF.getTag(this, "DateTimeOriginal");
+                    if (creationDate) {
+                        const formattedDate = creationDate.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+                        setCreationDate(new Date(formattedDate));
+                    } else {
+                        console.log("Creation date not found in EXIF data.");
+                        setCreationDate(new Date(file.lastModified))
+                    }
+                });
+            }
+            else {
+                setCreationDate(new Date(file.lastModified))
+            }
         }
+        console.log("creationdate: ", creationDate)
     };
 
-
-    const extractCreationDate = (event: React.ChangeEvent<HTMLInputElement>) => {
-
-        const file = event.target.files?.[0];
-
-        if (file && (file.type === "image/jpeg" || "image/jpg")) {
-            // @ts-ignore: Ignore type checking for this line
-            EXIF.getData(file, function () {
-                const creationDate = EXIF.getTag(this, "DateTimeOriginal");
-                if (creationDate) {
-                    console.log("Creation Date:", creationDate);
-                } else {
-                    console.log("Creation date not found in EXIF data.");
-                }
-            });
-        }
-    };
-
-
-    // TODO: add that you can only upload .png files (or any video formats) -> dont accept others
     return (
         <div>
             <p>You are currently at Picture-Upload!</p>
 
-            <form>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <h3>Picture-Upload:</h3>
                 <p>test: {preview?.type}</p>
 
@@ -97,18 +98,22 @@ export default function PictureUpload({ picture }: { picture?: Picture }
                     : ""}
 
                 <div className="fileUpload">
-                    <Input type="file" label="Upload File" onChange={handleFileChange} variant="bordered"
-                        accept="image/*" />
+                    <Input type="file" label="Upload File" variant="bordered"
+                        accept="image/*" {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} />
                 </div>
 
                 <div className="title">
                     <Input type="text" label="Title" variant="bordered"
                         isInvalid={false} errorMessage="Please enter a valid Title!"
+                        {...register("title", { required: true })}
                     />
                 </div>
 
                 <div className="participants">
                     <Select
+                        {...register("participants", {
+                            required: true,
+                        })}
                         items={users}
                         label="Participants"
                         variant="bordered"
@@ -153,11 +158,14 @@ export default function PictureUpload({ picture }: { picture?: Picture }
                         maxLength={255}
                         maxRows={4}
                         minRows={3}
+                        {...register("description")}
                     />
                 </div>
 
                 <div className="uploadedBy">
                     <Select
+                        {...register("uploadedBy", { required: true })}
+                        isRequired
                         items={users}
                         label="Uploaded By"
                         placeholder="Select a user"
@@ -196,28 +204,56 @@ export default function PictureUpload({ picture }: { picture?: Picture }
                             </SelectItem>
                         )}
                     </Select>
-
-
-                    {/* <label>Uploaded by:</label>
-                    <User
-                        name="Alex Ja Lol Eyy"
-                        avatarProps={{
-                            src: "/examplePictures/exampleThumbnail.jpg"
-                        }}
-                    /> */}
                 </div>
 
                 <div className="uploadedAt">
-                    <DateInput label="Uploaded At"
-                        variant="bordered"
-                        className="max-w-sm" />
+                    <Controller
+                        name="uploadedAt"
+                        control={control}
+                        rules={{
+                            required: true,
+                        }}
+                        render={({ field }) => (
+                            <DateInput
+                                isRequired
+                                isReadOnly
+                                label="Uploaded At"
+                                variant="bordered"
+                                className="max-w-sm"
+                                defaultValue={fromDate(field.value, getLocalTimeZone())}
+                            />
+                        )}
+                    />
                 </div>
 
+                {creationDate ? (
+                    <div><p>creationDate: {creationDate.toLocaleDateString()}</p></div>
+                ) : "no creation date"}
+
+                <span>value: {JSON.stringify(watch("createdAt"))}</span>
+
                 <div className="createdAt">
-                    <DateInput label="Created At"
-                        variant="bordered"
-                        className="max-w-sm" />
+                    <Controller
+                        name="createdAt"
+                        control={control}
+                        rules={{
+                            required: true,
+                        }}
+                        render={({ field }) => (
+                            <DateInput
+                                isRequired
+                                isReadOnly
+                                label="Created At"
+                                value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
+                                onChange={field.onChange}
+                                variant="bordered"
+                                className="max-w-sm"
+                            />
+                        )}
+                    />
                 </div>
+
+                <input type="submit" />
 
             </form>
 
