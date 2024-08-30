@@ -1,22 +1,24 @@
 'use server'
 
 import { Picture, Quote, User, Video } from "@/lib/types/types";
+const fs = require('fs');
+
+const user1: User = {
+    username: "Alex Ja Lol Eyy",
+    password: "12345",
+    profilepicture: "https://nextui.org/images/album-cover.png",
+    id: 1
+}
+
+const user2: User = {
+    username: "Thylon",
+    password: "12345",
+    profilepicture: "https://nextui.org/images/album-cover.png",
+    id: 2
+}
 
 
 export async function getExampleVideos(): Promise<Video[]> {
-
-    const user1: User = {
-        username: "ObiWan",
-        password: "Highground",
-        profilepicture: "https://nextui.org/images/album-cover.png",
-        id: 34
-    }
-    const user2: User = {
-        username: "General Grievous",
-        password: "spider",
-        profilepicture: "https://nextui.org/images/hero-card-complete.jpeg",
-        id: 35
-    }
 
     const video1: Video = {
         title: "beispiel 1",
@@ -50,13 +52,6 @@ export async function getExampleVideos(): Promise<Video[]> {
 
 // TODO: optimize return and adjust test data
 export async function getExamplePictures(): Promise<Picture[]> {
-
-    const user1: User = {
-        username: "ObiWan",
-        password: "Highground",
-        profilepicture: "https://nextui.org/images/album-cover.png",
-        id: 34
-    }
 
     const picture1: Picture = {
         title: "blue",
@@ -106,19 +101,6 @@ export async function getExamplePictures(): Promise<Picture[]> {
 
 // TODO: optimize return and adjust test data
 export async function getExampleQuotes(): Promise<Quote[]> {
-
-    const user1: User = {
-        username: "ObiWan",
-        password: "Highground",
-        profilepicture: "https://nextui.org/images/album-cover.png",
-        id: 34
-    }
-    const user2: User = {
-        username: "General Grievous",
-        password: "spider",
-        profilepicture: "https://nextui-docs-v2.vercel.app/images/hero-card-complete.jpeg",
-        id: 35
-    }
 
     const quote1: Quote = {
         fullQuote: [{
@@ -235,4 +217,29 @@ export async function getVideoById(id: number): Promise<Video> {
 // info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
 export async function getUserById(id: number): Promise<User> {
     return (await getAllUsers()).filter((user) => user.id == id)[0];
+}
+
+export async function addQuote(quote: Quote): Promise<void> {
+    // implement add to local file later
+}
+
+export async function addPicture(picture: Picture): Promise<void> {
+    // implement add to local file later
+}
+
+export async function addVideo(video: Video): Promise<void> {
+    // implement add to local file later
+    await fs.writeFileSync('app\current-storage\storageData.json', JSON.stringify(video, null, 4));
+}
+
+export async function deleteQuote(quoteId: number): Promise<void> {
+    // implement add to local file later
+}
+
+export async function deletePicture(pictureId: number): Promise<void> {
+    // implement add to local file later
+}
+
+export async function deleteVideo(videoId: number): Promise<void> {
+    // implement add to local file later
 }
