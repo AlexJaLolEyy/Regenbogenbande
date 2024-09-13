@@ -1,0 +1,146 @@
+[
+    {
+        "fullQuote": [
+            {
+                "msg": "Hello There!",
+                "user": {
+                    "username": "Alex Ja Lol Eyy",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                    "id": 1
+                }
+            },
+            {
+                "msg": "General Kenobi!",
+                "user": {
+                    "username": "Thylon",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                    "id": 2
+                }
+            }
+        ],
+        "id": 1,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Thylon",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                "id": 2
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z"
+    },
+    {
+        "fullQuote": [
+            {
+                "msg": "Test1234",
+                "user": {
+                    "username": "Alex Ja Lol Eyy",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                    "id": 1
+                }
+            },
+            {
+                "msg": "Check!",
+                "user": {
+                    "username": "Thylon",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                    "id": 2
+                }
+            }
+        ],
+        "id": 2,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Thylon",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                "id": 2
+            }
+        ],
+        "uploadedBy": {
+            "username": "Thylon",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+            "id": 2
+        },
+        "uploadedAt": "2023-06-02T00:00:00.000Z",
+        "createdAt": "2023-06-02T00:00:00.000Z"
+    },
+    {
+        "fullQuote": [
+            {
+                "msg": "Hallo wie gehts dir?",
+                "user": {
+                    "username": "Alex Ja Lol Eyy",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                    "id": 1
+                }
+            },
+            {
+                "msg": "Mir geht es gut und wie geht es dir?",
+                "user": {
+                    "username": "Thylon",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                    "id": 2
+                }
+            },
+            {
+                "msg": "Same here, danke der Nachfrage!",
+                "user": {
+                    "username": "Alex Ja Lol Eyy",
+                    "password": "12345",
+                    "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                    "id": 1
+                }
+            }
+        ],
+        "id": 3,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Thylon",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                "id": 2
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-05T00:00:00.000Z",
+        "createdAt": "2023-06-05T00:00:00.000Z"
+    }
+]

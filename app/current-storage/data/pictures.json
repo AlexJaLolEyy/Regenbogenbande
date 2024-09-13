@@ -1,0 +1,90 @@
+[
+    {
+        "title": "blue",
+        "description": "blue picture",
+        "img": "/examplePictures/pictureColorBlue.png",
+        "id": 22,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z"
+    },
+    {
+        "title": "greenBlue",
+        "description": "greenBlue picture",
+        "img": "/examplePictures/pictureColorGreenBlue.png",
+        "id": 23,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z"
+    },
+    {
+        "title": "lightGreen",
+        "description": "lightGreen picture",
+        "img": "/examplePictures/pictureColorLightGreen.png",
+        "id": 24,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z"
+    },
+    {
+        "title": "purple",
+        "description": "purple picture",
+        "img": "/examplePictures/pictureColorPurple.png",
+        "id": 25,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z"
+    }
+]

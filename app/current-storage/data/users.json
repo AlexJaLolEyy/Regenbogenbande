@@ -1,0 +1,38 @@
+[
+    {
+        "username": "Alex Ja Lol Eyy",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+        "id": 1
+    },
+    {
+        "username": "Thylon",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+        "id": 2
+    },
+    {
+        "username": "T1 Sensei",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+        "id": 3
+    },
+    {
+        "username": "Jesse",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+        "id": 4
+    },
+    {
+        "username": "Achel aka BigBrainGamer420",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+        "id": 5
+    },
+    {
+        "username": "Marla",
+        "password": "12345",
+        "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+        "id": 6
+    }
+]

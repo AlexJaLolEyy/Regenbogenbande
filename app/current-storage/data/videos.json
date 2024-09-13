@@ -9,14 +9,14 @@
             {
                 "username": "Alex Ja Lol Eyy",
                 "password": "12345",
-                "profilepicture": "https://nextui.org/images/album-cover.png",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
             "username": "Alex Ja Lol Eyy",
             "password": "12345",
-            "profilepicture": "https://nextui.org/images/album-cover.png",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
         "uploadedAt": "2023-06-01T00:00:00.000Z",
@@ -32,60 +32,14 @@
             {
                 "username": "Alex Ja Lol Eyy",
                 "password": "12345",
-                "profilepicture": "https://nextui.org/images/album-cover.png",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
             "username": "Alex Ja Lol Eyy",
             "password": "12345",
-            "profilepicture": "https://nextui.org/images/album-cover.png",
-            "id": 1
-        },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
-    },
-    {
-        "title": "beispiel 2",
-        "description": "beispiel video 2",
-        "video": "/exampleVideos/beispielV2.mp4",
-        "thumbnail": "/examplePictures/exampleThumbnail.jpg",
-        "id": 2,
-        "participants": [
-            {
-                "username": "Alex Ja Lol Eyy",
-                "password": "12345",
-                "profilepicture": "https://nextui.org/images/album-cover.png",
-                "id": 1
-            }
-        ],
-        "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
-            "password": "12345",
-            "profilepicture": "https://nextui.org/images/album-cover.png",
-            "id": 1
-        },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
-    },
-    {
-        "title": "beispiel 2",
-        "description": "beispiel video 2",
-        "video": "/exampleVideos/beispielV2.mp4",
-        "thumbnail": "/examplePictures/exampleThumbnail.jpg",
-        "id": 2,
-        "participants": [
-            {
-                "username": "Alex Ja Lol Eyy",
-                "password": "12345",
-                "profilepicture": "https://nextui.org/images/album-cover.png",
-                "id": 1
-            }
-        ],
-        "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
-            "password": "12345",
-            "profilepicture": "https://nextui.org/images/album-cover.png",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
         "uploadedAt": "2023-06-01T00:00:00.000Z",
