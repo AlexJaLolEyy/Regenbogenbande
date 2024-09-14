@@ -1,6 +1,30 @@
+
+## ⚠️ CURRENTLY STILL IN DEVELOPMENT!! ⚠️
+
+> * ✨ some features still missing
+> * 💄 styling not even close to finish
+> * ♻️ no refactoring done 
+> * 🚀 info about current tasks in Figma
+> * 🎨 Figma link for Design & Tasks: [Click here](https://www.figma.com/design/D5vjotRiUV74mJUB3XpnI6/Regenbogenbande?node-id=0-1&t=cegIA98g096S86sF-1)
+
+<hr>
+
+## General Information
+This Website is supposed to feature content of our Discord Server "Die Regenbogenbande". The expected content will be the following:
+
+* view, upload, edit of Videos (Clips)
+* view, upload, edit of Pictures (Screenshots)
+* view, upload, edit of Quotes
+
+-> more to come 🔥
+
+<hr>
+
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
+
 
 First, run the development server:
 
