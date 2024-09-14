@@ -1,14 +1,13 @@
 'use client'
 
-import type { Video } from "../../../types/types";
-import { Card, CardHeader, CardBody, Image, CardFooter, Button } from "@nextui-org/react";
+import { faEye, faStar } from '@fortawesome/free-regular-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
 import { useRouter } from "next/navigation";
-
-import "./video.css";
+import type { Video } from "../../../types/types";
+import "./video.scss";
 
 export default function VideoComponent({ video }: { video: Video }) {
-
-  // TODO: replace html with card component + styling
 
   const router = useRouter();
 
@@ -41,8 +40,18 @@ export default function VideoComponent({ video }: { video: Video }) {
             />
             <p className="text-tiny uppercase font-bold">{video.uploadedBy.username}</p>
           </div>
-          <small className="text-default-500">Likes</small>
-          <small className="text-default-500">Views</small>
+
+          <div className="rating">
+          <FontAwesomeIcon icon={faStar} />
+          {/* TODO: replace with actual rating */}
+            <p>4.6</p> 
+          </div>
+          <div className="views">
+            <FontAwesomeIcon icon={faEye} />
+            {/* TODO: replace with actual rating */}
+            <p>166</p>
+          </div>
+          
         </CardFooter>
       </Card>
 
