@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.6.0",
+    "@fortawesome/free-regular-svg-icons": "^6.6.0",
+    "@fortawesome/free-solid-svg-icons": "^6.6.0",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@internationalized/date": "^3.5.5",
     "@nextui-org/react": "^2.4.6",
     "exif-js": "^2.3.0",
@@ -17,9 +21,11 @@
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hook-form": "^7.52.2"
+    "react-hook-form": "^7.52.2",
+    "sass": "^1.78.0"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^20.11.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
