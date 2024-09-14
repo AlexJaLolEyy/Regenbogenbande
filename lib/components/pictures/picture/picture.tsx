@@ -1,13 +1,13 @@
 import type { Picture } from "../../../types/types";
 import { Card, CardHeader, CardBody, Image, CardFooter, Avatar } from "@nextui-org/react";
-import "./picture.css";
 import { useRouter } from "next/navigation";
+import { faStar, faEye } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import "./picture.scss";
 
 export default function PictureComponent({ picture }: { picture: Picture }) {
 
-  // TODO: replace html with card component + styling
   // TODO: find suitable picture size for display (width + height relation) z.b. 1980x1020...
-  // TODO: add "isPressable" to card (might need to redo styling)
 
   const router = useRouter();
 
@@ -31,17 +31,24 @@ export default function PictureComponent({ picture }: { picture: Picture }) {
         </CardBody>
         <CardFooter className="cardFooter">
           <div className="flex gap-2 items-center">
-            <Avatar src={picture.img === null ? "Fehler" : picture.uploadedBy.profilepicture} name={picture.uploadedBy.username} size="md" />
-            {/* <Image
+          <Image
               alt="User Profile"
               className="object-cover none"
-              src={picture.img === null ? "Fehler" : picture.uploadedBy.profilepicture}
+              src={picture.uploadedBy.profilepicture === null ? "Fehler" : picture.uploadedBy.profilepicture}
               width={35}
-            /> */}
+            />
             <p className="text-tiny uppercase font-bold">{picture.uploadedBy.username}</p>
           </div>
-          <small className="text-default-500">Likes</small>
-          <small className="text-default-500">Views</small>
+          <div className="rating">
+          <FontAwesomeIcon icon={faStar} />
+          {/* TODO: replace with actual rating */}
+            <p>4.6</p> 
+          </div>
+          <div className="views">
+            <FontAwesomeIcon icon={faEye} />
+            {/* TODO: replace with actual rating */}
+            <p>166</p>
+          </div>
         </CardFooter>
       </Card>
 
