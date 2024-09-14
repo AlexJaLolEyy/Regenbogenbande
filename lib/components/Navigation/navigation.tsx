@@ -1,43 +1,44 @@
 "use client"
 
-import React from "react";
-import { useParams, usePathname } from "next/navigation";
+import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Image, Link, Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@nextui-org/react";
+import NextImage from "next/image";
+import { usePathname } from "next/navigation";
+import "./navigation.css";
 
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, DropdownItem, DropdownTrigger, Dropdown, DropdownMenu, Avatar, Button } from "@nextui-org/react";
 
-
-// maybe add currentPath as variable
 export default function Navigation() {
 
-    const pathname = usePathname();
-    const params = useParams();
-    const currentPath = pathname.split("/").length >= 3 ? pathname.split("/")[2] : "";
+    const currentPath = usePathname();
 
     return (
         <div>
-
-
-            <Navbar>
+            <Navbar className="navbar">
                 <NavbarBrand>
-                    <p className="font-bold text-inherit">ACME</p>
+                <Image as={NextImage}
+                        src="/rainbow.png"
+                        alt="preview could not be loaded"
+                        width={"35"} height={"35"}
+                        className="image"
+                    />
+                    <p className="font-bold text-inherit"><b>Regenbogenbande</b></p>
                 </NavbarBrand>
                 <NavbarContent className="sm:flex gap-4" justify="center">
-                    <NavbarItem>
-                        <Link color="foreground" href="/home">
+                    <NavbarItem isActive={currentPath === "/"}>
+                        <Link color="foreground" href="/">
                             Home
                         </Link>
                     </NavbarItem>
-                    <NavbarItem isActive>
-                        <Link href="/videos/list" aria-current="page">
+                    <NavbarItem isActive={currentPath === "/videos"}>
+                        <Link color="foreground" href="/videos">
                             Videos
                         </Link>
                     </NavbarItem>
-                    <NavbarItem>
+                    <NavbarItem isActive={currentPath === "/pictures"}>
                         <Link color="foreground" href="/pictures">
                             Pictures
                         </Link>
                     </NavbarItem>
-                    <NavbarItem>
+                    <NavbarItem isActive={currentPath === "/quotes"}>
                         <Link color="foreground" href="/quotes">
                             Quotes
                         </Link>
@@ -53,7 +54,7 @@ export default function Navigation() {
                                 className="transition-transform"
                                 color="secondary"
                                 size="sm"
-                                src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
+                                src="/exampleUserPictures/exampleAlex.jpg"
                             />
                         </DropdownTrigger>
                         <DropdownMenu aria-label="Profile Actions" variant="flat">
@@ -71,18 +72,6 @@ export default function Navigation() {
                     </Dropdown>
                 </NavbarContent>
             </Navbar>
-
-            {/* div for printing the current path (temporary) */}
-            <div>
-                <label>Pathname</label>
-                <p>{pathname}</p>
-
-                <label>Params</label>
-                <p>{params.toString()}</p>
-
-                <label>currentPath</label>
-                <p>{currentPath}</p>
-            </div>
 
         </div>
     )
