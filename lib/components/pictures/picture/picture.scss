@@ -1,0 +1,17 @@
+.picture {
+    max-width: 300px;
+    max-height: 700px;
+}
+
+.cardFooter {
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.rating, .views {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
