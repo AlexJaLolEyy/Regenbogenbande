@@ -1,0 +1,18 @@
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr); /* 12-column grid */
+    gap: 16px;
+  }
+  
+  .form-item {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .full-width {
+    grid-column: span 12; /* Takes full width (-> all 12 columns) */
+  }
+  
+  .half-width {
+    grid-column: span 6; /* Takes half width (-> 6 / 12 columns) */
+  }
