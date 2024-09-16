@@ -1,14 +1,11 @@
-import Image from 'next/image'
-import styles from './page.module.css'
 
-import { Button, ButtonGroup } from "@nextui-org/button";
+import Homepage from '@/lib/components/home/homepage';
 
 export default function Home() {
   return (
 
     <div>
-      <a href="/home">To Homepage</a>
-      <Button color="primary">Test</Button>
+      <Homepage></Homepage>
     </div>
   )
 }
