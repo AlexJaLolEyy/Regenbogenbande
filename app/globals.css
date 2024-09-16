@@ -3,3 +3,41 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+}
+
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .layout {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    height: 100vh; /* Full viewport height */
+  }
+  
+  .left-box, .right-box {
+    width: 20%;
+    background-color: #f0f0f0;
+  }
+  
+  .content-box {
+    width: 60%;
+    min-width: 300px;
+    max-width: 1200px;
+    padding: 1em;
+  }
+
