@@ -1,13 +1,13 @@
-import { Card, CardBody, CardFooter, CardHeader, Image, Divider } from "@nextui-org/react"
-import { Quote } from "../../../types/types"
-
-import "./quote.css";
+import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
+import { Quote } from "../../../types/types";
 import { useRouter } from "next/navigation";
+import "./quote.scss";
+import { faStar, faEye } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 export default function QuoteComponent({ quote }: { quote: Quote }) {
 
     // TODO: replace html with card component + styling
-    // TODO: add "isPressable" to card (might need to redo styling)
 
     const router = useRouter();
 
@@ -22,7 +22,7 @@ export default function QuoteComponent({ quote }: { quote: Quote }) {
                 </CardHeader>
                 <CardBody className="overflow-visible py-2">
                     {quote.fullQuote.map((singleQuote) => (
-                        <div className="quoteSegment">
+                        <div className="quoteSegment" key={singleQuote.msg}>
                             <p className="text-tiny uppercase font-bold">{singleQuote.user.username}</p>
                             <small className="text-default-500">{singleQuote.msg}</small>
                         </div>
@@ -38,8 +38,17 @@ export default function QuoteComponent({ quote }: { quote: Quote }) {
                         />
                         <p className="text-tiny uppercase font-bold">{quote.uploadedBy.username}</p>
                     </div>
-                    <small className="text-default-500">Likes</small>
-                    <small className="text-default-500">Views</small>
+
+                    <div className="rating">
+                        <FontAwesomeIcon icon={faStar} />
+                        {/* TODO: replace with actual rating */}
+                        <p>4.6</p>
+                    </div>
+                    <div className="views">
+                        <FontAwesomeIcon icon={faEye} />
+                        {/* TODO: replace with actual rating */}
+                        <p>166</p>
+                    </div>
                 </CardFooter>
             </Card>
         </div>
