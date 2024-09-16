@@ -1,11 +1,15 @@
 "use client"
 
 import { Picture } from "../../../types/types"
+import { useEffect } from "react";
+import { faStar } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { User, Textarea, BreadcrumbItem, Breadcrumbs } from "@nextui-org/react";
 import Link from "next/link";
-
 import Image from 'next/image'
 
-import { useEffect } from "react";
+import "./picture-view.scss";
+import video from "../../videos/video/video";
 
 export default function PictureView({ picture }: { picture: Picture }
 ) {
@@ -16,9 +20,18 @@ export default function PictureView({ picture }: { picture: Picture }
 
   return (
     <div>
-      <p>You are currently at Picture-View!</p>
+      <Breadcrumbs>
+        <BreadcrumbItem href="/">Home</BreadcrumbItem>
+        <BreadcrumbItem href="/pictures">Pictures</BreadcrumbItem>
+        <BreadcrumbItem href="">Picture-View</BreadcrumbItem>
+      </Breadcrumbs>
 
       <Link href="/pictures/upload">Go to Upload</Link>
+
+
+      <div className="title">
+        <h1>{picture.title}</h1>
+      </div>
 
       <Image
         alt="Picture"
@@ -28,10 +41,47 @@ export default function PictureView({ picture }: { picture: Picture }
         height={720}
       />
 
-      <p>Title: {picture.title}</p>
-      <p>Description: {picture.description}</p>
-      <p>ID: {picture.id}</p>
-      <p>UploadedBy: {JSON.stringify(picture.uploadedBy)}</p>
+<div className="metadata">
+        <div className="uploadedBy">
+          <label>Uploaded by</label>
+          <User
+            name={picture.uploadedBy.username}
+            avatarProps={{
+              src: picture.uploadedBy.profilepicture
+            }}
+          />
+        </div>
+        <div className="uploadedAt">
+          <label>Uploaded at</label>
+          <p>{picture.uploadedAt.toLocaleDateString()}</p>
+        </div>
+        <div className="createdAt">
+          <label>Created at</label>
+          <p>{picture.createdAt.toLocaleDateString()}</p>
+        </div>
+        <div className="rating">
+          <label>Rating</label>
+          <div className="stars">
+            <FontAwesomeIcon icon={faStar} />
+            <FontAwesomeIcon icon={faStar} />
+            <FontAwesomeIcon icon={faStar} />
+            <FontAwesomeIcon icon={faStar} />
+            <FontAwesomeIcon icon={faStar} />
+          </div>
+        </div>
+      </div>
+
+      <div className="description">
+        <Textarea
+          isReadOnly
+          label="Description"
+          variant="bordered"
+          labelPlacement="inside"
+          placeholder="Enter your description"
+          defaultValue={picture.description}
+          className="max-w"
+        />
+      </div>
 
     </div>
   );
