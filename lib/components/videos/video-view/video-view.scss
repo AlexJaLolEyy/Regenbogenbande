@@ -1,0 +1,26 @@
+.metadata {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 1em;
+}
+
+.uploadedBy {
+    display: flex;
+    flex-direction: column;
+}
+
+.uploadedAt {
+    display: flex;
+    flex-direction: column;
+}
+
+.createdAt {
+    display: flex;
+    flex-direction: column;
+}
+
+.rating {
+    display: flex;
+    flex-direction: column;
+}
