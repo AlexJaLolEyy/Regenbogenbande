@@ -9,7 +9,6 @@ import Link from "next/link";
 import Image from 'next/image'
 
 import "./picture-view.scss";
-import video from "../../videos/video/video";
 
 export default function PictureView({ picture }: { picture: Picture }
 ) {
@@ -33,15 +32,17 @@ export default function PictureView({ picture }: { picture: Picture }
         <h1>{picture.title}</h1>
       </div>
 
-      <Image
-        alt="Picture"
-        className="object-cover none"
-        src={picture.img === null ? "Kein Img vorhanden!" : picture.img}
-        width={1280}
-        height={720}
-      />
+        <Image
+          alt="Picture"
+          // className="object-cover"
+          id="picture"
+          className="picturePreview"
+          src={picture.img === null ? "Kein Img vorhanden!" : picture.img}
+          width={768}
+          height={432}
+        />
 
-<div className="metadata">
+      <div className="metadata">
         <div className="uploadedBy">
           <label>Uploaded by</label>
           <User
