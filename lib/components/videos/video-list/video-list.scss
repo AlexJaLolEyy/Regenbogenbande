@@ -1,0 +1,23 @@
+.videoList {
+    display: flex;
+    justify-content: center;
+    align-items: center; 
+    flex-direction: row;
+    gap: 2em;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr); /* 12-column grid */
+    gap: 16px;
+  }
+  
+  .form-item {
+    display: flex;
+    flex-direction: column;
+    grid-column: span 4;
+  }
+  
+  .half-width {
+    grid-column: span 6; /* Takes half width (-> 6 / 12 columns) */
+  }
