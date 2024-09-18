@@ -1,15 +1,21 @@
 [
     {
-        "title": "blue",
-        "description": "blue picture",
-        "img": "/examplePictures/pictureColorBlue.png",
-        "id": 22,
+        "title": "examplePicture 1",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 1 erstellt.",
+        "img": "/examplePictures/examplePicture1.jpg",
+        "id": 1,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
+            },
+            {
+                "username": "T1 Sensei",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "id": 3
             }
         ],
         "uploadedBy": {
@@ -18,42 +24,86 @@
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "uploadedAt": "2022-03-15T08:30:00.000Z",
+        "createdAt": "2022-03-15T06:30:00.000Z",
+        "metadata": {
+            "views": 13,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 3.5
+                }
+            ]
+        }
     },
     {
-        "title": "greenBlue",
-        "description": "greenBlue picture",
-        "img": "/examplePictures/pictureColorGreenBlue.png",
-        "id": 23,
+        "title": "examplePicture 2",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 2 erstellt.",
+        "img": "/examplePictures/examplePicture2.jpg",
+        "id": 2,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
+            },
+            {
+                "username": "T1 Sensei",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "id": 3
+            },
+            {
+                "username": "Marla",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "id": 6
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "T1 Sensei",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
-            "id": 1
+            "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+            "id": 3
         },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "uploadedAt": "2023-06-01T13:00:00.000Z",
+        "createdAt": "2022-09-22T14:45:00.000Z",
+        "metadata": {
+            "views": 35,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 3.5
+                },
+                {
+                    "user": 3,
+                    "value": 2
+                },
+                {
+                    "user": 4,
+                    "value": 3
+                }
+            ]
+        }
     },
     {
-        "title": "lightGreen",
-        "description": "lightGreen picture",
-        "img": "/examplePictures/pictureColorLightGreen.png",
-        "id": 24,
+        "title": "examplePicture 3",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 3 erstellt.",
+        "img": "/examplePictures/examplePicture3.jpg",
+        "id": 3,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
+            },
+            {
+                "username": "Jesse",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "id": 4
             }
         ],
         "uploadedBy": {
@@ -62,14 +112,27 @@
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "uploadedAt": "2023-01-10T19:20:00.000Z",
+        "createdAt": "2023-01-10T19:20:00.000Z",
+        "metadata": {
+            "views": 5,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 3.5
+                },
+                {
+                    "user": 3,
+                    "value": 4.5
+                }
+            ]
+        }
     },
     {
-        "title": "purple",
-        "description": "purple picture",
-        "img": "/examplePictures/pictureColorPurple.png",
-        "id": 25,
+        "title": "examplePicture 4",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 4 erstellt.",
+        "img": "/examplePictures/examplePicture4.jpg",
+        "id": 4,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
@@ -84,7 +147,190 @@
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "uploadedAt": "2023-06-07T12:00:00.000Z",
+        "createdAt": "2022-09-22T14:45:00.000Z",
+        "metadata": {
+            "views": 21,
+            "rating": [
+                {
+                    "user": 4,
+                    "value": 3.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "examplePicture 5",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 5 erstellt.",
+        "img": "/examplePictures/examplePicture5.jpg",
+        "id": 5,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Achel aka BigBrainGamer420",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+                "id": 5
+            }
+        ],
+        "uploadedBy": {
+            "username": "Achel aka BigBrainGamer420",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+            "id": 5
+        },
+        "uploadedAt": "2021-12-05T22:50:00.000Z",
+        "createdAt": "2021-12-05T22:50:00.000Z",
+        "metadata": {
+            "views": 12,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 3.5
+                },
+                {
+                    "user": 4,
+                    "value": 1.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "examplePicture 6",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 6 erstellt.",
+        "img": "/examplePictures/examplePicture6.jpg",
+        "id": 6,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Achel aka BigBrainGamer420",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+                "id": 5
+            },
+            {
+                "username": "Marla",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "id": 6
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2021-12-05T22:50:00.000Z",
+        "createdAt": "2021-11-02T21:50:00.000Z",
+        "metadata": {
+            "views": 24,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 3.5
+                },
+                {
+                    "user": 3,
+                    "value": 3
+                }
+            ]
+        }
+    },
+    {
+        "title": "examplePicture 7",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 7 erstellt.",
+        "img": "/examplePictures/examplePicture7.jpg",
+        "id": 7,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Jesse",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "id": 4
+            }
+        ],
+        "uploadedBy": {
+            "username": "Jesse",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+            "id": 4
+        },
+        "uploadedAt": "2022-07-19T16:30:00.000Z",
+        "createdAt": "2022-07-19T16:30:00.000Z",
+        "metadata": {
+            "views": 65,
+            "rating": [
+                {
+                    "user": 5,
+                    "value": 4.5
+                },
+                {
+                    "user": 2,
+                    "value": 5
+                }
+            ]
+        }
+    },
+    {
+        "title": "examplePicture 8",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 8 erstellt.",
+        "img": "/examplePictures/examplePicture8.jpg",
+        "id": 8,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Marla",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "id": 6
+            }
+        ],
+        "uploadedBy": {
+            "username": "Marla",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+            "id": 6
+        },
+        "uploadedAt": "2023-08-01T09:10:00.000Z",
+        "createdAt": "2023-08-01T09:10:00.000Z",
+        "metadata": {
+            "views": 37,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 3.5
+                },
+                {
+                    "user": 3,
+                    "value": 2.5
+                },
+                {
+                    "user": 5,
+                    "value": 5
+                }
+            ]
+        }
     }
 ]

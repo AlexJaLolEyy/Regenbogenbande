@@ -1,10 +1,10 @@
 [
     {
-        "title": "beispiel 2",
-        "description": "beispiel video 2",
-        "video": "/exampleVideos/beispielV2.mp4",
-        "thumbnail": "/examplePictures/exampleThumbnail.jpg",
-        "id": 2,
+        "title": "exampleVideo 1",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 1 erstellt.",
+        "video": "/exampleVideos/exampleVideo1.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail1.png",
+        "id": 1,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
@@ -19,15 +19,312 @@
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
         },
-        "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "uploadedAt": "2022-09-22T14:45:00.000Z",
+        "createdAt": "2022-09-22T14:45:00.000Z",
+        "metadata": {
+            "views": 11,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 2.5
+                },
+                {
+                    "user": 3,
+                    "value": 2
+                },
+                {
+                    "user": 4,
+                    "value": 5
+                }
+            ]
+        }
     },
     {
-        "title": "beispiel 2",
-        "description": "beispiel video 2",
-        "video": "/exampleVideos/beispielV2.mp4",
-        "thumbnail": "/examplePictures/exampleThumbnail.jpg",
+        "title": "exampleVideo 2",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 2 erstellt.",
+        "video": "/exampleVideos/exampleVideo2.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail2.png",
         "id": 2,
+        "participants": [
+            {
+                "username": "Thylon",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+                "id": 2
+            }
+        ],
+        "uploadedBy": {
+            "username": "Thylon",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
+            "id": 2
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2021-12-05T22:50:00.000Z",
+        "metadata": {
+            "views": 1,
+            "rating": [
+                {
+                    "user": 3,
+                    "value": 3.5
+                },
+                {
+                    "user": 4,
+                    "value": 2.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 3",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 3 erstellt.",
+        "video": "/exampleVideos/exampleVideo3.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail3.png",
+        "id": 3,
+        "participants": [
+            {
+                "username": "Jesse",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "id": 4
+            },
+            {
+                "username": "T1 Sensei",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "id": 3
+            }
+        ],
+        "uploadedBy": {
+            "username": "Jesse",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+            "id": 4
+        },
+        "uploadedAt": "2023-08-01T09:10:00.000Z",
+        "createdAt": "2022-03-15T08:30:00.000Z",
+        "metadata": {
+            "views": 78,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 5
+                },
+                {
+                    "user": 3,
+                    "value": 4.5
+                },
+                {
+                    "user": 4,
+                    "value": 4.5
+                },
+                {
+                    "user": 5,
+                    "value": 5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 4",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 4 erstellt.",
+        "video": "/exampleVideos/exampleVideo4.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail4.png",
+        "id": 4,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Jesse",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "id": 4
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2022-07-19T18:30:00.000Z",
+        "createdAt": "2022-07-19T16:30:00.000Z",
+        "metadata": {
+            "views": 24,
+            "rating": [
+                {
+                    "user": 2,
+                    "value": 5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 5",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 5 erstellt.",
+        "video": "/exampleVideos/exampleVideo5.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail5.png",
+        "id": 5,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-01-10T19:20:00.000Z",
+        "createdAt": "2021-12-05T22:50:00.000Z",
+        "metadata": {
+            "views": 44,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 2.5
+                },
+                {
+                    "user": 3,
+                    "value": 3.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 6",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 6 erstellt.",
+        "video": "/exampleVideos/exampleVideo6.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail6.png",
+        "id": 6,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "T1 Sensei",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "id": 3
+            }
+        ],
+        "uploadedBy": {
+            "username": "T1 Sensei",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+            "id": 3
+        },
+        "uploadedAt": "2023-06-01T00:00:00.000Z",
+        "createdAt": "2023-02-25T05:15:00.000Z",
+        "metadata": {
+            "views": 25,
+            "rating": [
+                {
+                    "user": 4,
+                    "value": 3.5
+                },
+                {
+                    "user": 5,
+                    "value": 4.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 7",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 7 erstellt.",
+        "video": "/exampleVideos/exampleVideo7.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail7.png",
+        "id": 7,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2023-06-07T12:00:00.000Z",
+        "createdAt": "2023-06-01T00:00:00.000Z",
+        "metadata": {
+            "views": 56,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 3.5
+                },
+                {
+                    "user": 3,
+                    "value": 3.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 8",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 8 erstellt.",
+        "video": "/exampleVideos/exampleVideo8.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail8.png",
+        "id": 8,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Marla",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "id": 6
+            }
+        ],
+        "uploadedBy": {
+            "username": "Marla",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+            "id": 6
+        },
+        "uploadedAt": "2023-01-10T19:20:00.000Z",
+        "createdAt": "2023-01-10T19:20:00.000Z",
+        "metadata": {
+            "views": 78,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 4.5
+                },
+                {
+                    "user": 4,
+                    "value": 4.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 9",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 9 erstellt.",
+        "video": "/exampleVideos/exampleVideo9.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail9.png",
+        "id": 9,
         "participants": [
             {
                 "username": "Alex Ja Lol Eyy",
@@ -43,6 +340,79 @@
             "id": 1
         },
         "uploadedAt": "2023-06-01T00:00:00.000Z",
-        "createdAt": "2023-06-01T00:00:00.000Z"
+        "createdAt": "2022-03-15T08:30:00.000Z",
+        "metadata": {
+            "views": 20,
+            "rating": [
+                {
+                    "user": 3,
+                    "value": 3
+                },
+                {
+                    "user": 5,
+                    "value": 1.5
+                }
+            ]
+        }
+    },
+    {
+        "title": "exampleVideo 10",
+        "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 10 erstellt.",
+        "video": "/exampleVideos/exampleVideo10.mp4",
+        "thumbnail": "/exampleThumbnails/exampleThumbnail10.png",
+        "id": 10,
+        "participants": [
+            {
+                "username": "Alex Ja Lol Eyy",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "id": 1
+            },
+            {
+                "username": "Marla",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "id": 6
+            },
+            {
+                "username": "T1 Sensei",
+                "password": "12345",
+                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "id": 3
+            }
+        ],
+        "uploadedBy": {
+            "username": "Alex Ja Lol Eyy",
+            "password": "12345",
+            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "id": 1
+        },
+        "uploadedAt": "2022-09-22T14:45:00.000Z",
+        "createdAt": "2022-09-22T14:45:00.000Z",
+        "metadata": {
+            "views": 156,
+            "rating": [
+                {
+                    "user": 1,
+                    "value": 4.5
+                },
+                {
+                    "user": 2,
+                    "value": 4.5
+                },
+                {
+                    "user": 3,
+                    "value": 5
+                },
+                {
+                    "user": 4,
+                    "value": 4
+                },
+                {
+                    "user": 5,
+                    "value": 4.5
+                }
+            ]
+        }
     }
 ]
