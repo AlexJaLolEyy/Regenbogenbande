@@ -8,6 +8,7 @@ export interface Video {
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+    metadata: Metadata,
 }
 
 export interface Picture {
@@ -19,6 +20,7 @@ export interface Picture {
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+    metadata: Metadata,
 }
 
 // a quote got multiple singleQuote to represent the full chat history
@@ -29,6 +31,7 @@ export interface Quote {
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+    metadata: Metadata,
 }
 
 // a single Quote represents a single msg from a user
@@ -73,6 +76,7 @@ export interface UploadPicture {
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+    metadata: Metadata
 }
 
 export interface UploadVideo {
@@ -85,4 +89,15 @@ export interface UploadVideo {
     uploadedBy: User,
     uploadedAt: Date,
     createdAt: Date,
+    metadata: Metadata
+}
+
+export interface Rating {
+    user: number,
+    value: number,
+}
+
+export interface Metadata {
+    views: number,
+    rating: Rating[]
 }
