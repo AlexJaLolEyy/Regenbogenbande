@@ -1,5 +1,5 @@
 import type { Picture } from "../../../types/types";
-import { Card, CardHeader, CardBody, Image, CardFooter, Avatar } from "@nextui-org/react";
+import { Card, CardHeader, CardBody, Image, CardFooter, Avatar, User } from "@nextui-org/react";
 import { useRouter } from "next/navigation";
 import { faStar, faEye } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -26,28 +26,30 @@ export default function PictureComponent({ picture }: { picture: Picture }) {
             alt="Card background"
             className="object-cover"
             src={picture.img === null ? "Fehler" : picture.img}
-            width={270}
+            width={256}
+            height={144}
           />
         </CardBody>
         <CardFooter className="cardFooter">
           <div className="flex gap-2 items-center">
-          <Image
-              alt="User Profile"
-              className="object-cover none"
-              src={picture.uploadedBy.profilepicture === null ? "Fehler" : picture.uploadedBy.profilepicture}
-              width={35}
+          <User
+              name={picture.uploadedBy.username}
+              avatarProps={{
+                src: picture.uploadedBy.profilepicture,
+                size: "sm"
+              }}
             />
-            <p className="text-tiny uppercase font-bold">{picture.uploadedBy.username}</p>
           </div>
-          <div className="rating">
-          <FontAwesomeIcon icon={faStar} />
-          {/* TODO: replace with actual rating */}
-            <p>4.6</p> 
+
+          <div className="rating" key={picture.id}>
+            <FontAwesomeIcon icon={faStar} />
+            {/* TODO: optimize this and round it to the right decimal */}
+            {/* <p>{picture.metadata.rating ? picture.metadata.rating.reduce((sum, rating) => sum + rating.value, 0) / picture.metadata.rating.length : 0}</p> */}
+            <p>4.5</p>
           </div>
           <div className="views">
             <FontAwesomeIcon icon={faEye} />
-            {/* TODO: replace with actual rating */}
-            <p>166</p>
+            <p>{picture.metadata.views}</p>
           </div>
         </CardFooter>
       </Card>
