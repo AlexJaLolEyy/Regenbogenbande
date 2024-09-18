@@ -2,7 +2,7 @@
 
 import { faEye, faStar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
+import { Card, CardBody, CardFooter, CardHeader, Image, User } from "@nextui-org/react";
 import { useRouter } from "next/navigation";
 import type { Video } from "../../../types/types";
 import "./video.scss";
@@ -32,26 +32,26 @@ export default function VideoComponent({ video }: { video: Video }) {
         </CardHeader>
         <CardFooter className="cardFooter">
           <div className="flex gap-2 items-center">
-            <Image
-              alt="User Profile"
-              className="object-cover none"
-              src={video.uploadedBy.profilepicture === null ? "Fehler" : video.uploadedBy.profilepicture}
-              width={35}
+            <User
+              name={video.uploadedBy.username}
+              avatarProps={{
+                src: video.uploadedBy.profilepicture,
+                size: "sm"
+              }}
             />
-            <p className="text-tiny uppercase font-bold">{video.uploadedBy.username}</p>
           </div>
 
-          <div className="rating">
-          <FontAwesomeIcon icon={faStar} />
-          {/* TODO: replace with actual rating */}
-            <p>4.6</p> 
+          <div className="rating" key={video.id}>
+            <FontAwesomeIcon icon={faStar} />
+            {/* TODO: optimize this and round it to the right decimal */}
+            {/* <p>{video.metadata.rating ? video.metadata.rating.reduce((sum, rating) => sum + rating.value, 0) / video.metadata.rating.length : 0}</p> */}
+            <p>4.5</p>
           </div>
           <div className="views">
             <FontAwesomeIcon icon={faEye} />
-            {/* TODO: replace with actual rating */}
-            <p>166</p>
+            <p>{video.metadata.views}</p>
           </div>
-          
+
         </CardFooter>
       </Card>
 
