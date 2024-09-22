@@ -1,13 +1,13 @@
-import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
-import { Quote } from "../../../types/types";
-import { useRouter } from "next/navigation";
-import "./quote.scss";
-import { faStar, faEye } from "@fortawesome/free-regular-svg-icons";
+import { faEye, faStar } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
+import { useRouter } from "next/navigation";
+import { Quote } from "../../../types/types";
+import "./quote.scss";
 
 export default function QuoteComponent({ quote }: { quote: Quote }) {
 
-    // TODO: replace html with card component + styling
+    // TODO: update UI later with a custom Chat-Model
 
     const router = useRouter();
 
