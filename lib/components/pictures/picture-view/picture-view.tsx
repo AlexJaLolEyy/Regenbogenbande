@@ -4,9 +4,9 @@ import { Picture } from "../../../types/types"
 import { useEffect } from "react";
 import { faStar } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { User, Textarea, BreadcrumbItem, Breadcrumbs } from "@nextui-org/react";
+import { User, Textarea, BreadcrumbItem, Breadcrumbs, Image } from "@nextui-org/react";
+import NextImage from "next/image";
 import Link from "next/link";
-import Image from 'next/image'
 
 import "./picture-view.scss";
 
@@ -36,6 +36,7 @@ export default function PictureView({ picture }: { picture: Picture }
           alt="Picture"
           // className="object-cover"
           id="picture"
+          as={NextImage}
           className="picturePreview"
           src={picture.img === null ? "Kein Img vorhanden!" : picture.img}
           width={768}
