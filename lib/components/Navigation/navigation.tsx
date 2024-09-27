@@ -15,7 +15,7 @@ export default function Navigation() {
             <Navbar className="navbar">
                 <NavbarBrand>
                 <Image as={NextImage}
-                        src="/rainbow.png"
+                        src="/rainbow.svg"
                         alt="preview could not be loaded"
                         width={"35"} height={"35"}
                         className="image"
