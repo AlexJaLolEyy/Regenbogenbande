@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import { getAllUsers } from "@/app/current-storage/storage";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
@@ -10,7 +10,7 @@ import type { UploadVideo, User, Video } from "../../../types/types";
 
 import "./video-upload.scss";
 
-export default function VideoUpload({ video }: { video?: Video }) {
+export default function VideoUpload({ }: {}) {
 
   const {
     register,
@@ -18,6 +18,8 @@ export default function VideoUpload({ video }: { video?: Video }) {
     watch,
     control,
     setValue,
+    setFocus,
+    trigger,
     formState: { errors },
   } = useForm<UploadVideo>({
     defaultValues: {
@@ -26,21 +28,50 @@ export default function VideoUpload({ video }: { video?: Video }) {
       participants: [],
     }
   })
-  const onSubmit: SubmitHandler<UploadVideo> = (data) => {
+  const onSubmit: SubmitHandler<UploadVideo> = async (data) => {
     console.log("errors: ", errors);
+
+    // const result = await trigger(); // Trigger validation on all fields
+
+    // if (!result) {
+    //     // Focus on the first field with an error if validation fails
+    //     const firstErrorField = Object.keys(errors)[0];
+    //     setFocus(firstErrorField);
+    //     return;
+    // }
 
     // TODO: move this to server side? since its okay to just have the ID's on the client
     // participants should be User[] but form return a string
-    const selectedUsers = (data.participants.split(",")).map((id: string) =>
-      users.find((user) => user.id === parseInt(id))
-    );
-    data.participants = selectedUsers;
+    // const selectedUsers = (data.participants.split(",")).map((id: string) =>
+    //   users.find((user) => user.id === parseInt(id))
+    // );
+    // data.participants = selectedUsers;
 
-    console.log('Selected users:', selectedUsers);
+    // console.log('Selected users:', selectedUsers);
     console.log("data: ", data);
+
+    // Use FormData to send the file
+    const formData = new FormData();
+    if (preview) {
+      formData.append('video', preview);
+    }
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(result.message);
+    } else {
+      console.error('File upload failed');
+    }
+
   }
 
   const [preview, setPreview] = useState<File | null>(null);
+  const [fileAsBlob, setFileAsBlob] = useState<Blob | null>(null);
   const [creationDate, setCreationDate] = useState<Date | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -90,6 +121,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
     const file = event.target.files?.[0];
     if (file) {
       setPreview(file);
+      setFileAsBlob(file);
       getCreationDate(file);
       console.log("file: ", file);
     }
@@ -121,16 +153,8 @@ export default function VideoUpload({ video }: { video?: Video }) {
         </Skeleton>
       </Card>
 
-      <small>Preview (select file first)</small>
-      <Card className="w-[200px] space-y-5 p-4" radius="lg">
-        <div style={{ width: "auto", height: "250px", display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <Spinner size="lg" />
-        </div>
-      </Card>
-
-      {preview ? (
+      {preview !== null ? (
         <div>
-          {/* // key forces React to update video src */}
           <video width={"1024"} height={"576"} controls key={preview.name}>
             <source src={URL.createObjectURL(preview)} type="video/mp4" />
           </video>
@@ -149,16 +173,16 @@ export default function VideoUpload({ video }: { video?: Video }) {
 
           <div className="form-item half-width">
             <div className="fileUpload">
-              <Input type="file" isRequired  variant="bordered" className="max-w"
-                accept="video/*"
-                {...register("video", { required: true, onChange: (e) => handleFileChange(e) })} />
+              <Input type="file" variant="bordered" label="Upload File" isRequired isInvalid={!!errors.video} aria-invalid={!!errors.video} errorMessage={"Please submit a Video!"}
+                accept="video/*" {...register("video", { required: true, onChange: (e) => handleFileChange(e) })} />
             </div>
           </div>
 
           <div className="form-item half-width">
             <div className="title">
-              <Input type="text" isRequired isClearable label="Title" variant="bordered" labelPlacement="inside" className="max-w"
-                isInvalid={false} errorMessage="Please enter a valid Title!" placeholder="Enter your Title"
+              <Input type="text" tabIndex={1} aria-invalid={!!errors.title}
+                isRequired isClearable label="Title" variant="bordered" labelPlacement="inside" className="max-w"
+                isInvalid={!!errors.title} errorMessage="Please enter a valid Title!" placeholder="Enter your Title"
                 {...register("title", { required: true })}
               />
             </div>
@@ -184,9 +208,12 @@ export default function VideoUpload({ video }: { video?: Video }) {
               <Select
                 isRequired
                 {...register("uploadedBy", {
-                  required: true,
+                  required: "Please select a User",
                 }
                 )}
+                isInvalid={!!errors.uploadedBy}
+                errorMessage={"Please select a User!"}
+                aria-invalid={!!errors.uploadedBy}
                 items={users}
                 label="Uploaded By"
                 placeholder="Select a user"
@@ -230,9 +257,12 @@ export default function VideoUpload({ video }: { video?: Video }) {
             <div className="participants">
               <Select
                 {...register("participants", {
-                  required: true,
+                  required: "Participants are required",
                 })}
                 isRequired
+                isInvalid={!!errors.participants}
+                errorMessage={"Please select atleast one Participant!"}
+                aria-invalid={!!errors.participants}
                 items={users}
                 label="Participants"
                 variant="bordered"
@@ -240,7 +270,7 @@ export default function VideoUpload({ video }: { video?: Video }) {
                 labelPlacement="inside"
                 selectionMode="multiple"
                 placeholder="Select occurring users"
-                
+
                 classNames={{
                   base: "max-w-md",
                   trigger: "min-h-12 py-2",
@@ -281,6 +311,9 @@ export default function VideoUpload({ video }: { video?: Video }) {
                   <DateInput
                     isRequired
                     isReadOnly
+                    isInvalid={!!errors.uploadedAt}
+                    errorMessage={"Please select the current Date"}
+                    aria-invalid={!!errors.uploadedAt}
                     label="Uploaded At"
                     variant="bordered"
                     className="max-w-md"
@@ -304,6 +337,9 @@ export default function VideoUpload({ video }: { video?: Video }) {
                   <DateInput
                     isRequired
                     isReadOnly
+                    isInvalid={!!errors.createdAt}
+                    errorMessage={"Please insert the Creation Date of that File!"}
+                    aria-invalid={!!errors.createdAt}
                     label="Created At"
                     variant="bordered"
                     value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
@@ -316,15 +352,17 @@ export default function VideoUpload({ video }: { video?: Video }) {
           </div>
         </div>
 
-        <span>created at value: {JSON.stringify(watch("createdAt"))}</span>
-
-        {errors ? (
-          <div><p>Errors: {JSON.stringify(errors)}</p></div>
-        ) : "keine error"}
-
-        <input type="submit" />
+        <input type="submit" onClick={() => { trigger() }} />
       </form>
+
+      <span>created at value: {JSON.stringify(watch("createdAt"))}</span>
+
+      <pre>{JSON.stringify(errors, (key, value) => {
+        if (key === "ref") return undefined; // Exclude the circular ref key
+        return value;
+      }, 2)}</pre>
 
     </div>
   );
 }
+
