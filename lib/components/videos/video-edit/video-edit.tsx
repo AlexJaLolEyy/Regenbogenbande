@@ -10,6 +10,7 @@ import { getAllUsers, getUserById } from "@/app/current-storage/storage";
 import { useEffect, useState } from "react";
 import MP4Box from 'mp4box';
 import "./video-edit.scss";
+import { parseUploadVideoToBackend } from "@/app/(content)/videos/(detail)/[id]/edit/actions";
 
 /* TODO: refactor this component and add missing features
       -> thumbnail creation.. online cutting.. date update on file input.. 
@@ -26,11 +27,8 @@ export default function VideoEdit({ video }: { video: Video }) {
         formState: { errors },
     } = useForm<UploadVideo>({
         defaultValues: {
-            /* TODO: change to UploadeVideo? or atleast think about a way to handle
-            the img: pathToImg -> img: File conversion on edit + upload */
-
             title: video.title,
-            description: video.title,
+            description: video.description,
             id: video.id,
             createdAt: video.createdAt,
             uploadedAt: video.uploadedAt,
@@ -42,31 +40,16 @@ export default function VideoEdit({ video }: { video: Video }) {
     })
 
     const onSubmit: SubmitHandler<UploadVideo> = (data) => {
-        console.log("errors: ", errors);
 
-        var selectedUsers: User[] = []
-
-        // TODO: rework this and reduce the client side load as much as possible -> create server function
-        if (data.participants.length > 1) {
-            selectedUsers = (data.participants.split(",")).map((id: string) =>
-                users.find((user) => user.id === parseInt(id))
-            );
+        // important if user open the input after already selecting a new video and then discards the input
+        if (preview) {
+            data.video = preview;
         }
-        else if((typeof data.participants === "string")){
-            console.log("string");
-            
-            console.log("type: ", typeof data.participants)
-            getUserById(parseInt(data.participants)).then((user) => {
-                selectedUsers.push(user);
-            });
-        }
-        else {
-            selectedUsers = data.participants;
-        }
-        data.participants = selectedUsers;
 
         console.log('Selected users:', data.participants);
         console.log("data: ", data);
+
+        parseUploadVideoToBackend(data);
     }
 
     const [preview, setPreview] = useState<File | null>(null);
@@ -146,7 +129,6 @@ export default function VideoEdit({ video }: { video: Video }) {
 
             {preview ? (
                 <div>
-                    {/* // key forces React to update video src */}
                     <video width={"1024"} height={"576"} controls key={preview.name}>
                         <source src={URL.createObjectURL(preview)} type="video/mp4" />
                     </video>
@@ -169,16 +151,17 @@ export default function VideoEdit({ video }: { video: Video }) {
 
                     <div className="form-item half-width">
                         <div className="fileUpload">
-                            <Input type="file" isRequired variant="bordered" className="max-w"
+                            <Input type="file" variant="bordered" className="max-w"
                                 accept="video/*"
-                                {...register("video", { required: true, onChange: (e) => handleFileChange(e) })} />
+                                {...register("video", { required: false, onChange: (e) => handleFileChange(e) })} />
                         </div>
                     </div>
 
                     <div className="form-item half-width">
                         <div className="title">
                             <Input type="text" isRequired isClearable label="Title" variant="bordered" labelPlacement="inside" className="max-w"
-                                isInvalid={false} errorMessage="Please enter a valid Title!" placeholder="Enter your Title"
+                                isInvalid={!!errors.title} aria-invalid={!!errors.title}
+                                errorMessage={"Please enter a valid Title!"} placeholder="Enter your Title"
                                 {...register("title", { required: true })}
                             />
                         </div>
@@ -209,6 +192,9 @@ export default function VideoEdit({ video }: { video: Video }) {
                                 )}
                                 items={users}
                                 label="Uploaded By"
+                                isInvalid={!!errors.uploadedBy}
+                                aria-invalid={!!errors.uploadedBy}
+                                errorMessage={"Please Select a User!"}
                                 placeholder="Select a user"
                                 labelPlacement="inside"
                                 variant="bordered"
@@ -254,6 +240,9 @@ export default function VideoEdit({ video }: { video: Video }) {
                                     required: true,
                                 })}
                                 isRequired
+                                isInvalid={!!errors.participants}
+                                aria-invalid={!!errors.participants}
+                                errorMessage={"Please select atleast one Participant!"}
                                 items={users}
                                 label="Participants"
                                 variant="bordered"
@@ -302,6 +291,9 @@ export default function VideoEdit({ video }: { video: Video }) {
                                     <DateInput
                                         isRequired
                                         isReadOnly
+                                        isInvalid={!!errors.uploadedAt}
+                                        errorMessage={"Please insert Upload Date!"}
+                                        aria-invalid={!!errors.uploadedAt}
                                         label="Uploaded At"
                                         variant="bordered"
                                         className="max-w-md"
@@ -324,6 +316,9 @@ export default function VideoEdit({ video }: { video: Video }) {
                                     <DateInput
                                         isRequired
                                         isReadOnly
+                                        isInvalid={!!errors.createdAt}
+                                        aria-invalid={!!errors.createdAt}
+                                        errorMessage={"Please insert the Date of Creation!"}
                                         label="Created At"
                                         variant="bordered"
                                         value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : fromDate(new Date(video.createdAt), getLocalTimeZone())}
@@ -339,9 +334,10 @@ export default function VideoEdit({ video }: { video: Video }) {
 
                 <span>created at value: {JSON.stringify(watch("createdAt"))}</span>
 
-                {errors ? (
-                    <div><p>Errors: {JSON.stringify(errors)}</p></div>
-                ) : "keine error"}
+                <pre>{JSON.stringify(errors, (key, value) => {
+                    if (key === "ref") return undefined; // Exclude the circular ref key
+                    return value;
+                }, 2)}</pre>
 
                 <input type="submit" />
             </form>
