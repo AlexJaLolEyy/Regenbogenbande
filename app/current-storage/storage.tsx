@@ -1,6 +1,6 @@
 'use server'
 
-import { Picture, Quote, Rating, User, Video } from "@/lib/types/types";
+import { Picture, Quote, Rating, UploadVideo, User, Video } from "@/lib/types/types";
 import { promises as fs } from 'fs';
 
 
@@ -177,3 +177,12 @@ export async function calculateMediaRating(ratings: Rating[]): Promise<number> {
         return 0;
     }
 }
+
+// TODO: rework into api route
+// export async function saveVideo(video: UploadVideo): Promise<void> {
+//     console.log("try saving video: ");
+    
+//     var filePath = "/exampleVideos/";
+//     const buffer = Buffer.from(await video.video.arrayBuffer());
+//     await fs.writeFile(filePath, buffer);
+// }
