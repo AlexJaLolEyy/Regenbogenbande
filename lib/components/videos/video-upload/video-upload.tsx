@@ -2,13 +2,15 @@
 
 import { getAllUsers } from "@/app/current-storage/storage";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Card, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Skeleton, Spinner, Textarea } from "@nextui-org/react";
+import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Skeleton, Spinner, Textarea } from "@nextui-org/react";
 import MP4Box from 'mp4box';
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import type { UploadVideo, User, Video } from "../../../types/types";
 
 import "./video-upload.scss";
+import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 export default function VideoUpload({ }: {}) {
 
@@ -352,7 +354,11 @@ export default function VideoUpload({ }: {}) {
           </div>
         </div>
 
-        <input type="submit" onClick={() => { trigger() }} />
+        <Button type="submit" color="success" variant="bordered"
+          startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+          onClick={() => { trigger() }}>
+          Submit
+        </Button>
       </form>
 
       <span>created at value: {JSON.stringify(watch("createdAt"))}</span>
