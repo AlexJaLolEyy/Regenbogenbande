@@ -1,7 +1,7 @@
 "use client";
 
 import { fromDate, getLocalTimeZone, parseDate, parseZonedDateTime } from "@internationalized/date";
-import { Input, Select, SelectedItems, Chip, SelectItem, Avatar, Textarea, DateInput, BreadcrumbItem, Breadcrumbs, Card, Skeleton, Spinner } from "@nextui-org/react";
+import { Input, Select, SelectedItems, Chip, SelectItem, Avatar, Textarea, DateInput, BreadcrumbItem, Breadcrumbs, Card, Skeleton, Spinner, Button } from "@nextui-org/react";
 import { watch } from "fs";
 import { register } from "module";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import MP4Box from 'mp4box';
 import "./video-edit.scss";
 import { parseUploadVideoToBackend } from "@/app/(content)/videos/(detail)/[id]/edit/actions";
+import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 /* TODO: refactor this component and add missing features
       -> thumbnail creation.. online cutting.. date update on file input.. 
@@ -22,6 +24,7 @@ export default function VideoEdit({ video }: { video: Video }) {
         register,
         handleSubmit,
         watch,
+        trigger,
         control,
         setValue,
         formState: { errors },
@@ -45,6 +48,9 @@ export default function VideoEdit({ video }: { video: Video }) {
         if (preview) {
             data.video = preview;
         }
+
+        // TODO: implement addind new picture to file system
+
 
         console.log('Selected users:', data.participants);
         console.log("data: ", data);
@@ -70,7 +76,7 @@ export default function VideoEdit({ video }: { video: Video }) {
         // }
     }, []);
 
-
+    // TODO: outsource into helper function bc of multiple usage
     const getCreationDate = (file: File) => {
 
         if (file) {
@@ -339,7 +345,11 @@ export default function VideoEdit({ video }: { video: Video }) {
                     return value;
                 }, 2)}</pre>
 
-                <input type="submit" />
+                <Button type="submit" color="success" variant="bordered"
+                    startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                    onClick={() => { trigger() }}>
+                    Submit
+                </Button>
             </form>
 
         </div>
