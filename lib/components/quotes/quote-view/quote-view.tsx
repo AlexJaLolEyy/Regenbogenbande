@@ -19,7 +19,7 @@ export default function QuoteView({ quote }: { quote: Quote }
       <Link href="/quotes/upload">Go to Upload</Link>
 
       {quote.fullQuote.map((singleQuote) => (
-        <div>
+        <div key={singleQuote.msg}>
           <h2>{singleQuote.user.username}</h2>
           <p>{singleQuote.msg}</p>
 
