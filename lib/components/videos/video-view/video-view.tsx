@@ -4,9 +4,9 @@ import { Video } from "../../../types/types"
 import Link from "next/link";
 
 import { useEffect } from "react";
-import { Breadcrumbs, BreadcrumbItem, User, Textarea } from "@nextui-org/react";
+import { Breadcrumbs, BreadcrumbItem, User, Textarea, Button, Tooltip } from "@nextui-org/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-regular-svg-icons";
+import { faPenToSquare, faStar } from "@fortawesome/free-regular-svg-icons";
 import "./video-view.scss";
 
 export default function VideoView({ video }: { video: Video }
@@ -27,11 +27,20 @@ export default function VideoView({ video }: { video: Video }
 
       <Link href="/videos/upload">Go to Upload</Link>
 
-
-      <div className="title">
-        <h1>{video.title}</h1>
+      <div className="viewHeader">
+        <div className="title">
+          <h1>{video.title}</h1>
+        </div>
+        <div className="editButton">
+          <Tooltip content="Edit this video">
+          {/* <Button isIconOnly variant="ghost"> */}
+          <Link href={`/videos/${video.id}/edit`}>
+            <FontAwesomeIcon icon={faPenToSquare} size="lg" />
+          </Link>
+          {/* </Button> */}
+          </Tooltip>
+        </div>
       </div>
-      {/* <button onClick={() => addVideo(video)}>Try Adding</button> */}
 
       <video width="1280" height="720" controls>
         <source src={video.video} type="video/mp4"></source>
