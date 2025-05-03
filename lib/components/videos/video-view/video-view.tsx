@@ -4,7 +4,7 @@ import { Video } from "../../../types/types"
 import Link from "next/link";
 
 import { useEffect } from "react";
-import { Breadcrumbs, BreadcrumbItem, User, Textarea, Button, Tooltip } from "@nextui-org/react";
+import { Breadcrumbs, BreadcrumbItem, User, Textarea, Button, Tooltip } from "@heroui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare, faStar } from "@fortawesome/free-regular-svg-icons";
 import "./video-view.scss";

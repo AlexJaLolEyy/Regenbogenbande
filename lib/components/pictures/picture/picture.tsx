@@ -1,5 +1,5 @@
 import type { Picture } from "../../../types/types";
-import { Card, CardHeader, CardBody, Image, CardFooter, Avatar, User } from "@nextui-org/react";
+import { Card, CardHeader, CardBody, Image, CardFooter, Avatar, User } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { faStar, faEye } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

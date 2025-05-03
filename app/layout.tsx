@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 
 import { Providers } from "./providers";
-import { NextUIProvider } from "@nextui-org/react";
+import { HeroUIProvider } from "@heroui/react";
 import Navigation from '@/lib/components/Navigation/navigation';
 
 const inter = Inter({ subsets: ['latin'] })

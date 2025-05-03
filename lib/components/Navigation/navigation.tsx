@@ -1,6 +1,6 @@
 "use client"
 
-import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Image, Link, Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@nextui-org/react";
+import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Image, Link, Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/react";
 import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import "./navigation.css";

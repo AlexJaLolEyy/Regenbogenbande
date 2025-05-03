@@ -1,6 +1,6 @@
 'use client'
 
-import { BreadcrumbItem, Breadcrumbs } from "@nextui-org/react";
+import { BreadcrumbItem, Breadcrumbs } from "@heroui/react";
 import Link from "next/link";
 import { Quote } from "../../../types/types";
 import QuoteComponent from "../quote/quote";

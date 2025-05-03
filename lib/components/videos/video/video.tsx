@@ -2,7 +2,7 @@
 
 import { faEye, faStar } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, CardBody, CardFooter, CardHeader, Image, User } from "@nextui-org/react";
+import { Card, CardBody, CardFooter, CardHeader, Image, User } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import type { Video } from "../../../types/types";
 import "./video.scss";

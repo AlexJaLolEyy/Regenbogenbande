@@ -1,6 +1,6 @@
 import { faEye, faStar } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Card, CardBody, CardFooter, CardHeader, Image } from "@nextui-org/react";
+import { Card, CardBody, CardFooter, CardHeader, Image } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { Quote } from "../../../types/types";
 import "./quote.scss";

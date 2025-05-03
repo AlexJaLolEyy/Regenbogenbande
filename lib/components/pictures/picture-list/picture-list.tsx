@@ -1,6 +1,6 @@
 "use client"
 
-import { BreadcrumbItem, Breadcrumbs } from "@nextui-org/react";
+import { BreadcrumbItem, Breadcrumbs } from "@heroui/react";
 import Link from "next/link";
 import { Picture } from "../../../types/types";
 import PictureComponent from "../picture/picture";

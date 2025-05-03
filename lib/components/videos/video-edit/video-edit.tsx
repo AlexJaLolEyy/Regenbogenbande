@@ -1,7 +1,7 @@
 "use client";
 
 import { fromDate, getLocalTimeZone, parseDate, parseZonedDateTime } from "@internationalized/date";
-import { Input, Select, SelectedItems, Chip, SelectItem, Avatar, Textarea, DateInput, BreadcrumbItem, Breadcrumbs, Card, Skeleton, Spinner, Button } from "@nextui-org/react";
+import { Input, Select, SelectedItems, Chip, SelectItem, Avatar, Textarea, DateInput, BreadcrumbItem, Breadcrumbs, Card, Skeleton, Spinner, Button } from "@heroui/react";
 import { watch } from "fs";
 import { register } from "module";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
