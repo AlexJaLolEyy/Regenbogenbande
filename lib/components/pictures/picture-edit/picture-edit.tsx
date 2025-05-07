@@ -3,11 +3,11 @@
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { Picture, UploadPicture, User } from "../../../types/types"
 import { faUser, faCalendarPlus } from "@fortawesome/free-regular-svg-icons";
-import { faVideo, faSignature, faInfo, faUsers, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faVideo, faSignature, faInfo, faUsers, faUpload, faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import NextImage from "next/image";
-import { Breadcrumbs, BreadcrumbItem, Card, Skeleton, Input, Image, Textarea, Select, SelectedItems, Avatar, SelectItem, Chip, DateInput } from "@nextui-org/react";
+import { Breadcrumbs, BreadcrumbItem, Card, Skeleton, Input, Image, Textarea, Select, SelectedItems, Avatar, SelectItem, Chip, DateInput, Button } from "@heroui/react";
 import { getAllUsers } from "@/app/current-storage/storage";
 import { useEffect, useState } from "react";
 import EXIF from "exif-js";
@@ -53,6 +53,7 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
 
+        // TODO: outsource bc of multiple usage
         if (file) {
             setPreview(file);
             // file could potentially have a creationDate
@@ -79,6 +80,7 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
     const onSubmit: SubmitHandler<UploadPicture> = (data) => {
         console.log("errors: ", errors);
 
+        // TODO: add save to file system
         console.log("data: ", data);
     }
 
@@ -120,14 +122,14 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                 <Input type="file" label="Upload File" variant="bordered" startContent={
                                     <FontAwesomeIcon icon={faVideo} />
                                 }
-                                    accept="image/*" {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} />
+                                    accept="image/*" {...register("img", { required: false, onChange: (e) => handleFileChange(e) })} />
                             </div>
                         </div>
 
                         <div className="form-item half-width">
                             <div className="title">
-                                <Input type="text" label="Title" variant="bordered"
-                                    isInvalid={false} errorMessage="Please enter a valid Title!"
+                                <Input type="text" label="Title" variant="bordered" isRequired
+                                    isInvalid={!!errors.title} aria-invalid={!!errors.title} errorMessage="Please enter a valid Title!"
                                     startContent={
                                         <FontAwesomeIcon icon={faSignature} />
                                     }
@@ -161,6 +163,9 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                 <Select
                                     {...register("uploadedBy", { required: true })}
                                     isRequired
+                                    aria-invalid={!!errors.uploadedBy}
+                                    isInvalid={!!errors.uploadedBy}
+                                    errorMessage={"Please select a User!"}
                                     items={users}
                                     label="Uploaded By"
                                     placeholder="Select a user"
@@ -211,6 +216,10 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                     {...register("participants", {
                                         required: true,
                                     })}
+                                    isRequired
+                                    aria-invalid={!!errors.participants}
+                                    isInvalid={!!errors.participants}
+                                    errorMessage={"Please select atleast one User!"}
                                     items={users}
                                     label="Participants"
                                     variant="bordered"
@@ -261,6 +270,9 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                     render={({ field }) => (
                                         <DateInput
                                             isRequired
+                                            isInvalid={!!errors.uploadedAt}
+                                            aria-invalid={!!errors.uploadedAt}
+                                            errorMessage={"Please provide a valid Date!"}
                                             isReadOnly
                                             startContent={
                                                 <FontAwesomeIcon icon={faUpload} />
@@ -287,6 +299,9 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                     render={({ field }) => (
                                         <DateInput
                                             isRequired
+                                            isInvalid={!!errors.createdAt}
+                                            aria-invalid={!!errors.createdAt}
+                                            errorMessage={"Please provide a valid Date!"}
                                             isReadOnly
                                             startContent={
                                                 <FontAwesomeIcon icon={faCalendarPlus} />
@@ -305,6 +320,12 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                     </div>
 
                     <input type="submit" />
+
+                    <Button type="submit" color="success" variant="bordered" startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}>
+                        Submit
+                    </Button>
+
+                    
 
                 </form>
 

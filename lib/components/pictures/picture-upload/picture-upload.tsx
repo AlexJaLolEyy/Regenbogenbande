@@ -2,10 +2,10 @@
 
 import { getAllUsers } from "@/app/current-storage/storage";
 import { faCalendarPlus, faUser } from "@fortawesome/free-regular-svg-icons";
-import { faInfo, faSignature, faUpload, faUsers, faVideo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpFromBracket, faInfo, faSignature, faUpload, faUsers, faVideo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Card, Chip, DateInput, Image, Input, Select, SelectedItems, SelectItem, Skeleton, Textarea } from "@nextui-org/react";
+import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Image, Input, Select, SelectedItems, SelectItem, Skeleton, Textarea } from "@heroui/react";
 import EXIF from 'exif-js';
 import NextImage from "next/image";
 import React, { useEffect, useState } from "react";
@@ -21,16 +21,18 @@ export default function PictureUpload({ }: {}) {
         watch,
         control,
         setValue,
+        trigger,
         formState: { errors },
     } = useForm<UploadPicture>({
         defaultValues: {
-            // createdAt: new Date(),
             uploadedAt: new Date(),
             participants: [],
         }
     })
     const onSubmit: SubmitHandler<UploadPicture> = (data) => {
         console.log("errors: ", errors);
+
+        // TODO: implement addind new picture to file system
 
         console.log("data: ", data);
     }
@@ -51,13 +53,14 @@ export default function PictureUpload({ }: {}) {
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-
+        // TODO: outsource into helper function bc of multiple usage
         if (file) {
             setPreview(file);
-            // file could potentially have a creationDate
+            // only those file types could potentially have a creationDate
             if (file.type === "image/jpeg" || file.type === "image/jpg") {
-                // @ts-ignore: Ignore type checking for this line
+                // @ts-ignore: type any is fine here
                 EXIF.getData(file, function () {
+                    // @ts-ignore: type any is fine here
                     const creationDate = EXIF.getTag(this, "DateTimeOriginal");
                     if (creationDate) {
                         const formattedDate = creationDate.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
@@ -121,17 +124,19 @@ export default function PictureUpload({ }: {}) {
 
                     <div className="form-item half-width">
                         <div className="fileUpload">
-                            <Input type="file" label="Upload File" variant="bordered" startContent={
-                                <FontAwesomeIcon icon={faVideo} />
-                            }
+                            <Input type="file" label="Upload File" variant="bordered" isRequired isInvalid={!!errors.img}
+                                aria-invalid={!!errors.img} errorMessage="Please submit a Picture!"
+                                startContent={
+                                    <FontAwesomeIcon icon={faVideo} />
+                                }
                                 accept="image/*" {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} />
                         </div>
                     </div>
 
                     <div className="form-item half-width">
                         <div className="title">
-                            <Input type="text" label="Title" variant="bordered"
-                                isInvalid={false} errorMessage="Please enter a valid Title!"
+                            <Input type="text" label="Title" variant="bordered" isRequired
+                                isInvalid={!!errors.title} aria-invalid={!!errors.title} errorMessage="Please enter a valid Title!"
                                 startContent={
                                     <FontAwesomeIcon icon={faSignature} />
                                 }
@@ -165,6 +170,9 @@ export default function PictureUpload({ }: {}) {
                             <Select
                                 {...register("uploadedBy", { required: true })}
                                 isRequired
+                                isInvalid={!!errors.uploadedBy}
+                                aria-invalid={!!errors.uploadedBy}
+                                errorMessage={"Please select a User!"}
                                 items={users}
                                 label="Uploaded By"
                                 placeholder="Select a user"
@@ -215,6 +223,10 @@ export default function PictureUpload({ }: {}) {
                                 {...register("participants", {
                                     required: true,
                                 })}
+                                isRequired
+                                aria-invalid={!!errors.participants}
+                                isInvalid={!!errors.participants}
+                                errorMessage={"Please select atleast one User!"}
                                 items={users}
                                 label="Participants"
                                 variant="bordered"
@@ -265,6 +277,9 @@ export default function PictureUpload({ }: {}) {
                                 render={({ field }) => (
                                     <DateInput
                                         isRequired
+                                        isInvalid={!!errors.uploadedAt}
+                                        aria-invalid={!!errors.uploadedAt}
+                                        errorMessage={"Please provide a valid Date!"}
                                         isReadOnly
                                         startContent={
                                             <FontAwesomeIcon icon={faUpload} />
@@ -291,6 +306,9 @@ export default function PictureUpload({ }: {}) {
                                 render={({ field }) => (
                                     <DateInput
                                         isRequired
+                                        isInvalid={!!errors.createdAt}
+                                        aria-invalid={!!errors.createdAt}
+                                        errorMessage={"Please provide a valid Date!"}
                                         isReadOnly
                                         startContent={
                                             <FontAwesomeIcon icon={faCalendarPlus} />
@@ -308,7 +326,11 @@ export default function PictureUpload({ }: {}) {
 
                 </div>
 
-                <input type="submit" />
+                <Button type="submit" color="success" variant="bordered"
+                    startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                    onClick={() => { trigger() }}>
+                    Submit
+                </Button>
 
             </form>
 

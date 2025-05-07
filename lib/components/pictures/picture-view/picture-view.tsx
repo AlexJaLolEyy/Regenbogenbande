@@ -2,13 +2,14 @@
 
 import { Picture } from "../../../types/types"
 import { useEffect } from "react";
-import { faStar } from "@fortawesome/free-regular-svg-icons";
+import { faPenToSquare, faStar } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { User, Textarea, BreadcrumbItem, Breadcrumbs, Image } from "@nextui-org/react";
+import { User, Textarea, BreadcrumbItem, Breadcrumbs, Image, Tooltip } from "@heroui/react";
 import NextImage from "next/image";
 import Link from "next/link";
 
 import "./picture-view.scss";
+import video from "../../videos/video/video";
 
 export default function PictureView({ picture }: { picture: Picture }
 ) {
@@ -28,8 +29,17 @@ export default function PictureView({ picture }: { picture: Picture }
       <Link href="/pictures/upload">Go to Upload</Link>
 
 
-      <div className="title">
-        <h1>{picture.title}</h1>
+      <div className="viewHeader">
+        <div className="title">
+          <h1>{picture.title}</h1>
+        </div>
+        <div className="editButton">
+          <Tooltip content="Edit this picture">
+          <Link href={`/pictures/${picture.id}/edit`}>
+            <FontAwesomeIcon icon={faPenToSquare} size="lg" />
+          </Link>
+          </Tooltip>
+        </div>
       </div>
 
         <Image
