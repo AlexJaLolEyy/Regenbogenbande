@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-
 import { Providers } from "./providers";
-import { HeroUIProvider } from "@heroui/react";
 import Navigation from '@/lib/components/Navigation/navigation';
 
 const inter = Inter({ subsets: ['latin'] })
@@ -21,8 +19,8 @@ export default function RootLayout({
   return (
     <html lang="en" className='light'>
       <body className={inter.className}>
-        <Navigation></Navigation>
         <Providers>
+          <Navigation />
           {children}
         </Providers>
       </body>
