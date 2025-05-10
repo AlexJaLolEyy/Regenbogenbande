@@ -6,9 +6,7 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "lint": "next lint"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
@@ -17,7 +15,6 @@
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@heroui/react": "2.7.8",
     "@internationalized/date": "^3.8.0",
-    "@storybook/addons": "^7.6.17",
     "@tailwindcss/postcss": "^4.1.5",
     "exif-js": "^2.3.0",
     "lucide-react": "^0.508.0",
@@ -30,14 +27,6 @@
     "sass": "^1.78.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^3.2.2",
-    "@storybook/addon-essentials": "^8.4.2",
-    "@storybook/addon-interactions": "^8.4.2",
-    "@storybook/addon-onboarding": "^8.4.2",
-    "@storybook/blocks": "^8.4.2",
-    "@storybook/nextjs": "^8.4.2",
-    "@storybook/react": "^8.4.2",
-    "@storybook/test": "^8.4.2",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
@@ -48,7 +37,6 @@
     "eslint-plugin-storybook": "^0.12.0",
     "file-loader": "^6.2.0",
     "postcss": "^8.5.3",
-    "storybook": "^8.6.12",
     "tailwindcss": "^4.1.5",
     "typescript": "^5.8.3"
   }
