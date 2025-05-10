@@ -72,6 +72,7 @@ export default function Home() {
       </section>
 
       {/* Bento-style Highlight Clips */}
+      {/* TODO: Add actual clips and connect thumbnails to clips */}
       <motion.section
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -79,10 +80,10 @@ export default function Home() {
       >
         <h2 className="text-2xl font-bold mb-4">Highlight-Clips</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {["exampleTimo.jpg", "exampleMarla.jpg", "exampleSamu.jpg"].map((img, i) => (
+          {["exampleThumbnail1.png", "exampleThumbnail2.png", "exampleThumbnail3.png"].map((img, i) => (
             <motion.img
               key={img}
-              src={`/exampleUserPictures/${img}`}
+              src={`/exampleThumbnails/${img}`}
               className="rounded-xl object-cover h-40 w-full"
               whileHover={{ scale: 1.03 }}
               initial={{ opacity: 0, y: 20 }}
