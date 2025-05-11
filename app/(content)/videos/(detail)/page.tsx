@@ -7,7 +7,7 @@ export default async function Page() {
   var videos: Video[] = await getAllVideos();
 
   return (
-    <div>
+    <div className="pt-20">
       <VideoList videos={videos}></VideoList>
     </div>
   )
