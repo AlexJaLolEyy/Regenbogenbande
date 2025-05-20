@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@plugin './hero';
+@source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+
+
 @layer base {
   h1 {
     @apply text-2xl;
@@ -12,29 +16,29 @@
   }
 }
 
-
 html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-  }
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #36454F;
+}
 
-  .layout {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    height: 100vh; /* Full viewport height */
-  }
-  
-  .left-box, .right-box {
-    width: 20%;
-    background-color: #f0f0f0;
-  }
-  
-  .content-box {
-    width: 60%;
-    min-width: 300px;
-    max-width: 1200px;
-    padding: 1em;
-  }
+.layout {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+}
+
+.left-box, .right-box {
+  width: 20%;
+  background-color: #f0f0f0;
+}
+
+.content-box {
+  width: 60%;
+  min-width: 300px;
+  max-width: 1200px;
+  padding: 1em;
+}
 

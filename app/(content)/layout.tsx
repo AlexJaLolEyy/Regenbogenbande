@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import '../globals.css'
 
 import Navigation from '@/lib/components/Navigation/navigation';
-import { Providers } from '../providers';
+
 
 export default function ContentLayout({
   children,
@@ -14,9 +14,7 @@ export default function ContentLayout({
     <div className="layout">
       <div className="left-box"></div>
       <div className="content-box">
-        <Providers>
           {children}
-        </Providers>
       </div>
       <div className="right-box"></div>
     </div>
