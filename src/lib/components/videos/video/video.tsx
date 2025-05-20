@@ -14,7 +14,6 @@ export default function VideoComponent({ video }: { video: Video }) {
   return (
 
     <div className="video">
-
       <Card className="py-4" isPressable onPress={() => {
         router.push('/videos/' + video.id);
       }}>
