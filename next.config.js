@@ -1,11 +1,9 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  experimental: {
-    turbo: {}, // Enables Turbopack with default settings
-    // You can add other experimental features here as needed
+  turbopack: {
+    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.sass', '.json'],
   },
-  // Other Next.js configuration options can go here
 };
 
-module.exports = nextConfig;
+export default nextConfig;
