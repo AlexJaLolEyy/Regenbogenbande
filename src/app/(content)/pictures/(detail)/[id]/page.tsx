@@ -1,5 +1,5 @@
-import { getPictureById } from "@/app/current-storage/storage";
-import PictureView from "@/lib/components/pictures/picture-view/picture-view";
+import { getPictureById } from "@/src/app/current-storage/storage";
+import PictureView from "@/src/lib/components/pictures/picture-view/picture-view";
 import React from "react";
 
 export default async function Page({ params }: { params: { id: number } }) {

@@ -6,11 +6,11 @@ import { watch } from "fs";
 import { register } from "module";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { UploadVideo, User, Video } from "../../../types/types"
-import { getAllUsers, getUserById } from "@/app/current-storage/storage";
+import { getAllUsers, getUserById } from "@/src/app/current-storage/storage";
 import { useEffect, useState } from "react";
 import MP4Box from 'mp4box';
 import "./video-edit.scss";
-import { parseUploadVideoToBackend } from "@/app/(content)/videos/(detail)/[id]/edit/actions";
+import { parseUploadVideoToBackend } from "@/src/app/(content)/videos/(detail)/[id]/edit/actions";
 import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 

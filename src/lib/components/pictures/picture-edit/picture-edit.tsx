@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import NextImage from "next/image";
 import { Breadcrumbs, BreadcrumbItem, Card, Skeleton, Input, Image, Textarea, Select, SelectedItems, Avatar, SelectItem, Chip, DateInput, Button } from "@heroui/react";
-import { getAllUsers } from "@/app/current-storage/storage";
+import { getAllUsers } from "@/src/app/current-storage/storage";
 import { useEffect, useState } from "react";
 import EXIF from "exif-js";
 

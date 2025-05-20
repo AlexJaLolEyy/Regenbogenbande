@@ -1,5 +1,5 @@
-import { getPictureById } from "@/app/current-storage/storage";
-import PictureEdit from "@/lib/components/pictures/picture-edit/picture-edit";
+import { getPictureById } from "@/src/app/current-storage/storage";
+import PictureEdit from "@/src/lib/components/pictures/picture-edit/picture-edit";
 
 
 export default async function Page({ params }: { params: { id: number } }) {

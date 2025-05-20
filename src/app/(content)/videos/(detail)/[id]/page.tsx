@@ -1,6 +1,5 @@
-
-import { getVideoById } from "@/app/current-storage/storage";
-import VideoView from "@/lib/components/videos/video-view/video-view";
+import { getVideoById } from "@/src/app/current-storage/storage";
+import VideoView from "@/src/lib/components/videos/video-view/video-view";
 import React from "react";
 
 export default async function Page({ params }: { params: { id: number } }) {

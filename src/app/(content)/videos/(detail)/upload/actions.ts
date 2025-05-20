@@ -1,7 +1,7 @@
 "use server"
 
-import { addVideo, getUserById, logData } from '@/app/current-storage/storage';
-import { UploadVideo, User, Video } from '@/lib/types/types';
+import { addVideo, getUserById, logData } from '@/src/app/current-storage/storage';
+import { UploadVideo, User, Video } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
 
 

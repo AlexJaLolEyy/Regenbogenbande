@@ -1,23 +1,23 @@
 'use server'
 
-import { Picture, Quote, Rating, UploadVideo, User, Video } from "@/lib/types/types";
+import { Picture, Quote, Rating, UploadVideo, User, Video } from "@/src/lib/types/types";
 import { promises as fs } from 'fs';
 
 
 export async function getAllVideos(): Promise<Video[]> {
-    return JSON.parse(await fs.readFile('app/current-storage/data/videos.json', "utf-8"));
+    return JSON.parse(await fs.readFile('src/app/current-storage/data/videos.json', "utf-8"));
 }
 
 export async function getAllPictures(): Promise<Picture[]> {
-    return JSON.parse(await fs.readFile('app/current-storage/data/pictures.json', "utf-8"));
+    return JSON.parse(await fs.readFile('src/app/current-storage/data/pictures.json', "utf-8"));
 }
 
 export async function getAllQuotes(): Promise<Quote[]> {
-    return JSON.parse(await fs.readFile('app/current-storage/data/quotes.json', "utf-8"));
+    return JSON.parse(await fs.readFile('src/app/current-storage/data/quotes.json', "utf-8"));
 }
 
 export async function getAllUsers(): Promise<User[]> {
-    return JSON.parse(await fs.readFile('app/current-storage/data/users.json', "utf-8"));
+    return JSON.parse(await fs.readFile('src/app/current-storage/data/users.json', "utf-8"));
 }
 
 // info: id is type number but bc it gets delivered by url its still a string -> == instead of ===
