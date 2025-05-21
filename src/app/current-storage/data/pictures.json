@@ -6,7 +6,7 @@
         "id": 1,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -19,7 +19,7 @@
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -43,7 +43,7 @@
         "id": 2,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -94,7 +94,7 @@
         "id": 3,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -107,7 +107,7 @@
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -135,14 +135,14 @@
         "id": 4,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -166,20 +166,20 @@
         "id": 5,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             },
             {
-                "username": "Achel aka BigBrainGamer420",
+                "username": "Achel",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
                 "id": 5
             }
         ],
         "uploadedBy": {
-            "username": "Achel aka BigBrainGamer420",
+            "username": "Achel",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
             "id": 5
@@ -207,13 +207,13 @@
         "id": 6,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             },
             {
-                "username": "Achel aka BigBrainGamer420",
+                "username": "Achel",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
                 "id": 5
@@ -226,7 +226,7 @@
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -254,7 +254,7 @@
         "id": 7,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -289,13 +289,13 @@
         }
     },
     {
-        "title": "examplePicture 8",
+        "title": "examplePicture 8 - longer title for testing",
         "description": "Das ist ein Beispieltext für eine Beschreibung eines Pictures. In diesem Fall wurde dieser Text für Picture 8 erstellt.",
         "img": "/examplePictures/examplePicture8.jpg",
         "id": 8,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1

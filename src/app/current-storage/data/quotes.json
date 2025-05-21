@@ -4,7 +4,7 @@
             {
                 "msg": "Hello There!",
                 "user": {
-                    "username": "Alex Ja Lol Eyy",
+                    "username": "Alex",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                     "id": 1
@@ -13,7 +13,7 @@
             {
                 "msg": "General Kenobi!",
                 "user": {
-                    "username": "Thylon",
+                    "username": "Timo",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                     "id": 2
@@ -23,20 +23,20 @@
         "id": 1,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             },
             {
-                "username": "Thylon",
+                "username": "Timo",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                 "id": 2
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -49,7 +49,7 @@
             {
                 "msg": "Test1234",
                 "user": {
-                    "username": "Alex Ja Lol Eyy",
+                    "username": "Alex",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                     "id": 1
@@ -58,7 +58,7 @@
             {
                 "msg": "Check!",
                 "user": {
-                    "username": "Thylon",
+                    "username": "Timo",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                     "id": 2
@@ -68,20 +68,20 @@
         "id": 2,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             },
             {
-                "username": "Thylon",
+                "username": "Timo",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                 "id": 2
             }
         ],
         "uploadedBy": {
-            "username": "Thylon",
+            "username": "Timo",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
             "id": 2
@@ -94,7 +94,7 @@
             {
                 "msg": "Hallo wie gehts dir?",
                 "user": {
-                    "username": "Alex Ja Lol Eyy",
+                    "username": "Alex",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                     "id": 1
@@ -103,7 +103,7 @@
             {
                 "msg": "Mir geht es gut und wie geht es dir?",
                 "user": {
-                    "username": "Thylon",
+                    "username": "Timo",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                     "id": 2
@@ -112,7 +112,7 @@
             {
                 "msg": "Same here, danke der Nachfrage!",
                 "user": {
-                    "username": "Alex Ja Lol Eyy",
+                    "username": "Alex",
                     "password": "12345",
                     "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                     "id": 1
@@ -122,20 +122,20 @@
         "id": 3,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             },
             {
-                "username": "Thylon",
+                "username": "Timo",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                 "id": 2
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1

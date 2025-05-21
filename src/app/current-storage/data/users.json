@@ -1,12 +1,12 @@
 [
     {
-        "username": "Alex Ja Lol Eyy",
+        "username": "Alex",
         "password": "12345",
         "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
         "id": 1
     },
     {
-        "username": "Thylon",
+        "username": "Timo",
         "password": "12345",
         "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
         "id": 2
@@ -24,7 +24,7 @@
         "id": 4
     },
     {
-        "username": "Achel aka BigBrainGamer420",
+        "username": "Achel",
         "password": "12345",
         "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
         "id": 5

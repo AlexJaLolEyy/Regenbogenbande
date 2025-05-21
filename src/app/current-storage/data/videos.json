@@ -7,14 +7,14 @@
         "id": 1,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -47,14 +47,14 @@
         "id": 2,
         "participants": [
             {
-                "username": "Thylon",
+                "username": "Timo",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
                 "id": 2
             }
         ],
         "uploadedBy": {
-            "username": "Thylon",
+            "username": "Timo",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleTimo.jpg",
             "id": 2
@@ -133,7 +133,7 @@
         "id": 4,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -146,7 +146,7 @@
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -171,14 +171,14 @@
         "id": 5,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -207,7 +207,7 @@
         "id": 6,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -249,14 +249,14 @@
         "id": 7,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -285,7 +285,7 @@
         "id": 8,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -327,14 +327,14 @@
         "id": 9,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
@@ -356,14 +356,14 @@
         }
     },
     {
-        "title": "exampleVideo 10",
+        "title": "exampleVideo 10 - longer title for testing",
         "description": "Das ist ein Beispieltext für eine Beschreibung eines Videos. In diesem Fall wurde dieser Text für Video 10 erstellt.",
         "video": "/exampleVideos/exampleVideo10.mp4",
         "thumbnail": "/exampleThumbnails/exampleThumbnail10.png",
         "id": 10,
         "participants": [
             {
-                "username": "Alex Ja Lol Eyy",
+                "username": "Alex",
                 "password": "12345",
                 "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
                 "id": 1
@@ -382,7 +382,7 @@
             }
         ],
         "uploadedBy": {
-            "username": "Alex Ja Lol Eyy",
+            "username": "Alex",
             "password": "12345",
             "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
             "id": 1
