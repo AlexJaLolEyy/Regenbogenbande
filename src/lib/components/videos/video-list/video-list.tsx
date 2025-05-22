@@ -1,52 +1,86 @@
 "use client";
 
-import { Alert, Avatar, BreadcrumbItem, Breadcrumbs, Card, CardBody } from "@heroui/react";
+import { BreadcrumbItem, Breadcrumbs, Button, Spinner } from "@heroui/react";
 import Link from "next/link";
+import { useState } from "react";
 import type { Video } from "../../../types/types";
 import VideoComponent from "../video/video";
-import "./video-list.scss";
 
-export default function VideoList({ videos }: { videos: Video[] }) {
+const VIDEOS_PER_PAGE = 20;
+
+export default function VideoList({ initialVideos }: { initialVideos: Video[] }) {
+  const [videos, setVideos] = useState<Video[]>(initialVideos);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/videos?page=${page + 1}&limit=${VIDEOS_PER_PAGE}`);
+      const newVideos = await response.json();
+      
+      if (newVideos.length < VIDEOS_PER_PAGE) {
+        setHasMore(false);
+      }
+      
+      setVideos(prev => [...prev, ...newVideos]);
+      setPage(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to load more videos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div>
-
+    <div className="max-w-[1600px] mx-auto px-6 py-8">
       <Breadcrumbs>
         <BreadcrumbItem href="/">Home</BreadcrumbItem>
         <BreadcrumbItem href="/videos">Videos</BreadcrumbItem>
       </Breadcrumbs>
 
-      <h1>Select a Video!</h1>
-      <h2><Link href="/videos/upload">Go to Upload</Link></h2>
-
-      <div className="videoList form-grid">
-        {videos != null || videos != undefined ?
-          videos.map((video) => (
-            <div key={video.id} className="form-item">
-              <VideoComponent video={video}></VideoComponent>
-            </div>
-          ))
-          : "Videos null or undefined"}
+      <div className="flex justify-between items-center my-6">
+        <h1 className="text-3xl font-semibold">Videos</h1>
+        <Button
+          as={Link}
+          href="/videos/upload"
+          color="primary"
+          variant="flat"
+        >
+          Upload Video
+        </Button>
       </div>
 
-      <div className="flex gap-4 items-center">
-        <Avatar isBordered radius="full" src="https://i.pravatar.cc/150?u=a04258114e29026708c" />
-        <Avatar isBordered radius="lg" src="https://i.pravatar.cc/150?u=a04258114e29026302d" />
-        <Avatar isBordered radius="md" src="https://i.pravatar.cc/150?u=a042581f4e29026704d" />
-        <Avatar isBordered radius="sm" src="https://i.pravatar.cc/150?u=a04258a2462d826712d" />
-      </div>
-
-
-      <div className="flex items-center justify-center w-full">
-      <div className="flex flex-col w-full">
-        {["default", "primary", "secondary", "success", "warning", "danger"].map((color) => (
-          <div key={color} className="w-full flex items-center my-3">
-            <Alert color={color} title={`This is a ${color} alert`} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-8">
+        {videos.map((video) => (
+          <div key={video.id}>
+            <VideoComponent video={video} />
           </div>
         ))}
       </div>
-    </div>
 
+      {hasMore && (
+        <div className="flex justify-center">
+          <Button
+            onClick={loadMore}
+            disabled={loading}
+            variant="flat"
+            className="min-w-[120px] flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Spinner size="sm" />
+                <span>Loading...</span>
+              </>
+            ) : (
+              'Load More'
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
