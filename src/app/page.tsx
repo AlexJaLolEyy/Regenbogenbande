@@ -13,7 +13,7 @@ export default function Home() {
         className="flex flex-col md:flex-row items-center gap-8 mb-12"
       >
         <img
-          src="/exampleUserPictures/exampleAlex.jpg"
+          src="/sidebar2.png"
           alt="Gamer"
           className="w-full md:w-1/2 rounded-2xl shadow-lg object-cover max-h-80"
         />

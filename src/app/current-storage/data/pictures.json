@@ -8,20 +8,20 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "T1 Sensei",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "profilepicture": "/exampleUserPictures/Samu.jpg",
                 "id": 3
             }
         ],
         "uploadedBy": {
             "username": "Alex",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "profilepicture": "/exampleUserPictures/Alex.jpg",
             "id": 1
         },
         "uploadedAt": "2022-03-15T08:30:00.000Z",
@@ -45,26 +45,26 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "T1 Sensei",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+                "profilepicture": "/exampleUserPictures/Samu.jpg",
                 "id": 3
             },
             {
                 "username": "Marla",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "profilepicture": "/exampleUserPictures/Marla.png",
                 "id": 6
             }
         ],
         "uploadedBy": {
             "username": "T1 Sensei",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/ExampleSamu.jpg",
+            "profilepicture": "/exampleUserPictures/Samu.jpg",
             "id": 3
         },
         "uploadedAt": "2023-06-01T13:00:00.000Z",
@@ -96,20 +96,20 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "Jesse",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "profilepicture": "/exampleUserPictures/Jesse.png",
                 "id": 4
             }
         ],
         "uploadedBy": {
             "username": "Alex",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "profilepicture": "/exampleUserPictures/Alex.jpg",
             "id": 1
         },
         "uploadedAt": "2023-01-10T19:20:00.000Z",
@@ -137,14 +137,14 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             }
         ],
         "uploadedBy": {
             "username": "Alex",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "profilepicture": "/exampleUserPictures/Alex.jpg",
             "id": 1
         },
         "uploadedAt": "2023-06-07T12:00:00.000Z",
@@ -168,20 +168,20 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "Achel",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+                "profilepicture": "/exampleUserPictures/Achel.png",
                 "id": 5
             }
         ],
         "uploadedBy": {
             "username": "Achel",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+            "profilepicture": "/exampleUserPictures/Achel.png",
             "id": 5
         },
         "uploadedAt": "2021-12-05T22:50:00.000Z",
@@ -209,26 +209,26 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "Achel",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAchel.jpg",
+                "profilepicture": "/exampleUserPictures/Achel.png",
                 "id": 5
             },
             {
                 "username": "Marla",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "profilepicture": "/exampleUserPictures/Marla.png",
                 "id": 6
             }
         ],
         "uploadedBy": {
             "username": "Alex",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+            "profilepicture": "/exampleUserPictures/Alex.jpg",
             "id": 1
         },
         "uploadedAt": "2021-12-05T22:50:00.000Z",
@@ -256,20 +256,20 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "Jesse",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+                "profilepicture": "/exampleUserPictures/Jesse.png",
                 "id": 4
             }
         ],
         "uploadedBy": {
             "username": "Jesse",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleJesse.jpg",
+            "profilepicture": "/exampleUserPictures/Jesse.png",
             "id": 4
         },
         "uploadedAt": "2022-07-19T16:30:00.000Z",
@@ -297,20 +297,20 @@
             {
                 "username": "Alex",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleAlex.jpg",
+                "profilepicture": "/exampleUserPictures/Alex.jpg",
                 "id": 1
             },
             {
                 "username": "Marla",
                 "password": "12345",
-                "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+                "profilepicture": "/exampleUserPictures/Marla.png",
                 "id": 6
             }
         ],
         "uploadedBy": {
             "username": "Marla",
             "password": "12345",
-            "profilepicture": "/exampleUserPictures/exampleMarla.jpg",
+            "profilepicture": "/exampleUserPictures/Marla.png",
             "id": 6
         },
         "uploadedAt": "2023-08-01T09:10:00.000Z",
