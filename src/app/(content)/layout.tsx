@@ -7,11 +7,15 @@ export default function ContentLayout({
 }) {
   return (
     <div className="layout">
-      <div className="left-box"></div>
-      <div className="content-box">
-          {children}
-      </div>
-      <div className="right-box"></div>
+      <aside className="sidebar left-sidebar">
+        {/* Left sidebar content - for future use */}
+      </aside>
+      <main className="main-content">
+        {children}
+      </main>
+      <aside className="sidebar right-sidebar">
+        {/* Right sidebar content - for future use */}
+      </aside>
     </div>
   )
 }
