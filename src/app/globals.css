@@ -20,14 +20,14 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #36454F;
+  background-color: #0d1117;
 }
 
 .layout {
   display: flex;
   justify-content: center;
   width: 100%;
-  height: 100vh;
+  height: auto;
 }
 
 .sidebar {
