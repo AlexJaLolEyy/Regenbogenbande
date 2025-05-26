@@ -65,7 +65,7 @@ export default function Navigation() {
             className="transition-transform hover:scale-105 focus:outline-none"
             color="secondary"
             size="sm"
-            src="/exampleUserPictures/exampleAlex.jpg"
+            src="/exampleUserPictures/Alex.jpg"
             radius="full"
           />
         </DropdownTrigger>
