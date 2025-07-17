@@ -2,11 +2,11 @@
 
 import { getAllUsers } from "@/src/app/current-storage/storage";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Skeleton, Spinner, Textarea } from "@heroui/react";
-import MP4Box from 'mp4box';
+import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Skeleton, Textarea } from "@heroui/react";
+import { createFile } from 'mp4box';
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import type { UploadVideo, User, Video } from "../../../types/types";
+import type { UploadVideo, User } from "../../../types/types";
 
 import "./video-upload.scss";
 import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
@@ -96,23 +96,29 @@ export default function VideoUpload({ }: {}) {
       fileReader.addEventListener("load", (e) => {
         const buffer = fileReader.result as ArrayBuffer;
 
-        (buffer as any).fileStart = 0;
+        const mp4boxBuffer = buffer as ArrayBuffer & { fileStart: number };
+        mp4boxBuffer.fileStart = 0;
 
-        const mp4boxFile = MP4Box.createFile();
+        const mp4boxFile = createFile();
         mp4boxFile.onError = console.error;
         mp4boxFile.onReady = function (info) {
           console.log(info);
-          if (info.created.toLocaleDateString() === "1/1/1904") {
-            console.log("wrong creation Date!");
+          // More robust fallback: check for default, invalid, or unreasonably old dates
+          const defaultDate = new Date(1904, 0, 1); // January 1, 1904
+          const isDefaultDate = info.created.getTime() === defaultDate.getTime();
+          const isInvalidDate = isNaN(info.created.getTime());
+          const isTooOld = info.created.getFullYear() < 1990; // Reasonable minimum year
+
+          if (isDefaultDate || isInvalidDate || isTooOld) {
+            console.log("Invalid or default creation date detected, using file's last modified date");
             setCreationDate(new Date(file.lastModified));
-          }
-          else {
-            console.log("not wrong");
+          } else {
+            console.log("Using extracted creation date from video metadata");
             setCreationDate(info.created);
           }
-          console.log("creationDate: ", info.created);
+          console.log("Final creationDate:", isDefaultDate || isInvalidDate || isTooOld ? new Date(file.lastModified) : info.created);
         };
-        mp4boxFile.appendBuffer(buffer);
+        mp4boxFile.appendBuffer(mp4boxBuffer);
         mp4boxFile.flush();
       })
     }
@@ -227,17 +233,19 @@ export default function VideoUpload({ }: {}) {
                 }}
                 renderValue={(items: SelectedItems<User>) => {
                   return items.map((item) => (
-                    <div key={item.key} className="flex items-center gap-2">
-                      <Avatar
-                        alt={item.data.username}
-                        className="flex-shrink-0"
-                        size="sm"
-                        src={item.data?.profilepicture}
-                      />
-                      <div className="flex flex-col">
-                        <span>{item.data.username}</span>
+                    item.data ? (
+                      <div key={item.key} className="flex items-center gap-2">
+                        <Avatar
+                          alt={item.data?.username}
+                          className="flex-shrink-0"
+                          size="sm"
+                          src={item.data?.profilepicture}
+                        />
+                        <div className="flex flex-col">
+                          <span>{item.data?.username}</span>
+                        </div>
                       </div>
-                    </div>
+                    ) : null
                   ));
                 }}
               >
@@ -281,7 +289,7 @@ export default function VideoUpload({ }: {}) {
                   return (
                     <div className="flex flex-wrap gap-2">
                       {items.map((item) => (
-                        <Chip key={item.key}>{item.data.username}</Chip>
+                        item.data ? <Chip key={item.key}>{item.data?.username}</Chip> : null
                       ))}
                     </div>
                   );
