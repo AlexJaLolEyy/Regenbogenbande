@@ -2,18 +2,17 @@
 
 import { getAllUsers } from "@/src/app/current-storage/storage";
 import { faCalendarPlus, faUser } from "@fortawesome/free-regular-svg-icons";
-import { faArrowUpFromBracket, faInfo, faSignature, faUpload, faUsers, faVideo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpFromBracket, faInfo, faSignature, faUpload, faUsers, faImage, faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Image, Input, Select, SelectedItems, SelectItem, Skeleton, Textarea } from "@heroui/react";
+import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Image, Input, Select, SelectedItems, SelectItem, Textarea, Checkbox } from "@heroui/react";
 import EXIF from 'exif-js';
 import NextImage from "next/image";
 import React, { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { UploadPicture, User } from "../../../types/types";
-import "./picture-upload.scss";
 
-export default function PictureUpload({ }: {}) {
+export default function PictureUpload() {
 
     const {
         register,
@@ -29,34 +28,52 @@ export default function PictureUpload({ }: {}) {
             participants: [],
         }
     })
-    const onSubmit: SubmitHandler<UploadPicture> = (data) => {
-        console.log("errors: ", errors);
-
-        // TODO: implement addind new picture to file system
-
-        console.log("data: ", data);
-    }
 
     const [preview, setPreview] = useState<File | null>(null);
     const [creationDate, setCreationDate] = useState<Date | null>(null);
     const [users, setUsers] = useState<User[]>([]);
+    const [manualDateOverride, setManualDateOverride] = useState(false);
+    const [imageMetadata, setImageMetadata] = useState<{
+        size?: string;
+        resolution?: string;
+        format?: string;
+    }>({});
 
     useEffect(() => {
         getAllUsers().then((users) => {
             setUsers(users);
         });
-        // TODO: other option?
-        if (creationDate) {
+        if (creationDate && !manualDateOverride) {
             setValue('createdAt', creationDate);
         }
-    }, [creationDate, setValue]);
+    }, [creationDate, setValue, manualDateOverride]);
+
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const onSubmit: SubmitHandler<UploadPicture> = (data) => {
+        console.log("errors: ", errors);
+        console.log("data: ", data);
+        // TODO: implement adding new picture to file system
+    }
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        // TODO: outsource into helper function bc of multiple usage
         if (file) {
             setPreview(file);
-            // only those file types could potentially have a creationDate
+            
+            // Extract basic metadata first
+            setImageMetadata({
+                size: formatFileSize(file.size),
+                format: file.type.split('/')[1].toUpperCase(),
+            });
+
+            // Extract creation date from EXIF (only for JPEG/JPG) - KEEP ORIGINAL LOGIC
             if (file.type === "image/jpeg" || file.type === "image/jpg") {
                 // @ts-ignore: type any is fine here
                 EXIF.getData(file, function () {
@@ -70,123 +87,178 @@ export default function PictureUpload({ }: {}) {
                         setCreationDate(new Date(file.lastModified))
                     }
                 });
-            }
-            else {
+            } else {
+                console.log("File format doesn't support EXIF data, using file modification date");
                 setCreationDate(new Date(file.lastModified))
             }
+
+            // Get resolution separately after EXIF extraction
+            const img = new window.Image();
+            img.onload = () => {
+                setImageMetadata(prev => ({
+                    ...prev,
+                    resolution: `${img.width}x${img.height}`
+                }));
+            };
+            img.src = URL.createObjectURL(file);
         }
-        console.log("creationdate: ", creationDate)
     };
 
     return (
-        <div>
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
             <Breadcrumbs>
                 <BreadcrumbItem href="/">Home</BreadcrumbItem>
                 <BreadcrumbItem href="/pictures">Pictures</BreadcrumbItem>
                 <BreadcrumbItem href="">Upload</BreadcrumbItem>
             </Breadcrumbs>
 
-            <h1>Upload your Picture here:</h1>
+            <div className="flex items-center gap-3">
+                <FontAwesomeIcon icon={faImage} className="text-2xl text-primary" />
+                <h1 className="text-3xl font-bold">Upload Picture</h1>
+            </div>
 
-
-            <small>Preview (select file first)</small>
-            <Card className="w-[200px] space-y-5 p-4" radius="lg">
-                <Skeleton>
-                    <div style={{ maxWidth: "250px", height: "250px" }}>
-
+            {/* Enhanced Image Preview */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Image Preview</h2>
+                
+                {!preview ? (
+                    <div className="flex justify-center">
+                        <Card className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 p-8">
+                            <div className="text-center space-y-4">
+                                <FontAwesomeIcon icon={faImage} className="text-4xl text-gray-400" />
+                                <p className="text-gray-500">Select an image file to preview</p>
+                            </div>
+                        </Card>
                     </div>
-                </Skeleton>
-            </Card>
+                ) : (
+                    <div className="space-y-4 flex flex-col items-center">
+                        <Card className="w-full overflow-hidden shadow-lg">
+                            <div className="relative w-full h-[500px] bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <Image
+                                        isZoomed
+                                        as={NextImage}
+                                        src={URL.createObjectURL(preview)}
+                                        alt="Image preview"
+                                        width={1024}
+                                        height={576}
+                                        className="object-contain"
+                                        style={{ 
+                                            width: 'auto',
+                                            maxWidth: '100%'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            
+                            {/* Image Metadata */}
+                            <div className="p-6 bg-gray-50 dark:bg-gray-800">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                                        <FontAwesomeIcon icon={faImage} className="text-blue-500 text-lg" />
+                                        <div className="text-center">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.format || 'Loading...'}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Format</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                                        <FontAwesomeIcon icon={faImage} className="text-green-500 text-lg" />
+                                        <div className="text-center">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.size}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">File Size</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                                        <FontAwesomeIcon icon={faImage} className="text-purple-500 text-lg" />
+                                        <div className="text-center">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.resolution || 'Loading...'}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Resolution</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                                        <FontAwesomeIcon icon={faClock} className="text-orange-500 text-lg" />
+                                        <div className="text-center">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                                {creationDate ? creationDate.toLocaleDateString() : 'Not detected'}
+                                            </div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Created</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+            </div>
 
-            {preview !== null ?
-
-                <div className="picturePreview">
-                    <label htmlFor="preview"></label>
-                    <Image id="preview"
-                        isZoomed
-                        as={NextImage}
-                        src={preview === null ? "" : URL.createObjectURL(preview)}
-                        alt="preview could not be loaded"
-                        width={"1024"} height={"576"}
-                        className="video-player"
-                    />
-                </div>
-                : ""}
-
-            {creationDate ? (
-                <div><p>creationDate: {creationDate.toLocaleDateString()}</p></div>
-            ) : "no creation date"}
-
-
-            <form onSubmit={handleSubmit(onSubmit)}>
-
-                <div className="form-grid">
-
-                    <div className="form-item half-width">
-                        <div className="fileUpload">
-                            <Input type="file" label="Upload File" variant="bordered" isRequired isInvalid={!!errors.img}
-                                aria-invalid={!!errors.img} errorMessage="Please submit a Picture!"
-                                startContent={
-                                    <FontAwesomeIcon icon={faVideo} />
-                                }
-                                accept="image/*" {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} />
-                        </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* File Upload */}
+                    <div className="md:col-span-2">
+                        <Input 
+                            type="file" 
+                            label="Upload Image File" 
+                            variant="bordered" 
+                            isRequired 
+                            isInvalid={!!errors.img}
+                            aria-invalid={!!errors.img} 
+                            errorMessage="Please submit a Picture!"
+                            startContent={<FontAwesomeIcon icon={faImage} />}
+                            accept="image/*" 
+                            {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} 
+                        />
                     </div>
 
-                    <div className="form-item half-width">
-                        <div className="title">
-                            <Input type="text" label="Title" variant="bordered" isRequired
-                                isInvalid={!!errors.title} aria-invalid={!!errors.title} errorMessage="Please enter a valid Title!"
-                                startContent={
-                                    <FontAwesomeIcon icon={faSignature} />
-                                }
-                                {...register("title", { required: true })}
-                            />
-                        </div>
+                    {/* Title */}
+                    <div className="md:col-span-2">
+                        <Input 
+                            type="text" 
+                            label="Title" 
+                            variant="bordered" 
+                            isRequired
+                            isInvalid={!!errors.title} 
+                            aria-invalid={!!errors.title} 
+                            errorMessage="Please enter a valid Title!"
+                            startContent={<FontAwesomeIcon icon={faSignature} />}
+                            {...register("title", { required: true })}
+                        />
                     </div>
 
-                    <div className="form-item full-width">
-                        <div className="description">
-                            <Textarea
-                                label="Description"
-                                placeholder="Enter your description"
-                                variant="bordered"
-                                className="max-w"
-                                maxLength={255}
-                                maxRows={4}
-                                minRows={3}
-                                startContent={
-                                    <FontAwesomeIcon icon={faInfo} />
-                                }
-                                {...register("description")}
-                            />
-                        </div>
+                    {/* Description */}
+                    <div className="md:col-span-2">
+                        <Textarea
+                            label="Description"
+                            placeholder="Enter your description"
+                            variant="bordered"
+                            maxLength={255}
+                            maxRows={4}
+                            minRows={3}
+                            startContent={<FontAwesomeIcon icon={faInfo} />}
+                            {...register("description")}
+                        />
                     </div>
 
-
-
-                    <div className="form-item half-width">
-                        <div className="uploadedBy">
-                            <Select
-                                {...register("uploadedBy", { required: true })}
-                                isRequired
-                                isInvalid={!!errors.uploadedBy}
-                                aria-invalid={!!errors.uploadedBy}
-                                errorMessage={"Please select a User!"}
-                                items={users}
-                                label="Uploaded By"
-                                placeholder="Select a user"
-                                labelPlacement="inside"
-                                variant="bordered"
-                                startContent={
-                                    <FontAwesomeIcon icon={faUser} />
-                                }
-                                classNames={{
-                                    base: "max-w-md",
-                                    trigger: "h-12",
-                                }}
-                                renderValue={(items: SelectedItems<User>) => {
-                                    return items.map((item) => (
+                    {/* Uploaded By */}
+                    <div>
+                        <Select
+                            {...register("uploadedBy", { required: true })}
+                            isRequired
+                            isInvalid={!!errors.uploadedBy}
+                            aria-invalid={!!errors.uploadedBy}
+                            errorMessage={"Please select a User!"}
+                            items={users}
+                            label="Uploaded By"
+                            placeholder="Select a user"
+                            labelPlacement="inside"
+                            variant="bordered"
+                            startContent={<FontAwesomeIcon icon={faUser} />}
+                            classNames={{
+                                base: "w-full",
+                                trigger: "h-14",
+                            }}
+                            renderValue={(items: SelectedItems<User>) => {
+                                return items.map((item) => (
+                                    item.data ? (
                                         <div key={item.key} className="flex items-center gap-2">
                                             <Avatar
                                                 alt={item.data.username}
@@ -194,147 +266,158 @@ export default function PictureUpload({ }: {}) {
                                                 size="sm"
                                                 src={item.data?.profilepicture}
                                             />
-                                            <div className="flex flex-col">
-                                                <span>{item.data.username}</span>
-                                                {/* <span className="text-default-500 text-tiny">({item.data.email})</span> */}
-                                            </div>
+                                            <span className="text-sm">{item.data.username}</span>
                                         </div>
-                                    ));
-                                }}
-                            >
-                                {(user) => (
-                                    <SelectItem key={user.id} textValue={user.username}>
-                                        <div className="flex gap-2 items-center">
-                                            <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                                            <div className="flex flex-col">
-                                                <span className="text-small">{user.username}</span>
-                                                {/* <span className="text-tiny text-default-400">{user.email}</span> */}
-                                            </div>
-                                        </div>
-                                    </SelectItem>
-                                )}
-                            </Select>
-                        </div>
+                                    ) : null
+                                ));
+                            }}
+                        >
+                            {(user) => (
+                                <SelectItem key={user.id} textValue={user.username}>
+                                    <div className="flex gap-2 items-center">
+                                        <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
+                                        <span className="text-small">{user.username}</span>
+                                    </div>
+                                </SelectItem>
+                            )}
+                        </Select>
                     </div>
 
-                    <div className="form-item half-width">
-                        <div className="participants">
-                            <Select
-                                {...register("participants", {
-                                    required: true,
-                                })}
-                                isRequired
-                                aria-invalid={!!errors.participants}
-                                isInvalid={!!errors.participants}
-                                errorMessage={"Please select atleast one User!"}
-                                items={users}
-                                label="Participants"
-                                variant="bordered"
-                                isMultiline={true}
-                                selectionMode="multiple"
-                                placeholder="Select occurring users"
-                                labelPlacement="inside"
-                                startContent={
-                                    <FontAwesomeIcon icon={faUsers} />
-                                }
-                                classNames={{
-                                    base: "max-w-md",
-                                    trigger: "min-h-12 py-2",
-                                }}
-                                renderValue={(items: SelectedItems<User>) => {
-                                    return (
-                                        <div className="flex flex-wrap gap-2">
-                                            {items.map((item) => (
-                                                <Chip key={item.key}>{item.data.username}</Chip>
-                                            ))}
-                                        </div>
-                                    );
-                                }}
-                            >
-                                {(user) => (
-                                    <SelectItem key={user.id} textValue={user.username}>
-                                        <div className="flex gap-2 items-center">
-                                            <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                                            <div className="flex flex-col">
-                                                <span className="text-small">{user.username}</span>
-                                                {/* <span className="text-tiny text-default-400">{user.email}</span> */}
-                                            </div>
-                                        </div>
-                                    </SelectItem>
-                                )}
-                            </Select>
-                        </div>
+                    {/* Participants */}
+                    <div>
+                        <Select
+                            {...register("participants", {
+                                required: true,
+                            })}
+                            isRequired
+                            aria-invalid={!!errors.participants}
+                            isInvalid={!!errors.participants}
+                            errorMessage={"Please select atleast one User!"}
+                            items={users}
+                            label="Participants"
+                            variant="bordered"
+                            isMultiline={true}
+                            selectionMode="multiple"
+                            placeholder="Select occurring users"
+                            labelPlacement="inside"
+                            startContent={<FontAwesomeIcon icon={faUsers} />}
+                            classNames={{
+                                base: "w-full",
+                                trigger: "min-h-12 py-2",
+                            }}
+                            renderValue={(items: SelectedItems<User>) => {
+                                return (
+                                    <div className="flex flex-wrap gap-2">
+                                        {items.map((item) => (
+                                            item.data ? <Chip key={item.key} size="sm">{item.data.username}</Chip> : null
+                                        ))}
+                                    </div>
+                                );
+                            }}
+                        >
+                            {(user) => (
+                                <SelectItem key={user.id} textValue={user.username}>
+                                    <div className="flex gap-2 items-center">
+                                        <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
+                                        <span className="text-small">{user.username}</span>
+                                    </div>
+                                </SelectItem>
+                            )}
+                        </Select>
                     </div>
 
-                    <div className="form-item half-width">
-                        <div className="uploadedAt">
-                            <Controller
-                                name="uploadedAt"
-                                control={control}
-                                rules={{
-                                    required: true,
-                                }}
-                                render={({ field }) => (
-                                    <DateInput
-                                        isRequired
-                                        isInvalid={!!errors.uploadedAt}
-                                        aria-invalid={!!errors.uploadedAt}
-                                        errorMessage={"Please provide a valid Date!"}
-                                        isReadOnly
-                                        startContent={
-                                            <FontAwesomeIcon icon={faUpload} />
-                                        }
-                                        label="Uploaded At"
-                                        variant="bordered"
-                                        className="max-w-md"
-                                        defaultValue={fromDate(field.value, getLocalTimeZone())}
-                                    />
-                                )}
-                            />
-                        </div>
+                    {/* Uploaded At */}
+                    <div>
+                        <Controller
+                            name="uploadedAt"
+                            control={control}
+                            rules={{
+                                required: true,
+                            }}
+                            render={({ field }) => (
+                                <DateInput
+                                    isRequired
+                                    isInvalid={!!errors.uploadedAt}
+                                    aria-invalid={!!errors.uploadedAt}
+                                    errorMessage={"Please provide a valid Date!"}
+                                    isReadOnly
+                                    startContent={<FontAwesomeIcon icon={faUpload} />}
+                                    label="Uploaded At"
+                                    variant="bordered"
+                                    className="w-full"
+                                    defaultValue={fromDate(field.value, getLocalTimeZone())}
+                                />
+                            )}
+                        />
                     </div>
 
-
-                    <div className="form-item half-width">
-                        <div className="createdAt">
-                            <Controller
-                                name="createdAt"
-                                control={control}
-                                rules={{
-                                    required: true,
-                                }}
-                                render={({ field }) => (
-                                    <DateInput
-                                        isRequired
-                                        isInvalid={!!errors.createdAt}
-                                        aria-invalid={!!errors.createdAt}
-                                        errorMessage={"Please provide a valid Date!"}
-                                        isReadOnly
-                                        startContent={
-                                            <FontAwesomeIcon icon={faCalendarPlus} />
-                                        }
-                                        label="Created At"
-                                        value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
-                                        onChange={field.onChange}
-                                        variant="bordered"
-                                        className="max-w-md"
-                                    />
-                                )}
-                            />
-                        </div>
+                    {/* Created At */}
+                    <div className="space-y-2">
+                        <Controller
+                            name="createdAt"
+                            control={control}
+                            rules={{
+                                required: true,
+                            }}
+                            defaultValue={creationDate ? creationDate : undefined}
+                            render={({ field }) => (
+                                <DateInput
+                                    isRequired
+                                    isReadOnly={!manualDateOverride}
+                                    isInvalid={!!errors.createdAt}
+                                    aria-invalid={!!errors.createdAt}
+                                    errorMessage={"Please provide a valid Date!"}
+                                    startContent={<FontAwesomeIcon icon={faCalendarPlus} />}
+                                    label="Created At"
+                                    value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
+                                    onChange={field.onChange}
+                                    variant="bordered"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        
+                        {/* Manual Date Override Checkbox */}
+                        <Checkbox
+                            isSelected={manualDateOverride}
+                            onValueChange={setManualDateOverride}
+                            size="sm"
+                        >
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                                I know the original date and want to set it manually
+                            </span>
+                        </Checkbox>
                     </div>
-
                 </div>
 
-                <Button type="submit" color="success" variant="bordered"
-                    startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
-                    onClick={() => { trigger() }}>
-                    Submit
-                </Button>
-
+                {/* Submit Button */}
+                <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <Button 
+                        type="submit" 
+                        color="primary" 
+                        size="lg"
+                        startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                        onClick={() => { trigger() }}
+                        className="px-8"
+                    >
+                        Upload Picture
+                    </Button>
+                </div>
             </form>
 
-            <span>value: {JSON.stringify(watch("createdAt"))}</span>
+            {/* Debug Info - Keep for now */}
+            <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <h3 className="text-sm font-semibold mb-2">Debug Info:</h3>
+                <div className="text-xs space-y-1">
+                    <p>Created at value: {JSON.stringify(watch("createdAt"))}</p>
+                    <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(errors, (key, value) => {
+                            if (key === "ref") return undefined;
+                            return value;
+                        }, 2)}
+                    </pre>
+                </div>
+            </div>
         </div>
     )
 }
