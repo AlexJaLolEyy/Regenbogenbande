@@ -5,7 +5,7 @@ import React from "react";
 export default async function Page({ params }: { params: { id: number } }) {
 
   // parse the received date string back to type Date
-  var selectedVideo = await getVideoById(params.id);
+  const selectedVideo = await getVideoById(params.id);
   selectedVideo.uploadedAt = new Date(selectedVideo.uploadedAt);
   selectedVideo.createdAt = new Date(selectedVideo.createdAt);
 
