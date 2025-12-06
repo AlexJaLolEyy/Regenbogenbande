@@ -1,0 +1,241 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MODEL
+// ============================================
+// This will eventually integrate with Auth.js
+// For now, we keep it simple but extensible
+model User {
+  id             String  @id @default(cuid()) // Changed from number to String (cuid is better for distributed systems)
+  username       String  @unique // Username must be unique
+  email          String? @unique // Optional email for Auth.js later
+  password       String? // Will be removed when Auth.js is added (handled by auth provider)
+  profilePicture String? // URL/path to profile picture
+
+  // Relationships - these define how User connects to other models
+  uploadedVideos   Video[]   @relation("VideoUploader")
+  uploadedPictures Picture[] @relation("PictureUploader")
+  uploadedQuotes   Quote[]   @relation("QuoteUploader")
+
+  // Many-to-many relationships (participants)
+  videoParticipants   VideoParticipant[]
+  pictureParticipants PictureParticipant[]
+  quoteParticipants   QuoteParticipant[]
+
+  // Ratings given by this user
+  ratings Rating[]
+
+  // Quote messages written by this user (implicit relation - needed for Prisma)
+  quoteMessages QuoteMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users") // Maps to "users" table in database
+}
+
+// ============================================
+// VIDEO MODEL
+// ============================================
+model Video {
+  id           String  @id @default(cuid())
+  title        String
+  description  String? // Optional description
+  videoUrl     String // URL to video file (in R2/S3 later, local path for now)
+  thumbnailUrl String // URL to thumbnail image
+
+  // Foreign keys - who uploaded this
+  uploadedById String
+  uploadedBy   User   @relation("VideoUploader", fields: [uploadedById], references: [id])
+
+  // Timestamps
+  uploadedAt DateTime @default(now()) // When uploaded to platform
+  createdAt  DateTime // Original creation date from metadata (when video was originally created)
+
+  // Relationships
+  participants VideoParticipant[]
+  ratings      Rating[]
+
+  // Metadata (stored directly, not in separate table for simplicity)
+  views Int @default(0)
+
+  updatedAt DateTime @updatedAt // Auto-updated when record changes
+
+  @@index([uploadedById]) // Index for faster queries
+  @@index([createdAt]) // Index for sorting by date
+  @@map("videos")
+}
+
+// ============================================
+// PICTURE MODEL
+// ============================================
+model Picture {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String // URL to image file
+
+  uploadedById String
+  uploadedBy   User   @relation("PictureUploader", fields: [uploadedById], references: [id])
+
+  uploadedAt DateTime @default(now()) // When uploaded to platform
+  createdAt  DateTime // Original creation date from metadata
+
+  participants PictureParticipant[]
+  ratings      Rating[]
+
+  views Int @default(0)
+
+  updatedAt DateTime @updatedAt // Auto-updated when record changes
+
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@map("pictures")
+}
+
+// ============================================
+// QUOTE MODEL
+// ============================================
+model Quote {
+  id String @id @default(cuid())
+
+  uploadedById String
+  uploadedBy   User   @relation("QuoteUploader", fields: [uploadedById], references: [id])
+
+  uploadedAt DateTime @default(now()) // When uploaded to platform
+  createdAt  DateTime // Original creation date from metadata
+
+  participants QuoteParticipant[]
+  ratings      Rating[]
+  messages     QuoteMessage[] // The actual quote messages
+
+  views Int @default(0)
+
+  updatedAt DateTime @updatedAt // Auto-updated when record changes
+
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@map("quotes")
+}
+
+// ============================================
+// QUOTE MESSAGE MODEL
+// ============================================
+// Each quote has multiple messages (chat history)
+model QuoteMessage {
+  id      String @id @default(cuid())
+  message String // The actual quote text
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) // When this message was created
+
+  @@index([quoteId])
+  @@index([userId])
+  @@map("quote_messages")
+}
+
+// ============================================
+// RATING MODEL
+// ============================================
+// Separate table for ratings (can rate videos, pictures, quotes)
+model Rating {
+  id    String @id @default(cuid())
+  value Float // Rating value (e.g., 1.0 to 5.0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Polymorphic relations - rating can be for Video, Picture, or Quote
+  videoId String?
+  video   Video?  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  pictureId String?
+  picture   Picture? @relation(fields: [pictureId], references: [id], onDelete: Cascade)
+
+  quoteId String?
+  quote   Quote?  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure one rating per user per item
+  @@unique([userId, videoId])
+  @@unique([userId, pictureId])
+  @@unique([userId, quoteId])
+  @@index([videoId])
+  @@index([pictureId])
+  @@index([quoteId])
+  @@map("ratings")
+}
+
+// ============================================
+// MANY-TO-MANY JUNCTION TABLES
+// ============================================
+// These handle the "participants" relationship
+// (Many users can participate in many videos/pictures/quotes)
+
+model VideoParticipant {
+  id String @id @default(cuid())
+
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([videoId, userId]) // One user can only be participant once per video
+  @@index([videoId])
+  @@index([userId])
+  @@map("video_participants")
+}
+
+model PictureParticipant {
+  id String @id @default(cuid())
+
+  pictureId String
+  picture   Picture @relation(fields: [pictureId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([pictureId, userId])
+  @@index([pictureId])
+  @@index([userId])
+  @@map("picture_participants")
+}
+
+model QuoteParticipant {
+  id String @id @default(cuid())
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([quoteId, userId])
+  @@index([quoteId])
+  @@index([userId])
+  @@map("quote_participants")
+}
