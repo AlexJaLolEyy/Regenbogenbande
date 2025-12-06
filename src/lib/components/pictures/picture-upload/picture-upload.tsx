@@ -33,6 +33,12 @@ export default function PictureUpload() {
     const [creationDate, setCreationDate] = useState<Date | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [manualDateOverride, setManualDateOverride] = useState(false);
+    const [optimizeImage, setOptimizeImage] = useState(true);
+    const [uploadStats, setUploadStats] = useState<{
+        originalSize?: string;
+        finalSize?: string;
+        sizeReduction?: string;
+    }>({});
     const [imageMetadata, setImageMetadata] = useState<{
         size?: string;
         resolution?: string;
@@ -56,10 +62,70 @@ export default function PictureUpload() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    const onSubmit: SubmitHandler<UploadPicture> = (data) => {
+    const onSubmit: SubmitHandler<UploadPicture> = async (data) => {
         console.log("errors: ", errors);
         console.log("data: ", data);
-        // TODO: implement adding new picture to file system
+
+        if (!preview) {
+            console.error("No image file selected");
+            return;
+        }
+
+        try {
+            // Use FormData to send the file
+            const formData = new FormData();
+            formData.append('image', preview);
+            formData.append('optimize', optimizeImage.toString());
+            formData.append('title', data.title); // Pass title for filename generation
+
+            const uploadResponse = await fetch('/api/upload-picture', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+                const errorData = await uploadResponse.json();
+                console.error('Image upload failed:', errorData);
+                return;
+            }
+
+            const uploadResult = await uploadResponse.json();
+            console.log('Upload result:', uploadResult);
+
+            // Display optimization stats if available
+            if (uploadResult.originalSize && uploadResult.finalSize) {
+                setUploadStats({
+                    originalSize: formatFileSize(uploadResult.originalSize),
+                    finalSize: formatFileSize(uploadResult.finalSize),
+                    sizeReduction: formatFileSize(uploadResult.sizeReduction || 0),
+                });
+            }
+
+            // Get image path from API response
+            const imagePath = uploadResult.path || `/examplePictures/${preview.name}`;
+
+            // Strip File object from data before sending to Server Action
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { img, ...metadata } = data;
+            const pictureData = {
+                ...metadata,
+                id: 0, // Will be auto-generated
+            };
+
+            // Import createPicture dynamically to avoid issues
+            const { createPicture } = await import('@/src/app/(content)/pictures/(detail)/upload/actions');
+            await createPicture(pictureData, imagePath);
+        } catch (error: unknown) {
+            // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
+            if (error && typeof error === 'object' && 'digest' in error) {
+                const digest = (error as { digest?: string }).digest;
+                if (digest?.startsWith('NEXT_REDIRECT')) {
+                    // This is expected - redirect() throws this error
+                    return;
+                }
+            }
+            console.error('Picture upload error:', error);
+        }
     }
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,7 +266,7 @@ export default function PictureUpload() {
                             label="Upload Image File" 
                             variant="bordered" 
                             isRequired 
-                            isInvalid={!!errors.img}
+                            isInvalid={!!errors.img} 
                             aria-invalid={!!errors.img} 
                             errorMessage="Please submit a Picture!"
                             startContent={<FontAwesomeIcon icon={faImage} />}
@@ -208,6 +274,45 @@ export default function PictureUpload() {
                             {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} 
                         />
                     </div>
+
+                    {/* Optimization Toggle */}
+                    <div className="md:col-span-2">
+                        <Checkbox
+                            isSelected={optimizeImage}
+                            onValueChange={setOptimizeImage}
+                            size="md"
+                        >
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium">Optimize Image</span>
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    Automatically compress large images (&gt;1MB) and convert PNG to WebP for better compression
+                                </span>
+                            </div>
+                        </Checkbox>
+                    </div>
+
+                    {/* Upload Stats */}
+                    {uploadStats.originalSize && uploadStats.finalSize && (
+                        <div className="md:col-span-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                            <h3 className="text-sm font-semibold mb-2 text-green-800 dark:text-green-200">
+                                Optimization Results
+                            </h3>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <div className="text-gray-600 dark:text-gray-400">Original Size</div>
+                                    <div className="font-semibold">{uploadStats.originalSize}</div>
+                                </div>
+                                <div>
+                                    <div className="text-gray-600 dark:text-gray-400">Final Size</div>
+                                    <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.finalSize}</div>
+                                </div>
+                                <div>
+                                    <div className="text-gray-600 dark:text-gray-400">Saved</div>
+                                    <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.sizeReduction}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Title */}
                     <div className="md:col-span-2">

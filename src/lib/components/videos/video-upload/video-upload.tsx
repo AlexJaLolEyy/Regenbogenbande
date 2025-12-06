@@ -32,6 +32,12 @@ export default function VideoUpload() {
   const [creationDate, setCreationDate] = useState<Date | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [manualDateOverride, setManualDateOverride] = useState(false);
+  const [optimizeVideo, setOptimizeVideo] = useState(false);
+  const [uploadStats, setUploadStats] = useState<{
+    originalSize?: string;
+    finalSize?: string;
+    sizeReduction?: string;
+  }>({});
   const [videoMetadata, setVideoMetadata] = useState<{
     duration?: number;
     size?: string;
@@ -128,22 +134,65 @@ export default function VideoUpload() {
     console.log("errors: ", errors);
     console.log("data: ", data);
 
-    // Use FormData to send the file
-    const formData = new FormData();
-    if (preview) {
-      formData.append('video', preview);
+    if (!preview) {
+      console.error('No video file selected');
+      return;
     }
 
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      // Use FormData to send the file
+      const formData = new FormData();
+      formData.append('video', preview);
+      formData.append('optimize', optimizeVideo.toString());
+      formData.append('title', data.title); // Pass title for filename generation
 
-    if (response.ok) {
-      const result = await response.json();
-      console.log(result.message);
-    } else {
-      console.error('File upload failed');
+      const apiEndpoint = optimizeVideo ? '/api/compress' : '/api/upload';
+      const uploadResponse = await fetch(apiEndpoint, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        console.error('File upload failed:', errorData);
+        return;
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log('Upload result:', uploadResult);
+
+      // Display optimization stats if available
+      if (uploadResult.originalSize && uploadResult.finalSize) {
+        setUploadStats({
+          originalSize: uploadResult.originalSize,
+          finalSize: uploadResult.finalSize,
+          sizeReduction: uploadResult.sizeReduction,
+        });
+      }
+
+      // Get video path and thumbnail path from API response
+      const videoPath = uploadResult.path || `/exampleVideos/${preview.name}`;
+      const thumbnailPath = uploadResult.thumbnailPath || `/exampleThumbnails/placeholder.png`;
+
+      // Strip File objects from data before sending to Server Action
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { video, thumbnail, ...metadata } = data;
+      const videoData = {
+        ...metadata,
+        id: 0, // Will be auto-generated
+      };
+
+      // Import createVideo dynamically to avoid issues
+      const { createVideo } = await import('@/src/app/(content)/videos/(detail)/upload/actions');
+      await createVideo(videoData, videoPath, thumbnailPath);
+    } catch (error: unknown) {
+      // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
+      if (error && typeof error === 'object' && 'digest' in error && 
+          typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+        // This is normal - redirect() throws this error
+        return;
+      }
+      console.error('Error uploading video:', error);
     }
   }
 
@@ -422,6 +471,44 @@ export default function VideoUpload() {
             </Checkbox>
           </div>
         </div>
+
+        {/* Video Optimization Option */}
+        {preview && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <Checkbox
+              isSelected={optimizeVideo}
+              onValueChange={setOptimizeVideo}
+              size="md"
+              classNames={{
+                label: "text-sm font-medium text-gray-900 dark:text-gray-100"
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                <span>Optimize video size (reduce file size)</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 font-normal">
+                  Compresses video to reduce storage costs. May slightly reduce quality.
+                  {preview && (
+                    <span className="block mt-1">
+                      Original: {formatFileSize(preview.size)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </Checkbox>
+            {uploadStats.originalSize && uploadStats.finalSize && (
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-1">
+                  Optimization Results:
+                </p>
+                <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
+                  <p>Original size: {uploadStats.originalSize}</p>
+                  <p>Optimized size: {uploadStats.finalSize}</p>
+                  <p className="font-semibold">Size reduction: {uploadStats.sizeReduction}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Submit Button */}
         <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
