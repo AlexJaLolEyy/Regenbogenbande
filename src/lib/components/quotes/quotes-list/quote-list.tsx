@@ -1,33 +1,50 @@
 'use client'
 
-import { BreadcrumbItem, Breadcrumbs } from "@heroui/react";
+import { BreadcrumbItem, Breadcrumbs, Button } from "@heroui/react";
 import Link from "next/link";
 import { Quote } from "../../../types/types";
 import QuoteComponent from "../quote/quote";
-import "./quote-list.css";
 
-// TODO: remove the "?" from quotes and supply data from page"
 export default function QuoteList({ quotes }: { quotes: Quote[] }) {
-
     return (
-        <div>
-
-            <Breadcrumbs>
+        <div className="max-w-[1600px] mx-auto px-6 py-8">
+            <Breadcrumbs className="mb-6">
                 <BreadcrumbItem href="/">Home</BreadcrumbItem>
                 <BreadcrumbItem href="/quotes">Quotes</BreadcrumbItem>
             </Breadcrumbs>
 
-            <h1>Select a Video!</h1>
-            <h2><Link href="/quotes/upload">Go to Upload</Link></h2>
-
-            <div className="quoteList">
-                {quotes != null && quotes != undefined ?
-                    quotes.map((quote) => (
-                        <div key={quote.id}>
-                            <QuoteComponent quote={quote}></QuoteComponent>
-                        </div>
-                    )) : ""}
+            <div className="flex justify-between items-center my-6">
+                <h1 className="text-3xl font-semibold">Quotes</h1>
+                <Button
+                    as={Link}
+                    href="/quotes/upload"
+                    color="primary"
+                    variant="flat"
+                >
+                    Upload Quote
+                </Button>
             </div>
+
+            {quotes && quotes.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {quotes.map((quote) => (
+                        <QuoteComponent key={quote.id} quote={quote} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                    <p className="text-default-500 text-lg">No quotes available yet.</p>
+                    <Button
+                        as={Link}
+                        href="/quotes/upload"
+                        color="primary"
+                        variant="flat"
+                        className="mt-4"
+                    >
+                        Upload First Quote
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }
