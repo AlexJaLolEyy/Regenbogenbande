@@ -13,6 +13,7 @@
     "migrate:all": "bun run scripts/migrate-videos.ts && bun run scripts/migrate-pictures.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@aws-sdk/client-s3": "^3.939.0",
     "@aws-sdk/s3-request-presigner": "^3.939.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
@@ -23,6 +24,7 @@
     "@internationalized/date": "^3.8.0",
     "@prisma/client": "^6.19.0",
     "@tailwindcss/postcss": "^4.1.7",
+    "bcrypt": "^6.0.0",
     "classnames": "^2.5.1",
     "exif-js": "^2.3.0",
     "framer-motion": "^12.23.3",
@@ -30,6 +32,7 @@
     "motion": "^12.10.1",
     "mp4box": "^1.4.2",
     "next": "15.3.6",
+    "next-auth": "^5.0.0-beta.30",
     "prisma": "^6.19.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -39,6 +42,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^24.0.13",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.3",
