@@ -11,16 +11,26 @@ datasource db {
 }
 
 // ============================================
+// ROLE ENUM (for Auth.js)
+// ============================================
+enum Role {
+  admin
+  member
+  viewer
+}
+
+// ============================================
 // USER MODEL
 // ============================================
-// This will eventually integrate with Auth.js
-// For now, we keep it simple but extensible
+// Integrated with Auth.js (NextAuth v5)
 model User {
-  id             String  @id @default(cuid()) // Changed from number to String (cuid is better for distributed systems)
-  username       String  @unique // Username must be unique
-  email          String? @unique // Optional email for Auth.js later
-  password       String? // Will be removed when Auth.js is added (handled by auth provider)
-  profilePicture String? // URL/path to profile picture
+  id             String    @id @default(cuid())
+  username       String    @unique
+  email          String?   @unique
+  emailVerified  DateTime? // Required for Auth.js
+  password       String? // Hashed password for credentials provider
+  profilePicture String?
+  role           Role      @default(member) // Role-based access control
 
   // Relationships - these define how User connects to other models
   uploadedVideos   Video[]   @relation("VideoUploader")
@@ -35,8 +45,12 @@ model User {
   // Ratings given by this user
   ratings Rating[]
 
-  // Quote messages written by this user (implicit relation - needed for Prisma)
+  // Quote messages written by this user
   quoteMessages QuoteMessage[]
+
+  // Auth.js relations
+  accounts Account[]
+  sessions Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -80,10 +94,11 @@ model Video {
 // PICTURE MODEL
 // ============================================
 model Picture {
-  id          String  @id @default(cuid())
-  title       String
-  description String?
-  imageUrl    String // URL to image file
+  id           String  @id @default(cuid())
+  title        String
+  description  String?
+  imageUrl     String // URL to image file
+  thumbnailUrl String? // URL to thumbnail image (400px for list views)
 
   uploadedById String
   uploadedBy   User   @relation("PictureUploader", fields: [uploadedById], references: [id])
@@ -238,4 +253,42 @@ model QuoteParticipant {
   @@index([quoteId])
   @@index([userId])
   @@map("quote_participants")
+}
+
+// ============================================
+// AUTH.JS MODELS
+// ============================================
+// Required models for NextAuth v5 with Prisma adapter
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
