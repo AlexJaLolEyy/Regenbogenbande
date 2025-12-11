@@ -3,6 +3,7 @@
 import { BreadcrumbItem, Breadcrumbs, Button, Spinner } from "@heroui/react";
 import Link from "next/link";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import type { Video } from "../../../types/types";
 import VideoComponent from "../video/video";
 
@@ -16,16 +17,16 @@ export default function VideoList({ initialVideos }: { initialVideos: Video[] })
 
   const loadMore = async () => {
     if (loading || !hasMore) return;
-    
+
     setLoading(true);
     try {
       const response = await fetch(`/api/videos?page=${page + 1}&limit=${VIDEOS_PER_PAGE}`);
       const newVideos = await response.json();
-      
+
       if (newVideos.length < VIDEOS_PER_PAGE) {
         setHasMore(false);
       }
-      
+
       setVideos(prev => [...prev, ...newVideos]);
       setPage(prev => prev + 1);
     } catch (error) {
@@ -34,6 +35,11 @@ export default function VideoList({ initialVideos }: { initialVideos: Video[] })
       setLoading(false);
     }
   };
+
+  // Check for session to determine role
+  const { data: session } = useSession();
+  // @ts-expect-error Role is added by adapter
+  const canUpload = session?.user?.role === "admin" || session?.user?.role === "member";
 
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-8">
@@ -44,14 +50,16 @@ export default function VideoList({ initialVideos }: { initialVideos: Video[] })
 
       <div className="flex justify-between items-center my-6">
         <h1 className="text-3xl font-semibold">Videos</h1>
-        <Button
-          as={Link}
-          href="/videos/upload"
-          color="primary"
-          variant="flat"
-        >
-          Upload Video
-        </Button>
+        {canUpload && (
+          <Button
+            as={Link}
+            href="/videos/upload"
+            color="primary"
+            variant="flat"
+          >
+            Upload Video
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-8">

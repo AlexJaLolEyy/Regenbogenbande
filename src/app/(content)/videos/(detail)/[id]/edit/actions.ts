@@ -1,8 +1,9 @@
 "use server"
 
-import { editVideo, getUserById, logData } from '@/src/app/current-storage/storage';
-import { UploadVideo, User, Video } from '@/src/lib/types/types';
+import { editVideo, getUserById } from '@/src/app/current-storage/storage';
+import { UploadVideo, Video } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
+import { checkUploadPermission } from '@/src/lib/auth-utils';
 
 
 export async function parseUploadVideoToBackend(video: UploadVideo): Promise<Video> {
@@ -12,7 +13,7 @@ export async function parseUploadVideoToBackend(video: UploadVideo): Promise<Vid
 
     if ((typeof video.participants) === "string") {
 
-        const userIds = video.participants.split(",");
+        const userIds = (video.participants as string).split(",");
         const mappedUser = userIds.map((userid: string) => {
             return getUserById(parseInt(userid)); // Return the promise directly
         });
@@ -26,7 +27,7 @@ export async function parseUploadVideoToBackend(video: UploadVideo): Promise<Vid
             });
     }
 
-    if((typeof video.uploadedBy) === "string") {
+    if ((typeof video.uploadedBy) === "string") {
         video.uploadedBy = await getUserById(video.uploadedBy);
     }
 
@@ -37,11 +38,12 @@ export async function parseUploadVideoToBackend(video: UploadVideo): Promise<Vid
 }
 
 export async function updateVideo(video: UploadVideo) {
+    await checkUploadPermission();
     try {
         editVideo(await parseUploadVideoToBackend(video));
         redirect(`/videos/${video.id}/`);
     }
     catch (error) {
         console.error("Error updating the video : ", error);
-    }  
+    }
 }

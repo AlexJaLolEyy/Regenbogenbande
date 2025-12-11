@@ -4,13 +4,14 @@ import { addVideo, getUserById } from '@/src/app/current-storage/storage';
 import { UploadVideo, User, Video } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
 import { getAllVideos } from '@/src/app/current-storage/storage';
+import { checkUploadPermission } from '@/src/lib/auth-utils';
 
 /**
  * Type for video metadata without File objects (for Server Actions)
  */
 type VideoMetadata = Omit<UploadVideo, 'video' | 'thumbnail'> & {
-  video?: never; // Explicitly exclude File
-  thumbnail?: never; // Explicitly exclude File
+    video?: never; // Explicitly exclude File
+    thumbnail?: never; // Explicitly exclude File
 };
 
 /**
@@ -20,7 +21,7 @@ type VideoMetadata = Omit<UploadVideo, 'video' | 'thumbnail'> & {
 export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath: string, thumbnailPath: string): Promise<Video> {
     // Handle participants - can be string IDs or User objects
     let participants: User[] = [];
-    
+
     if (typeof video.participants === "string") {
         // If it's a string, split by comma and fetch each user
         const participantsStr = video.participants as string;
@@ -47,7 +48,7 @@ export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath:
     if (!videoId || videoId === 0) {
         // Get the highest existing ID and add 1
         const allVideos = await getAllVideos();
-        const maxId = allVideos.length > 0 
+        const maxId = allVideos.length > 0
             ? Math.max(...allVideos.map(v => v.id))
             : 0;
         videoId = maxId + 1;
@@ -78,12 +79,13 @@ export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath:
  * Note: video parameter should NOT contain File objects (they cause body size limit errors)
  */
 export async function createVideo(video: VideoMetadata, videoPath: string, thumbnailPath: string) {
+    await checkUploadPermission();
     // Parse and convert UploadVideo to Video
     const videoData = await parseUploadVideoToBackend(video, videoPath, thumbnailPath);
-    
+
     // Add to database (await it!)
     await addVideo(videoData);
-    
+
     // Redirect to the video detail page
     // Note: redirect() throws a special NEXT_REDIRECT error that Next.js handles
     // This is normal behavior, not an actual error

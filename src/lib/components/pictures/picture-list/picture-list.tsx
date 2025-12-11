@@ -3,6 +3,7 @@
 import { BreadcrumbItem, Breadcrumbs, Button, Spinner } from "@heroui/react";
 import Link from "next/link";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Picture } from "../../../types/types";
 import PictureComponent from "../picture/picture";
 
@@ -16,16 +17,16 @@ export default function PictureList({ initialPictures }: { initialPictures: Pict
 
   const loadMore = async () => {
     if (loading || !hasMore) return;
-    
+
     setLoading(true);
     try {
       const response = await fetch(`/api/pictures?page=${page + 1}&limit=${PICTURES_PER_PAGE}`);
       const newPictures = await response.json();
-      
+
       if (newPictures.length < PICTURES_PER_PAGE) {
         setHasMore(false);
       }
-      
+
       setPictures(prev => [...prev, ...newPictures]);
       setPage(prev => prev + 1);
     } catch (error) {
@@ -34,6 +35,10 @@ export default function PictureList({ initialPictures }: { initialPictures: Pict
       setLoading(false);
     }
   };
+
+  const { data: session } = useSession();
+  // @ts-expect-error Role is added by adapter
+  const canUpload = session?.user?.role === "admin" || session?.user?.role === "member";
 
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-8">
@@ -44,14 +49,16 @@ export default function PictureList({ initialPictures }: { initialPictures: Pict
 
       <div className="flex justify-between items-center my-6">
         <h1 className="text-3xl font-semibold">Pictures</h1>
-        <Button
-          as={Link}
-          href="/pictures/upload"
-          color="primary"
-          variant="flat"
-        >
-          Upload Picture
-        </Button>
+        {canUpload && (
+          <Button
+            as={Link}
+            href="/pictures/upload"
+            color="primary"
+            variant="flat"
+          >
+            Upload Picture
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-8">

@@ -4,6 +4,7 @@ import { addQuote, getUserById } from '@/src/app/current-storage/storage';
 import { Quote, User } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
 import { getAllQuotes } from '@/src/app/current-storage/storage';
+import { checkUploadPermission } from '@/src/lib/auth-utils';
 
 interface Message {
   userId: string;
@@ -21,6 +22,7 @@ interface QuoteFormData {
  * Creates a quote in the database
  */
 export async function createQuote(data: QuoteFormData) {
+  await checkUploadPermission();
   // Handle uploadedBy - can be string ID or User object
   let uploadedBy: User;
   if (typeof data.uploadedBy === "string") {
@@ -52,7 +54,7 @@ export async function createQuote(data: QuoteFormData) {
 
   // Generate a new ID if not provided
   const allQuotes = await getAllQuotes();
-  const maxId = allQuotes.length > 0 
+  const maxId = allQuotes.length > 0
     ? Math.max(...allQuotes.map(q => typeof q.id === 'number' ? q.id : parseInt(q.id.toString())))
     : 0;
   const quoteId = maxId + 1;
