@@ -32,11 +32,13 @@ export default function VideoUpload() {
   const [creationDate, setCreationDate] = useState<Date | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [manualDateOverride, setManualDateOverride] = useState(false);
-  const [optimizeVideo, setOptimizeVideo] = useState(false);
+  const [compressVideo, setCompressVideo] = useState(true); // Default to ON for adaptive compression
+  const [qualityMode, setQualityMode] = useState(false); // Quality mode uses CRF 20 instead of 24
   const [uploadStats, setUploadStats] = useState<{
     originalSize?: string;
     finalSize?: string;
     sizeReduction?: string;
+    method?: string;
   }>({});
   const [videoMetadata, setVideoMetadata] = useState<{
     duration?: number;
@@ -65,7 +67,7 @@ export default function VideoUpload() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -113,7 +115,7 @@ export default function VideoUpload() {
     if (file) {
       setPreview(file);
       getCreationDate(file);
-      
+
       // Extract video metadata
       const video = document.createElement('video');
       video.preload = 'metadata';
@@ -125,7 +127,7 @@ export default function VideoUpload() {
         });
       };
       video.src = URL.createObjectURL(file);
-      
+
       console.log("file: ", file);
     }
   };
@@ -143,11 +145,12 @@ export default function VideoUpload() {
       // Use FormData to send the file
       const formData = new FormData();
       formData.append('video', preview);
-      formData.append('optimize', optimizeVideo.toString());
       formData.append('title', data.title); // Pass title for filename generation
+      formData.append('compress', compressVideo.toString());
+      formData.append('qualityMode', qualityMode.toString());
 
-      const apiEndpoint = optimizeVideo ? '/api/compress' : '/api/upload';
-      const uploadResponse = await fetch(apiEndpoint, {
+      // Always use compress endpoint - it handles compression or pass-through
+      const uploadResponse = await fetch('/api/compress', {
         method: 'POST',
         body: formData,
       });
@@ -162,11 +165,12 @@ export default function VideoUpload() {
       console.log('Upload result:', uploadResult);
 
       // Display optimization stats if available
-      if (uploadResult.originalSize && uploadResult.finalSize) {
+      if (uploadResult.original && uploadResult.result) {
         setUploadStats({
-          originalSize: uploadResult.originalSize,
-          finalSize: uploadResult.finalSize,
-          sizeReduction: uploadResult.sizeReduction,
+          originalSize: uploadResult.original.sizeMB + ' MB',
+          finalSize: uploadResult.result.sizeMB + ' MB',
+          sizeReduction: uploadResult.result.reduction,
+          method: uploadResult.result.method,
         });
       }
 
@@ -187,8 +191,8 @@ export default function VideoUpload() {
       await createVideo(videoData, videoPath, thumbnailPath);
     } catch (error: unknown) {
       // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
-      if (error && typeof error === 'object' && 'digest' in error && 
-          typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      if (error && typeof error === 'object' && 'digest' in error &&
+        typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         // This is normal - redirect() throws this error
         return;
       }
@@ -212,7 +216,7 @@ export default function VideoUpload() {
       {/* Enhanced Video Preview */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Video Preview</h2>
-        
+
         {!preview ? (
           <div className="flex justify-center">
             <Card className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 p-8">
@@ -225,15 +229,15 @@ export default function VideoUpload() {
         ) : (
           <div className="space-y-4 flex flex-col items-center">
             <Card className="w-full overflow-hidden shadow-lg">
-              <video 
-                className="w-full h-auto rounded-t-lg" 
-                controls 
+              <video
+                className="w-full h-auto rounded-t-lg"
+                controls
                 key={preview.name}
                 poster={URL.createObjectURL(preview)}
               >
                 <source src={URL.createObjectURL(preview)} type="video/mp4" />
               </video>
-              
+
               {/* Video Metadata */}
               <div className="p-6 bg-gray-50 dark:bg-gray-800">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
@@ -278,32 +282,32 @@ export default function VideoUpload() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* File Upload */}
           <div className="md:col-span-2">
-            <Input 
-              type="file" 
-              variant="bordered" 
-              label="Upload Video File" 
-              isRequired 
-              isInvalid={!!errors.video} 
-              aria-invalid={!!errors.video} 
+            <Input
+              type="file"
+              variant="bordered"
+              label="Upload Video File"
+              isRequired
+              isInvalid={!!errors.video}
+              aria-invalid={!!errors.video}
               errorMessage={"Please submit a Video!"}
-              accept="video/*" 
-              {...register("video", { required: true, onChange: (e) => handleFileChange(e) })} 
+              accept="video/*"
+              {...register("video", { required: true, onChange: (e) => handleFileChange(e) })}
             />
           </div>
 
           {/* Title */}
           <div className="md:col-span-2">
-            <Input 
-              type="text" 
-              tabIndex={1} 
+            <Input
+              type="text"
+              tabIndex={1}
               aria-invalid={!!errors.title}
-              isRequired 
-              isClearable 
-              label="Title" 
-              variant="bordered" 
-              labelPlacement="inside" 
-              isInvalid={!!errors.title} 
-              errorMessage="Please enter a valid Title!" 
+              isRequired
+              isClearable
+              label="Title"
+              variant="bordered"
+              labelPlacement="inside"
+              isInvalid={!!errors.title}
+              errorMessage="Please enter a valid Title!"
               placeholder="Enter your Title"
               {...register("title", { required: true })}
             />
@@ -458,7 +462,7 @@ export default function VideoUpload() {
                 />
               )}
             />
-            
+
             {/* Manual Date Override Checkbox */}
             <Checkbox
               isSelected={manualDateOverride}
@@ -472,38 +476,59 @@ export default function VideoUpload() {
           </div>
         </div>
 
-        {/* Video Optimization Option */}
+        {/* Video Compression Options */}
         {preview && (
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
+            {/* Adaptive Compression Info */}
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Adaptive Compression (CRF 24)
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Smart compression that balances quality and file size. Falls back to CRF 26 if needed.
+                </p>
+              </div>
+            </div>
+
+            {/* Quality Mode Toggle */}
             <Checkbox
-              isSelected={optimizeVideo}
-              onValueChange={setOptimizeVideo}
+              isSelected={qualityMode}
+              onValueChange={setQualityMode}
               size="md"
               classNames={{
                 label: "text-sm font-medium text-gray-900 dark:text-gray-100"
               }}
             >
               <div className="flex flex-col gap-1">
-                <span>Optimize video size (reduce file size)</span>
+                <span>Quality Mode (CRF 20)</span>
                 <span className="text-xs text-gray-600 dark:text-gray-400 font-normal">
-                  Compresses video to reduce storage costs. May slightly reduce quality.
-                  {preview && (
-                    <span className="block mt-1">
-                      Original: {formatFileSize(preview.size)}
-                    </span>
-                  )}
+                  Higher quality for cinematic clips, shaders, or important content. Larger file size.
                 </span>
               </div>
             </Checkbox>
+
+            {/* File Size Info */}
+            <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+              Original file size: {formatFileSize(preview.size)}
+            </div>
+
+            {/* Compression Results */}
             {uploadStats.originalSize && uploadStats.finalSize && (
-              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                 <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-1">
-                  Optimization Results:
+                  Compression Results:
                 </p>
                 <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
-                  <p>Original size: {uploadStats.originalSize}</p>
-                  <p>Optimized size: {uploadStats.finalSize}</p>
-                  <p className="font-semibold">Size reduction: {uploadStats.sizeReduction}</p>
+                  <p>Original: {uploadStats.originalSize}</p>
+                  <p>Compressed: {uploadStats.finalSize}</p>
+                  <p className="font-semibold">Reduction: {uploadStats.sizeReduction}</p>
+                  {uploadStats.method && (
+                    <p className="text-gray-600 dark:text-gray-400">Method: {uploadStats.method}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -512,9 +537,9 @@ export default function VideoUpload() {
 
         {/* Submit Button */}
         <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
-          <Button 
-            type="submit" 
-            color="primary" 
+          <Button
+            type="submit"
+            color="primary"
             size="lg"
             startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
             onClick={() => { trigger() }}

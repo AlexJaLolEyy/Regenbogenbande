@@ -33,11 +33,12 @@ export default function PictureUpload() {
     const [creationDate, setCreationDate] = useState<Date | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [manualDateOverride, setManualDateOverride] = useState(false);
-    const [optimizeImage, setOptimizeImage] = useState(true);
+    const [qualityMode, setQualityMode] = useState(false); // Q95 instead of Q85
     const [uploadStats, setUploadStats] = useState<{
         originalSize?: string;
         finalSize?: string;
         sizeReduction?: string;
+        formatChanged?: boolean;
     }>({});
     const [imageMetadata, setImageMetadata] = useState<{
         size?: string;
@@ -75,8 +76,8 @@ export default function PictureUpload() {
             // Use FormData to send the file
             const formData = new FormData();
             formData.append('image', preview);
-            formData.append('optimize', optimizeImage.toString());
-            formData.append('title', data.title); // Pass title for filename generation
+            formData.append('title', data.title);
+            formData.append('qualityMode', qualityMode.toString());
 
             const uploadResponse = await fetch('/api/upload-picture', {
                 method: 'POST',
@@ -97,12 +98,14 @@ export default function PictureUpload() {
                 setUploadStats({
                     originalSize: formatFileSize(uploadResult.originalSize),
                     finalSize: formatFileSize(uploadResult.finalSize),
-                    sizeReduction: formatFileSize(uploadResult.sizeReduction || 0),
+                    sizeReduction: uploadResult.reductionPercent || '0%',
+                    formatChanged: uploadResult.formatChanged,
                 });
             }
 
-            // Get image path from API response
+            // Get image path and thumbnail path from API response
             const imagePath = uploadResult.path || `/examplePictures/${preview.name}`;
+            const thumbnailPath = uploadResult.thumbnailPath || '';
 
             // Strip File object from data before sending to Server Action
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -114,7 +117,7 @@ export default function PictureUpload() {
 
             // Import createPicture dynamically to avoid issues
             const { createPicture } = await import('@/src/app/(content)/pictures/(detail)/upload/actions');
-            await createPicture(pictureData, imagePath);
+            await createPicture(pictureData, imagePath, thumbnailPath);
         } catch (error: unknown) {
             // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
             if (error && typeof error === 'object' && 'digest' in error) {
@@ -132,7 +135,7 @@ export default function PictureUpload() {
         const file = event.target.files?.[0];
         if (file) {
             setPreview(file);
-            
+
             // Extract basic metadata first
             setImageMetadata({
                 size: formatFileSize(file.size),
@@ -186,7 +189,7 @@ export default function PictureUpload() {
             {/* Enhanced Image Preview */}
             <div className="space-y-4">
                 <h2 className="text-xl font-semibold">Image Preview</h2>
-                
+
                 {!preview ? (
                     <div className="flex justify-center">
                         <Card className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 p-8">
@@ -209,14 +212,14 @@ export default function PictureUpload() {
                                         width={1024}
                                         height={576}
                                         className="object-contain"
-                                        style={{ 
+                                        style={{
                                             width: 'auto',
                                             maxWidth: '100%'
                                         }}
                                     />
                                 </div>
                             </div>
-                            
+
                             {/* Image Metadata */}
                             <div className="p-6 bg-gray-50 dark:bg-gray-800">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
@@ -261,68 +264,97 @@ export default function PictureUpload() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* File Upload */}
                     <div className="md:col-span-2">
-                        <Input 
-                            type="file" 
-                            label="Upload Image File" 
-                            variant="bordered" 
-                            isRequired 
-                            isInvalid={!!errors.img} 
-                            aria-invalid={!!errors.img} 
+                        <Input
+                            type="file"
+                            label="Upload Image File"
+                            variant="bordered"
+                            isRequired
+                            isInvalid={!!errors.img}
+                            aria-invalid={!!errors.img}
                             errorMessage="Please submit a Picture!"
                             startContent={<FontAwesomeIcon icon={faImage} />}
-                            accept="image/*" 
-                            {...register("img", { required: true, onChange: (e) => handleFileChange(e) })} 
+                            accept="image/*"
+                            {...register("img", { required: true, onChange: (e) => handleFileChange(e) })}
                         />
                     </div>
 
-                    {/* Optimization Toggle */}
-                    <div className="md:col-span-2">
-                        <Checkbox
-                            isSelected={optimizeImage}
-                            onValueChange={setOptimizeImage}
-                            size="md"
-                        >
-                            <div className="flex flex-col">
-                                <span className="text-sm font-medium">Optimize Image</span>
-                                <span className="text-xs text-gray-600 dark:text-gray-400">
-                                    Automatically compress large images (&gt;1MB) and convert PNG to WebP for better compression
-                                </span>
+                    {/* Image Compression Options */}
+                    {preview && (
+                        <div className="md:col-span-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
+                            {/* Default Compression Info */}
+                            <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span className="text-white text-xs">✓</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        Smart Compression (Q85)
+                                    </p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        PNG → WebP, JPEG optimized with MozJPEG. Files under 50KB are skipped.
+                                    </p>
+                                </div>
                             </div>
-                        </Checkbox>
-                    </div>
 
-                    {/* Upload Stats */}
+                            {/* Quality Mode Toggle */}
+                            <Checkbox
+                                isSelected={qualityMode}
+                                onValueChange={setQualityMode}
+                                size="md"
+                                classNames={{
+                                    label: "text-sm font-medium text-gray-900 dark:text-gray-100"
+                                }}
+                            >
+                                <div className="flex flex-col gap-1">
+                                    <span>Quality Mode (Q95)</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-normal">
+                                        Higher quality for artwork or important screenshots. Larger file size.
+                                    </span>
+                                </div>
+                            </Checkbox>
+
+                            {/* File Info */}
+                            <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                Original: {imageMetadata.size} • {imageMetadata.format} • {imageMetadata.resolution}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Compression Results */}
                     {uploadStats.originalSize && uploadStats.finalSize && (
                         <div className="md:col-span-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                             <h3 className="text-sm font-semibold mb-2 text-green-800 dark:text-green-200">
-                                Optimization Results
+                                Compression Results
                             </h3>
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Original Size</div>
+                                    <div className="text-gray-600 dark:text-gray-400">Original</div>
                                     <div className="font-semibold">{uploadStats.originalSize}</div>
                                 </div>
                                 <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Final Size</div>
+                                    <div className="text-gray-600 dark:text-gray-400">Compressed</div>
                                     <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.finalSize}</div>
                                 </div>
                                 <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Saved</div>
+                                    <div className="text-gray-600 dark:text-gray-400">Reduction</div>
                                     <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.sizeReduction}</div>
                                 </div>
                             </div>
+                            {uploadStats.formatChanged && (
+                                <p className="text-xs text-gray-500 mt-2">Format converted to WebP</p>
+                            )}
                         </div>
                     )}
 
                     {/* Title */}
                     <div className="md:col-span-2">
-                        <Input 
-                            type="text" 
-                            label="Title" 
-                            variant="bordered" 
+                        <Input
+                            type="text"
+                            label="Title"
+                            variant="bordered"
                             isRequired
-                            isInvalid={!!errors.title} 
-                            aria-invalid={!!errors.title} 
+                            isInvalid={!!errors.title}
+                            aria-invalid={!!errors.title}
                             errorMessage="Please enter a valid Title!"
                             startContent={<FontAwesomeIcon icon={faSignature} />}
                             {...register("title", { required: true })}
@@ -481,7 +513,7 @@ export default function PictureUpload() {
                                 />
                             )}
                         />
-                        
+
                         {/* Manual Date Override Checkbox */}
                         <Checkbox
                             isSelected={manualDateOverride}
@@ -497,9 +529,9 @@ export default function PictureUpload() {
 
                 {/* Submit Button */}
                 <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <Button 
-                        type="submit" 
-                        color="primary" 
+                    <Button
+                        type="submit"
+                        color="primary"
                         size="lg"
                         startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
                         onClick={() => { trigger() }}

@@ -1,26 +1,33 @@
-// app/api/upload-picture/route.ts - API route for uploading and optimizing pictures to R2
+// app/api/upload-picture/route.ts - API route for uploading and optimizing pictures
+// Supports both local storage (development) and R2 (production)
+// Default: PNG→WebP Q85, JPEG→MozJPEG Q85
+// Quality Mode: PNG→WebP Q95, JPEG→MozJPEG Q95
+// GIFs: Keep as-is (no conversion)
+// Files < 50KB: Skip compression
 
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { uploadToR2, getSignedR2Url, getPublicR2Url } from '@/src/lib/r2-client';
+import { uploadFile, getStorageMode } from '@/src/lib/storage-adapter';
 
-// Optimization thresholds
-const OPTIMIZE_THRESHOLD = 1024 * 1024; // 1 MB - optimize files larger than this
+// Compression settings
+const DEFAULT_QUALITY = 85;
+const QUALITY_MODE_QUALITY = 95;
+const SKIP_THRESHOLD = 50 * 1024; // 50 KB - don't compress tiny files
 const MAX_WIDTH = 3840; // 4K width
 const MAX_HEIGHT = 2160; // 4K height
-const JPEG_QUALITY = 85; // Quality for JPEG compression
-const WEBP_QUALITY = 85; // Quality for WebP conversion
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const image = formData.get('image') as File;
     const title = formData.get('title') as string | null;
-    const optimize = formData.get('optimize') === 'true';
+    const qualityMode = formData.get('qualityMode') === 'true';
 
     if (!image) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
+
+    console.log(`[Picture Upload] Using ${getStorageMode()} storage mode, Quality mode: ${qualityMode}`);
 
     // Generate unique filename
     const sanitizeFilename = (name: string) => {
@@ -36,40 +43,61 @@ export async function POST(req: Request) {
     const randomId = Math.random().toString(36).substring(2, 9);
     const uniqueId = `${timestamp}-${randomId}`;
 
-    const baseName = title && title.trim() 
+    const baseName = title && title.trim()
       ? sanitizeFilename(title.trim())
       : image.name.replace(/\.[^/.]+$/, '');
-    
+
     // Get original file info
     const originalBuffer = Buffer.from(await image.arrayBuffer());
     const originalSize = originalBuffer.length;
     const originalType = image.type;
     const isPNG = originalType === 'image/png';
     const isJPEG = originalType === 'image/jpeg' || originalType === 'image/jpg';
-    
-    // Determine if we should optimize
-    const shouldOptimize = optimize && (originalSize > OPTIMIZE_THRESHOLD || isPNG);
-    
-    let finalBuffer: Buffer;
-    let finalContentType: string;
-    let extension: string;
-    let optimizationStats = {
+    const isGIF = originalType === 'image/gif';
+
+    // Determine compression quality
+    const quality = qualityMode ? QUALITY_MODE_QUALITY : DEFAULT_QUALITY;
+
+    // Optimization stats
+    const optimizationStats = {
       optimized: false,
       originalSize: originalSize,
       finalSize: originalSize,
       sizeReduction: 0,
       formatChanged: false,
+      qualityMode: qualityMode,
+      skippedReason: null as string | null,
     };
 
-    if (shouldOptimize) {
-      // Load image with sharp
+    let finalBuffer: Buffer;
+    let finalContentType: string;
+    let extension: string;
+
+    // Decision logic
+    if (isGIF) {
+      // GIF: Keep as-is (animated GIFs are complex to handle)
+      console.log('[Picture Upload] GIF detected - keeping original');
+      finalBuffer = originalBuffer;
+      finalContentType = 'image/gif';
+      extension = '.gif';
+      optimizationStats.skippedReason = 'GIF (kept original)';
+    } else if (originalSize < SKIP_THRESHOLD) {
+      // Tiny file: Skip compression
+      console.log(`[Picture Upload] File under ${SKIP_THRESHOLD / 1024}KB - skipping compression`);
+      finalBuffer = originalBuffer;
+      finalContentType = originalType;
+      extension = image.name.substring(image.name.lastIndexOf('.'));
+      optimizationStats.skippedReason = 'File too small';
+    } else if (isPNG) {
+      // PNG: Convert to WebP
+      console.log(`[Picture Upload] Converting PNG to WebP (Q${quality})`);
       let sharpImage = sharp(originalBuffer);
-      
-      // Get image metadata
+
+      // Get metadata for potential resize
       const metadata = await sharpImage.metadata();
       const width = metadata.width || 0;
       const height = metadata.height || 0;
-      
+
       // Resize if too large (maintain aspect ratio)
       if (width > MAX_WIDTH || height > MAX_HEIGHT) {
         sharpImage = sharpImage.resize(MAX_WIDTH, MAX_HEIGHT, {
@@ -77,66 +105,108 @@ export async function POST(req: Request) {
           withoutEnlargement: true,
         });
       }
-      
-      // Convert PNG to WebP for better compression, or optimize JPEG
-      if (isPNG) {
-        // Convert PNG to WebP (much better compression)
-        finalBuffer = await sharpImage
-          .webp({ quality: WEBP_QUALITY })
-          .toBuffer();
-        finalContentType = 'image/webp';
-        extension = '.webp';
-        optimizationStats.formatChanged = true;
-      } else if (isJPEG) {
-        // Optimize JPEG (recompress with quality setting)
-        finalBuffer = await sharpImage
-          .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
-          .toBuffer();
-        finalContentType = 'image/jpeg';
-        extension = '.jpg';
-      } else {
-        // For other formats, just resize if needed
-        finalBuffer = await sharpImage.toBuffer();
-        finalContentType = originalType;
-        extension = image.name.substring(image.name.lastIndexOf('.'));
-      }
-      
+
+      finalBuffer = await sharpImage
+        .webp({ quality })
+        .toBuffer();
+      finalContentType = 'image/webp';
+      extension = '.webp';
       optimizationStats.optimized = true;
-      optimizationStats.finalSize = finalBuffer.length;
-      optimizationStats.sizeReduction = originalSize - finalBuffer.length;
+      optimizationStats.formatChanged = true;
+    } else if (isJPEG) {
+      // JPEG: Optimize with MozJPEG
+      console.log(`[Picture Upload] Optimizing JPEG with MozJPEG (Q${quality})`);
+      let sharpImage = sharp(originalBuffer);
+
+      // Get metadata for potential resize
+      const metadata = await sharpImage.metadata();
+      const width = metadata.width || 0;
+      const height = metadata.height || 0;
+
+      // Resize if too large (maintain aspect ratio)
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+        sharpImage = sharpImage.resize(MAX_WIDTH, MAX_HEIGHT, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+      }
+
+      finalBuffer = await sharpImage
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer();
+      finalContentType = 'image/jpeg';
+      extension = '.jpg';
+      optimizationStats.optimized = true;
     } else {
-      // No optimization - use original
+      // Other formats: Keep as-is
+      console.log('[Picture Upload] Unknown format - keeping original');
+      finalBuffer = originalBuffer;
+      finalContentType = originalType;
+      extension = image.name.substring(image.name.lastIndexOf('.')) || '.bin';
+      optimizationStats.skippedReason = 'Unknown format';
+    }
+
+    // Update stats
+    optimizationStats.finalSize = finalBuffer.length;
+    optimizationStats.sizeReduction = originalSize - finalBuffer.length;
+
+    // Check for inflation (compressed bigger than original)
+    if (optimizationStats.optimized && finalBuffer.length > originalBuffer.length) {
+      console.log('[Picture Upload] Compression caused inflation - using original');
       finalBuffer = originalBuffer;
       finalContentType = originalType;
       extension = image.name.substring(image.name.lastIndexOf('.'));
+      optimizationStats.optimized = false;
+      optimizationStats.formatChanged = false;
+      optimizationStats.finalSize = originalSize;
+      optimizationStats.sizeReduction = 0;
+      optimizationStats.skippedReason = 'Compression caused inflation';
     }
 
     const fileName = `${baseName}-${uniqueId}${extension}`;
     const imageKey = `pictures/${fileName}`;
+    const thumbnailFileName = `${baseName}-${uniqueId}-thumb.jpg`;
+    const thumbnailKey = `thumbnails/${thumbnailFileName}`;
 
-    // Upload to R2
-    await uploadToR2(finalBuffer, imageKey, finalContentType);
+    // Upload main image using storage adapter
+    const imageUrl = await uploadFile(finalBuffer, imageKey, finalContentType);
 
-    // Generate image URL (signed for private buckets, public for public buckets)
-    const imageUrl = process.env.R2_PUBLIC_URL 
-      ? getPublicR2Url(imageKey)
-      : await getSignedR2Url(imageKey, 604800); // 7 days
+    // Generate thumbnail (400px width for list views)
+    let thumbnailUrl = '';
+    try {
+      const thumbnailBuffer = await sharp(finalBuffer)
+        .resize(400, null, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      thumbnailUrl = await uploadFile(thumbnailBuffer, thumbnailKey, 'image/jpeg');
+      console.log('[Picture Upload] Thumbnail generated successfully');
+    } catch (thumbError) {
+      console.warn('[Picture Upload] Thumbnail generation failed:', thumbError);
+    }
 
-    return NextResponse.json({ 
+    const reductionPercent = originalSize > 0
+      ? ((optimizationStats.sizeReduction / originalSize) * 100).toFixed(1)
+      : '0';
+
+    return NextResponse.json({
       message: 'Image uploaded successfully!',
       path: imageUrl,
+      thumbnailPath: thumbnailUrl,
       originalSize: optimizationStats.originalSize,
       finalSize: optimizationStats.finalSize,
       sizeReduction: optimizationStats.sizeReduction,
+      reductionPercent: `${reductionPercent}%`,
       optimized: optimizationStats.optimized,
       formatChanged: optimizationStats.formatChanged,
+      qualityMode: optimizationStats.qualityMode,
+      skippedReason: optimizationStats.skippedReason,
+      storageMode: getStorageMode(),
     });
   } catch (error) {
     console.error('Image upload error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Image upload failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
-
