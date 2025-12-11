@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { User, Textarea, BreadcrumbItem, Breadcrumbs, Image, Tooltip, Button, Avatar, AvatarGroup } from "@heroui/react";
 import NextImage from "next/image";
 import Link from "next/link";
+import { DeleteButton } from "@/src/lib/components/ui/delete-button";
 
 export default function PictureView({ picture }: { picture: Picture }) {
 
@@ -69,6 +70,12 @@ export default function PictureView({ picture }: { picture: Picture }) {
               </Button>
             </Link>
           </Tooltip>
+          <DeleteButton
+            id={picture.id}
+            type="picture"
+            ownerId={Number(picture.uploadedBy.id)}
+            redirectUrl="/pictures"
+          />
         </div>
       </div>
 

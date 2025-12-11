@@ -5,13 +5,14 @@ import { faEye, faStar, faClock, faUser } from "@fortawesome/free-regular-svg-ic
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, AvatarGroup, Card, Chip } from "@heroui/react";
 import { BreadcrumbItem, Breadcrumbs } from "@heroui/react";
+import { DeleteButton } from "@/src/lib/components/ui/delete-button";
 
 export default function QuoteView({ quote }: { quote: Quote }) {
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const uploadDate = new Date(date);
     const diffInDays = Math.floor((now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffInDays === 0) return 'Today';
     if (diffInDays === 1) return 'Yesterday';
     if (diffInDays < 7) return `${diffInDays} days ago`;
@@ -56,6 +57,14 @@ export default function QuoteView({ quote }: { quote: Quote }) {
               )}
             </div>
           </div>
+          <div>
+            <DeleteButton
+              id={quote.id}
+              type="quote"
+              ownerId={Number(quote.uploadedBy.id)}
+              redirectUrl="/quotes"
+            />
+          </div>
         </div>
       </div>
 
@@ -63,12 +72,12 @@ export default function QuoteView({ quote }: { quote: Quote }) {
       <Card className="p-6 mb-6">
         <div className="space-y-4">
           {quote.fullQuote.map((singleQuote, index) => (
-            <div 
-              key={`${singleQuote.user.id}-${index}`} 
+            <div
+              key={`${singleQuote.user.id}-${index}`}
               className="bg-default-100 dark:bg-default-200 rounded-lg p-4 border border-default-200 dark:border-default-300 hover:bg-default-200 dark:hover:bg-default-300 transition-colors"
             >
               <div className="flex items-center gap-3 mb-2">
-                <Avatar 
+                <Avatar
                   src={singleQuote.user.profilepicture || undefined}
                   name={singleQuote.user.username}
                   size="md"
@@ -145,7 +154,7 @@ export default function QuoteView({ quote }: { quote: Quote }) {
           <div className="space-y-4">
             <h3 className="text-xl font-semibold mb-4">Uploaded By</h3>
             <div className="flex items-center gap-3">
-              <Avatar 
+              <Avatar
                 src={quote.uploadedBy.profilepicture || undefined}
                 name={quote.uploadedBy.username}
                 size="lg"

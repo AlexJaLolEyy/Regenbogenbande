@@ -2,6 +2,8 @@
 
 import { Picture, Quote, Rating, User, Video } from "@/src/lib/types/types";
 import { prisma } from "@/src/lib/prisma";
+import { checkUploadPermission, checkOwnerOrAdmin } from "@/src/lib/auth-utils";
+import { deleteFile } from "@/src/lib/storage-adapter";
 
 // ============================================
 // TRANSFORMATION FUNCTIONS
@@ -10,7 +12,7 @@ import { prisma } from "@/src/lib/prisma";
 
 function transformUser(prismaUser: any): User {
   if (!prismaUser) return null as any;
-  
+
   // Try to parse ID as number, if it's a cuid, use a hash
   let id: number;
   if (typeof prismaUser.id === 'string') {
@@ -30,7 +32,7 @@ function transformUser(prismaUser: any): User {
 
 function transformRating(prismaRating: any): Rating {
   if (!prismaRating) return null as any;
-  
+
   let userId: number;
   if (typeof prismaRating.userId === 'string') {
     const parsed = parseInt(prismaRating.userId, 10);
@@ -89,6 +91,7 @@ function transformPicture(prismaPicture: any): Picture {
     title: prismaPicture.title || '',
     description: prismaPicture.description || null,
     img: prismaPicture.imageUrl || '',
+    thumbnail: prismaPicture.thumbnailUrl || undefined,
     participants: prismaPicture.participants?.map((p: any) => transformUser(p.user)) || [],
     uploadedBy: transformUser(prismaPicture.uploadedBy),
     uploadedAt: prismaPicture.uploadedAt ? new Date(prismaPicture.uploadedAt) : new Date(),
@@ -376,6 +379,7 @@ export async function getUserById(id: number): Promise<User> {
 
 export async function addVideo(video: Video): Promise<void> {
   try {
+    await checkUploadPermission();
     // Ensure uploadedBy user exists
     const uploader = await prisma.user.upsert({
       where: { id: String(video.uploadedBy.id) },
@@ -459,6 +463,7 @@ export async function addVideo(video: Video): Promise<void> {
 
 export async function addPicture(picture: Picture): Promise<void> {
   try {
+    await checkUploadPermission();
     // Ensure uploadedBy user exists
     const uploader = await prisma.user.upsert({
       where: { id: String(picture.uploadedBy.id) },
@@ -481,6 +486,7 @@ export async function addPicture(picture: Picture): Promise<void> {
         title: picture.title,
         description: picture.description || null,
         imageUrl: picture.img,
+        thumbnailUrl: picture.thumbnail || null,
         uploadedById: uploader.id,
         uploadedAt: picture.uploadedAt,
         createdAt: picture.createdAt,
@@ -541,6 +547,7 @@ export async function addPicture(picture: Picture): Promise<void> {
 
 export async function addQuote(quote: Quote): Promise<void> {
   try {
+    await checkUploadPermission();
     // Ensure uploadedBy user exists
     const uploader = await prisma.user.upsert({
       where: { id: String(quote.uploadedBy.id) },
@@ -664,6 +671,52 @@ export async function addUser(user: User): Promise<void> {
 
 export async function deleteVideo(videoId: number): Promise<void> {
   try {
+    // 1. Fetch video to get owner and file path
+    const video = await prisma.video.findUnique({
+      where: { id: String(videoId) },
+      include: { uploadedBy: true }
+    });
+
+    if (!video) {
+      throw new Error("Video not found");
+    }
+
+    // 2. Check Permission (Admin or Owner)
+    await checkOwnerOrAdmin(parseInt(video.uploadedById));
+
+    // 3. Delete from Storage (R2/Local)
+    // Helper to extract key from URL
+    const extractKey = (url: string) => {
+      if (!url) return null;
+      // Assume URL format corresponds to how we store it.
+      // If it's a full URL, we need to extract the part after the bucket/domain
+      // Quick fix: Our keys are stored as "videos/..." or "thumbnails/..." in DB? 
+      // Wait, transformVideo says `videoUrl`. 
+      // In local mode: `/uploads/videos/foo.mp4` -> we need `videos/foo.mp4`
+      // In R2 mode: `https://.../videos/foo.mp4` -> we need `videos/foo.mp4`
+
+      // Simplest strategy: The key is usually the last 2 segments? 
+      // No, let's just strip known prefixes.
+
+      if (url.includes("/uploads/")) {
+        return url.split("/uploads/")[1];
+      }
+      // For R2, it might be the whole path after the domain?
+      // safest is to store the KEY in db, but we store URL. 
+      // Let's rely on standard "videos/" and "thumbnails/" folders.
+      if (url.includes("/videos/")) return "videos/" + url.split("/videos/")[1];
+      if (url.includes("/thumbnails/")) return "thumbnails/" + url.split("/thumbnails/")[1];
+
+      return null;
+    };
+
+    const videoKey = extractKey(video.videoUrl);
+    const thumbnailKey = extractKey(video.thumbnailUrl || "");
+
+    if (videoKey) await deleteFile(videoKey);
+    if (thumbnailKey) await deleteFile(thumbnailKey);
+
+    // 4. Delete from Database
     await prisma.video.delete({
       where: { id: String(videoId) },
     });
@@ -675,6 +728,33 @@ export async function deleteVideo(videoId: number): Promise<void> {
 
 export async function deletePicture(pictureId: number): Promise<void> {
   try {
+    const picture = await prisma.picture.findUnique({
+      where: { id: String(pictureId) },
+      include: { uploadedBy: true }
+    });
+
+    if (!picture) throw new Error("Picture not found");
+
+    await checkOwnerOrAdmin(parseInt(picture.uploadedById));
+
+    // Extract keys
+    const extractKey = (url: string) => {
+      if (!url) return null;
+      if (url.includes("/uploads/")) return url.split("/uploads/")[1];
+      // Start after "pictures/"? Wait, folder is defined in upload.
+      // Assuming "pictures/" or similar. 
+      // Pictures upload key is usually `pictures/filename`.
+      if (url.includes("/pictures/")) return "pictures/" + url.split("/pictures/")[1];
+      if (url.includes("/thumbnails/")) return "thumbnails/" + url.split("/thumbnails/")[1];
+      return null;
+    };
+
+    const imgKey = extractKey(picture.imageUrl);
+    const thumbKey = extractKey(picture.thumbnailUrl || "");
+
+    if (imgKey) await deleteFile(imgKey);
+    if (thumbKey) await deleteFile(thumbKey);
+
     await prisma.picture.delete({
       where: { id: String(pictureId) },
     });
@@ -686,6 +766,13 @@ export async function deletePicture(pictureId: number): Promise<void> {
 
 export async function deleteQuote(quoteId: number): Promise<void> {
   try {
+    const quote = await prisma.quote.findUnique({
+      where: { id: String(quoteId) },
+    });
+    if (!quote) throw new Error("Quote not found");
+
+    await checkOwnerOrAdmin(parseInt(quote.uploadedById));
+
     await prisma.quote.delete({
       where: { id: String(quoteId) },
     });
@@ -712,6 +799,7 @@ export async function deleteUser(userid: number): Promise<void> {
 
 export async function editVideo(updatedVideo: Video): Promise<void> {
   try {
+    await checkOwnerOrAdmin(parseInt(String(updatedVideo.uploadedBy.id)));
     // Update video
     await prisma.video.update({
       where: { id: String(updatedVideo.id) },
@@ -789,6 +877,7 @@ export async function editVideo(updatedVideo: Video): Promise<void> {
 
 export async function editPicture(updatedPicture: Picture): Promise<void> {
   try {
+    await checkOwnerOrAdmin(parseInt(String(updatedPicture.uploadedBy.id)));
     await prisma.picture.update({
       where: { id: String(updatedPicture.id) },
       data: {

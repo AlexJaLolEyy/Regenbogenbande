@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Breadcrumbs, BreadcrumbItem, User, Textarea, Button, Tooltip, Avatar, AvatarGroup } from "@heroui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPenToSquare, faStar, faEye, faClock, faShareFromSquare } from "@fortawesome/free-regular-svg-icons";
+import { DeleteButton } from "@/src/lib/components/ui/delete-button";
 
 // TODO: (future features):
 // - Related videos: Show a row of related videos below the description once tags/categories/filtering are available.
@@ -33,8 +34,8 @@ export default function VideoView({ video }: { video: Video }) {
       </Breadcrumbs>
 
       <div className="mb-8">
-        <video 
-          className="w-full aspect-video rounded-lg bg-black" 
+        <video
+          className="w-full aspect-video rounded-lg bg-black"
           controls
         >
           <source src={video.video} type="video/mp4" />
@@ -67,11 +68,6 @@ export default function VideoView({ video }: { video: Video }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Tooltip content="Share this video">
-            <Button isIconOnly variant="ghost">
-              <FontAwesomeIcon icon={faShareFromSquare} size="lg" />
-            </Button>
-          </Tooltip>
           <Tooltip content="Edit this video">
             <Link href={`/videos/${video.id}/edit`}>
               <Button isIconOnly variant="ghost">
@@ -79,6 +75,12 @@ export default function VideoView({ video }: { video: Video }) {
               </Button>
             </Link>
           </Tooltip>
+          <DeleteButton
+            id={video.id}
+            type="video"
+            ownerId={Number(video.uploadedBy.id)}
+            redirectUrl="/videos"
+          />
         </div>
       </div>
 
@@ -125,7 +127,7 @@ export default function VideoView({ video }: { video: Video }) {
           className="w-full"
         />
       </div>
-    </div>
+    </div >
   );
 }
 

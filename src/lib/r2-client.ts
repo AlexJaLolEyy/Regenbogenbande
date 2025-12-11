@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 
@@ -34,7 +34,7 @@ export async function uploadToR2(
   contentType: string
 ): Promise<string> {
   const bucketName = process.env.R2_BUCKET_NAME;
-  
+
   if (!bucketName) {
     throw new Error('R2_BUCKET_NAME environment variable is not set');
   }
@@ -42,7 +42,7 @@ export async function uploadToR2(
   try {
     // Trim whitespace from bucket name (in case of quotes or spaces)
     const trimmedBucket = bucketName.trim();
-    
+
     await r2Client.send(
       new PutObjectCommand({
         Bucket: trimmedBucket,
@@ -58,7 +58,7 @@ export async function uploadToR2(
     if (error instanceof Error) {
       const accountId = process.env.R2_ACCOUNT_ID?.trim() || '';
       const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() || '';
-      
+
       console.error('R2 Upload Error:', {
         message: error.message,
         bucket: bucketName.trim(),
@@ -101,13 +101,43 @@ export async function getSignedR2Url(
  */
 export function getPublicR2Url(key: string): string {
   const publicUrl = process.env.R2_PUBLIC_URL;
-  
+
   if (publicUrl) {
     // Custom domain or public R2 URL
     return `${publicUrl.replace(/\/$/, '')}/${key}`;
   }
-  
+
   // Default R2 public URL format (if bucket is public)
   return `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET_NAME}/${key}`;
 }
 
+
+/**
+ * Delete a file from R2
+ * @param key - File path/key in R2
+ */
+export async function deleteFromR2(key: string): Promise<void> {
+  const bucketName = process.env.R2_BUCKET_NAME;
+
+  if (!bucketName) {
+    throw new Error('R2_BUCKET_NAME environment variable is not set');
+  }
+
+  try {
+    await r2Client.send(
+      new DeleteObjectCommand({
+        Bucket: bucketName.trim(),
+        Key: key,
+      })
+    );
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('R2 Delete Error:', {
+        message: error.message,
+        bucket: bucketName.trim(),
+        key: key,
+      });
+    }
+    throw error;
+  }
+}
