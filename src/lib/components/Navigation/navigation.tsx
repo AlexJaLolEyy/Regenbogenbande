@@ -1,11 +1,13 @@
 "use client"
 
-import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/react";
+import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Button, Skeleton } from "@heroui/react";
 import NextImage from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import cn from "classnames";
+import { useSession, signOut } from "next-auth/react";
+import { LogIn, Settings, LogOut, Shield } from "lucide-react";
 
 const navItems = [
   { label: "Videos", href: "/videos" },
@@ -15,11 +17,17 @@ const navItems = [
 
 export default function Navigation() {
   const currentPath = usePathname();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const isLoading = status === "loading";
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login" });
+  };
 
   return (
     <nav className="fixed top-4 left-1/2 -translate-x-1/2 w-[95vw] z-50 rounded-2xl bg-white/60 dark:bg-black/40 backdrop-blur-md shadow-xl flex items-center justify-between px-4 py-2 border border-white/20 dark:border-black/30">
       {/* Logo as Home Link */}
-      {/* TODO: swap logo img */}
       <Link href="/" className="flex items-center group focus:outline-none">
         <NextImage src="/rainbow.svg" alt="Regenbogenbande Logo" width={36} height={36} className="transition-transform group-hover:scale-110" />
         <span className="sr-only">Home</span>
@@ -56,32 +64,74 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Avatar Dropdown */}
-      <Dropdown placement="bottom-end">
-        <DropdownTrigger>
-          <Avatar
-            isBordered
-            as="button"
-            className="transition-transform hover:scale-105 focus:outline-none"
-            color="secondary"
+      {/* User Actions */}
+      <div className="min-w-[40px] flex justify-end">
+        {isLoading ? (
+          <Skeleton className="rounded-full w-8 h-8" />
+        ) : session ? (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                isBordered
+                as="button"
+                className="transition-transform hover:scale-105 focus:outline-none"
+                color="secondary"
+                size="sm"
+                src={session.user?.image || undefined}
+                name={session.user?.name?.[0] || "U"}
+                radius="full"
+              />
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem key="profile" className="h-14 gap-2 text-opacity-100">
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold text-primary">{session.user?.name}</p>
+                {/* @ts-expect-error - Dynamic property */}
+                {session.user?.role === "admin" && (
+                  <span className="text-xs bg-purple-500/20 text-purple-600 px-2 py-0.5 rounded-full mt-1 inline-block">Admin</span>
+                )}
+              </DropdownItem>
+
+              <DropdownItem key="settings" startContent={<Settings size={16} />} href="/profile">My Settings</DropdownItem>
+
+              {/* @ts-expect-error - Dynamic property */}
+              {session.user?.role === "admin" ? (
+                <DropdownItem
+                  key="admin_users"
+                  startContent={<Shield size={16} />}
+                  onPress={() => router.push("/admin/users")}
+                  className="text-purple-600 dark:text-purple-400"
+                >
+                  Manage Users
+                </DropdownItem>
+              ) : (
+                <DropdownItem className="hidden" key="hidden_admin" />
+              )}
+
+              <DropdownItem
+                key="logout"
+                color="danger"
+                startContent={<LogOut size={16} />}
+                onPress={handleLogout}
+              >
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        ) : (
+          <Button
+            as={Link}
+            href="/login"
             size="sm"
-            src="/exampleUserPictures/Alex.jpg"
-            radius="full"
-          />
-        </DropdownTrigger>
-        <DropdownMenu aria-label="Profile Actions" variant="flat">
-          <DropdownItem key="profile" className="h-14 gap-2">
-            <p className="font-semibold">Signed in as</p>
-            <p className="font-semibold">test@example.com</p>
-          </DropdownItem>
-          <DropdownItem key="settings">My Settings</DropdownItem>
-          <DropdownItem key="configurations">Configurations</DropdownItem>
-          <DropdownItem key="help_and_feedback">Help & Feedback</DropdownItem>
-          <DropdownItem key="logout" color="danger">
-            Log Out
-          </DropdownItem>
-        </DropdownMenu>
-      </Dropdown>
+            color="primary"
+            variant="flat"
+            startContent={<LogIn size={16} />}
+            className="font-medium"
+          >
+            Sign In
+          </Button>
+        )}
+      </div>
     </nav>
   );
 }

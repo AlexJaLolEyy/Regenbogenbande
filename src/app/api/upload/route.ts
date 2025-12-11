@@ -1,11 +1,12 @@
-// app/api/upload/route.ts - API route for saving uploaded video with thumbnail generation to R2
+// app/api/upload/route.ts - API route for saving uploaded video with thumbnail generation
+// Supports both local storage (development) and R2 (production)
 
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { uploadToR2, getSignedR2Url, getPublicR2Url } from '@/src/lib/r2-client';
+import { uploadFile, getStorageMode } from '@/src/lib/storage-adapter';
 
 const execAsync = promisify(exec);
 
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
     if (!video) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
+
+    console.log(`[Upload] Using ${getStorageMode()} storage mode`);
 
     // Generate unique filename
     const sanitizeFilename = (name: string) => {
@@ -33,10 +36,10 @@ export async function POST(req: Request) {
     const randomId = Math.random().toString(36).substring(2, 9);
     const uniqueId = `${timestamp}-${randomId}`;
 
-    const baseName = title && title.trim() 
+    const baseName = title && title.trim()
       ? sanitizeFilename(title.trim())
       : video.name.replace(/\.[^/.]+$/, '');
-    
+
     const extension = path.extname(video.name);
     const fileName = `${baseName}-${uniqueId}${extension}`;
     const thumbnailFileName = `${baseName}-${uniqueId}.jpg`;
@@ -51,55 +54,45 @@ export async function POST(req: Request) {
     // Generate thumbnail using FFmpeg (need temp file for FFmpeg)
     const tempVideo = path.join(tempDir, `temp-${uniqueId}${extension}`);
     const tempThumbnail = path.join(tempDir, `thumb-${uniqueId}.jpg`);
-    
+
     // Save temp copy for thumbnail extraction
     await fs.writeFile(tempVideo, buffer);
 
-    // Upload video to R2
+    // Upload video using storage adapter
     const videoKey = `videos/${fileName}`;
-    await uploadToR2(buffer, videoKey, video.type);
-
-    // Generate video URL (signed for private buckets, public for public buckets)
-    // Using 7 days expiration for signed URLs (604800 seconds)
-    const videoUrl = process.env.R2_PUBLIC_URL 
-      ? getPublicR2Url(videoKey)
-      : await getSignedR2Url(videoKey, 604800); // 7 days for videos
+    const videoUrl = await uploadFile(buffer, videoKey, video.type);
 
     // Generate thumbnail
     let thumbnailUrl = '';
-    let thumbnailKey = '';
     try {
-      // Extract frame at 1 second, scale to 640px width
-      const thumbnailCommand = `ffmpeg -i "${tempVideo}" -ss 00:00:01 -vframes 1 -vf "scale=640:-1" -q:v 2 "${tempThumbnail}"`;
+      // Extract frame at 2 seconds (avoids black intros), scale to 480px width for lists
+      const thumbnailCommand = `ffmpeg -i "${tempVideo}" -ss 00:00:02 -vframes 1 -vf "scale=480:-1" -q:v 2 "${tempThumbnail}"`;
       await execAsync(thumbnailCommand);
 
-      // Upload thumbnail to R2
+      // Upload thumbnail using storage adapter
       const thumbnailBuffer = await fs.readFile(tempThumbnail);
-      thumbnailKey = `thumbnails/${thumbnailFileName}`;
-      await uploadToR2(thumbnailBuffer, thumbnailKey, 'image/jpeg');
-
-      // Generate thumbnail URL
-      thumbnailUrl = process.env.R2_PUBLIC_URL
-        ? getPublicR2Url(thumbnailKey)
-        : await getSignedR2Url(thumbnailKey, 604800); // 7 days
+      const thumbnailKey = `thumbnails/${thumbnailFileName}`;
+      thumbnailUrl = await uploadFile(thumbnailBuffer, thumbnailKey, 'image/jpeg');
     } catch (thumbnailError: unknown) {
       console.warn('Thumbnail generation failed, continuing without thumbnail:', thumbnailError);
     }
 
     // Clean up temp files
-    await fs.unlink(tempVideo).catch(() => {});
-    await fs.unlink(tempThumbnail).catch(() => {});
+    await fs.unlink(tempVideo).catch(() => { });
+    await fs.unlink(tempThumbnail).catch(() => { });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'File uploaded successfully!',
-      path: videoUrl, // R2 URL (signed or public)
-      thumbnailPath: thumbnailUrl || '', // R2 URL or empty
+      path: videoUrl,
+      thumbnailPath: thumbnailUrl || '',
+      storageMode: getStorageMode(),
     });
   } catch (error) {
     console.error('File upload error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'File upload failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
+

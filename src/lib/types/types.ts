@@ -15,6 +15,7 @@ export interface Picture {
     title: string,
     description?: string,
     img: string,
+    thumbnail?: string, // Thumbnail URL for list views (400px)
     id: number,
     participants: User[],
     uploadedBy: User,
