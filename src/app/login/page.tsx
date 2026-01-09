@@ -1,176 +1,153 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button, Input } from "@heroui/react"
-import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import ParticlesBackground from "@/src/lib/components/Particles/ParticlesBackground"
+import { Button } from "@heroui/react"
+import { LogIn, AlertCircle } from "lucide-react"
+import { motion } from "motion/react"
+import { FireworksBackground } from "@/src/lib/components/home/fireworks-background"
+import { signIn } from "@/src/lib/auth-client"
 
 export default function LoginPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const callbackUrl = searchParams.get("callbackUrl") || "/"
 
-    const [username, setUsername] = useState("")
-    const [password, setPassword] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
-    const [isVisible, setIsVisible] = useState(false)
 
-    const toggleVisibility = () => setIsVisible(!isVisible)
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleDiscordLogin = async () => {
         setIsLoading(true)
         setError("")
 
         try {
-            const res = await signIn("credentials", {
-                username,
-                password,
-                redirect: false,
+            await signIn.social({
+                provider: "discord",
+                callbackURL: callbackUrl,
             })
-
-            if (res?.error) {
-                setError("Invalid username or password")
-                setIsLoading(false)
+        } catch (err) {
+            if (err instanceof Error && err.message === "NOT_INVITED") {
+                setError("You are not invited. Ask an admin for access.")
             } else {
-                router.push(callbackUrl)
-                router.refresh()
+                setError("An unexpected error occurred. Please try again.")
             }
+            setIsLoading(false)
+        }
+    }
+
+    const handleGuestAccess = async () => {
+        setIsLoading(true)
+        setError("")
+
+        try {
+            await signIn.anonymous()
+            router.push(callbackUrl)
+            router.refresh()
         } catch {
-            setError("An unexpected error occurred")
+            setError("Could not create guest session. Please try again.")
             setIsLoading(false)
         }
     }
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-black/90">
-            {/* Background Image with Blur */}
-            <div className="absolute inset-0 z-0">
-                <div className="relative w-full h-full">
-                    <Image
-                        src="/exampleThumbnails/placeholder.png" // Fallback
-                        alt="Background"
-                        fill
-                        className="object-cover opacity-30 blur-sm"
-                        priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div>
+            <FireworksBackground className="min-h-screen w-full flex items-center justify-center p-4">
+                {/* Login Card */}
+                <div className="flex items-center justify-center">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="relative z-10 w-full max-w-md px-6"
+                    >
+                        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl relative overflow-hidden group">
+                            {/* Subtle glow on hover */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                            {/* Decorative gradients */}
+                            <div className="absolute -top-[100px] -right-[100px] w-[200px] h-[200px] bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
+                            <div className="absolute -bottom-[100px] -left-[100px] w-[200px] h-[200px] bg-blue-600/20 rounded-full blur-[80px] pointer-events-none" />
+
+                            {/* Header */}
+                            <div className="text-center mb-8 relative z-10">
+                                <motion.div
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="w-16 h-16 bg-gradient-to-tr from-pink-500 to-violet-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg rotate-3"
+                                >
+                                    <LogIn className="text-white w-8 h-8" />
+                                </motion.div>
+                                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome</h1>
+                                <p className="text-white/60 text-sm">Sign in to access the Regenbogenbande archive</p>
+                            </div>
+
+                            {/* Error Message */}
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    className="mb-4 bg-danger-500/20 border border-danger-500/50 text-danger-200 px-4 py-3 rounded-xl flex items-center gap-2 text-sm"
+                                >
+                                    <AlertCircle size={16} />
+                                    {error}
+                                </motion.div>
+                            )}
+
+                            {/* Login Buttons */}
+                            <div className="flex flex-col gap-4 relative z-10">
+                                {/* Discord Login Button */}
+                                <Button
+                                    onPress={handleDiscordLogin}
+                                    size="lg"
+                                    className="font-semibold shadow-lg shadow-indigo-500/20 bg-[#5865F2] hover:bg-[#4752C4] text-white border-none"
+                                    isLoading={isLoading}
+                                    startContent={
+                                        !isLoading && (
+                                            <svg
+                                                className="w-5 h-5"
+                                                fill="currentColor"
+                                                viewBox="0 0 24 24"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                            </svg>
+                                        )
+                                    }
+                                >
+                                    Continue with Discord
+                                </Button>
+
+                                {/* Divider */}
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 h-px bg-white/10" />
+                                    <span className="text-white/40 text-sm">or</span>
+                                    <div className="flex-1 h-px bg-white/10" />
+                                </div>
+
+                                {/* Guest Access Button */}
+                                <Button
+                                    onPress={handleGuestAccess}
+                                    variant="bordered"
+                                    size="lg"
+                                    className="font-semibold border-white/20 text-white/70 hover:bg-white/5 hover:text-white"
+                                    isDisabled={isLoading}
+                                >
+                                    Continue as Guest
+                                </Button>
+                            </div>
+
+                            {/* Invite Note */}
+                            <div className="mt-6 text-center">
+                                <p className="text-white/40 text-xs">
+                                    This is an invite-only platform.{" "}
+                                    <span className="text-white/60">Ask an admin if you need access.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
-            </div>
-
-            {/* Animated Particles */}
-            <ParticlesBackground />
-
-            {/* Full Screen Glass Overlay */}
-            <div className="absolute inset-0 z-0 backdrop-blur-[4px] bg-black/10" />
-
-            {/* Login Card */}
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="relative z-10 w-full max-w-md px-6"
-            >
-                <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl relative overflow-hidden group">
-                    {/* Subtle glow on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    {/* Decorative gradients */}
-                    <div className="absolute -top-[100px] -right-[100px] w-[200px] h-[200px] bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
-                    <div className="absolute -bottom-[100px] -left-[100px] w-[200px] h-[200px] bg-blue-600/20 rounded-full blur-[80px] pointer-events-none" />
-
-                    {/* Header */}
-                    <div className="text-center mb-8 relative z-10">
-                        <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="w-16 h-16 bg-gradient-to-tr from-pink-500 to-violet-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg rotate-3"
-                        >
-                            <LogIn className="text-white w-8 h-8" />
-                        </motion.div>
-                        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome Back</h1>
-                        <p className="text-white/60 text-sm">Sign in to access the Regenbogenbande archive</p>
-                    </div>
-
-                    {/* Error Message */}
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            className="mb-4 bg-danger-500/20 border border-danger-500/50 text-danger-200 px-4 py-3 rounded-xl flex items-center gap-2 text-sm"
-                        >
-                            <AlertCircle size={16} />
-                            {error}
-                        </motion.div>
-                    )}
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 relative z-10">
-                        <Input
-                            type="text"
-                            label="Username"
-                            placeholder="Enter your username"
-                            value={username}
-                            onValueChange={setUsername}
-                            variant="bordered"
-                            color="primary"
-                            classNames={{
-                                inputWrapper: "bg-white/5 border-white/10 hover:border-white/30 text-white data-[hover=true]:border-white/30 group-data-[focus=true]:border-purple-500",
-                                label: "text-white/70",
-                                input: "text-white placeholder:text-white/30",
-                            }}
-                            startContent={<div className="pointer-events-none flex items-center"><span className="text-white/40 text-sm">@</span></div>}
-                        />
-
-                        <Input
-                            label="Password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onValueChange={setPassword}
-                            variant="bordered"
-                            color="primary"
-                            endContent={
-                                <button className="focus:outline-none" type="button" onClick={toggleVisibility}>
-                                    {isVisible ? (
-                                        <EyeOff className="text-white/40 pointer-events-none" size={20} />
-                                    ) : (
-                                        <Eye className="text-white/40 pointer-events-none" size={20} />
-                                    )}
-                                </button>
-                            }
-                            type={isVisible ? "text" : "password"}
-                            classNames={{
-                                inputWrapper: "bg-white/5 border-white/10 hover:border-white/30 text-white data-[hover=true]:border-white/30 group-data-[focus=true]:border-purple-500",
-                                label: "text-white/70",
-                                input: "text-white placeholder:text-white/30",
-                            }}
-                        />
-
-                        <Button
-                            type="submit"
-                            color="primary"
-                            size="lg"
-                            className="mt-4 font-semibold shadow-lg shadow-purple-500/20 bg-gradient-to-r from-purple-500 to-pink-600 border-none"
-                            isLoading={isLoading}
-                        >
-                            Sign In
-                        </Button>
-                    </form>
-
-                    {/* Invite Note */}
-                    <div className="mt-6 text-center">
-                        <p className="text-white/40 text-xs">
-                            Don&apos;t have an account? <span className="text-white/60">Ask an admin for an invite.</span>
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
+            </FireworksBackground>
         </div>
     )
 }

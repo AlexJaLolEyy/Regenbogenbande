@@ -1,66 +1,13 @@
-import type { Role } from "@/src/generated/prisma"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { auth, Session } from "./auth"
+import * as shared from "./auth-utils-shared"
+
+// Re-export everything from shared
+export * from "./auth-utils-shared"
 
 // ============================================
-// OWNER DETECTION (application-level logic)
-// ============================================
-// Owner is determined by env var, not DB role
-const OWNER_USER_ID = process.env.OWNER_USER_ID
-
-/**
- * Check if user is the application owner
- */
-export function isOwner(userId: string): boolean {
-  console.log("OWNER_USER_ID", OWNER_USER_ID);
-  console.log("userId", userId);
-  console.log("Result:", !!OWNER_USER_ID && userId === OWNER_USER_ID);
-  return !!OWNER_USER_ID && userId === OWNER_USER_ID
-}
-
-// ============================================
-// EFFECTIVE ROLE SYSTEM
-// ============================================
-// Combines DB role with application-level owner check and guest detection
-
-export type EffectiveRole = "owner" | "admin" | "member" | "guest"
-
-/**
- * Get the effective role for a session
- * - guest: no session or anonymous session
- * - owner: user ID matches OWNER_USER_ID env var
- * - admin/member: from DB role
- */
-export function getEffectiveRole(session: Session | null): EffectiveRole {
-  // No session or anonymous = guest
-  if (!session?.user || session.user.isAnonymous) {
-    return "guest"
-  }
-  // Check owner first (owner supersedes admin)
-  if (isOwner(session.user.id)) {
-    return "owner"
-  }
-  // Return DB role (admin or member)
-  return (session.user.role as Role) || "member"
-}
-
-/**
- * Check if user is a guest (no session or anonymous)
- */
-export function isGuest(session: Session | null): boolean {
-  return getEffectiveRole(session) === "guest"
-}
-
-/**
- * Check if user is authenticated (not a guest)
- */
-export function isAuthenticated(session: Session | null): boolean {
-  return getEffectiveRole(session) !== "guest"
-}
-
-// ============================================
-// SESSION UTILITIES
+// SESSION UTILITIES (Server-only)
 // ============================================
 
 /**
@@ -86,16 +33,16 @@ export async function requireAuth(): Promise<Session> {
 }
 
 // ============================================
-// ROLE REQUIREMENT FUNCTIONS
+// ROLE REQUIREMENT FUNCTIONS (Server-only)
 // ============================================
 
 /**
  * Check if user has one of the allowed effective roles
  * Throws error if insufficient permissions
  */
-export async function requireEffectiveRole(allowedRoles: EffectiveRole[]): Promise<Session> {
+export async function requireEffectiveRole(allowedRoles: shared.EffectiveRole[]): Promise<Session> {
   const session = await requireAuth()
-  const effectiveRole = getEffectiveRole(session)
+  const effectiveRole = shared.getEffectiveRole(session)
 
   if (!allowedRoles.includes(effectiveRole)) {
     throw new Error("Unauthorized: Insufficient permissions")
@@ -122,7 +69,7 @@ export async function requireAdmin(): Promise<Session> {
  */
 export async function requireOwner(): Promise<Session> {
   const session = await requireAuth()
-  if (!isOwner(session.user.id)) {
+  if (!shared.isOwner(session.user.id)) {
     throw new Error("Unauthorized: Owner access required")
   }
   return session
@@ -133,7 +80,7 @@ export async function requireOwner(): Promise<Session> {
  */
 export async function requireContentOwnerOrAdmin(resourceOwnerId: string): Promise<Session> {
   const session = await requireAuth()
-  const effectiveRole = getEffectiveRole(session)
+  const effectiveRole = shared.getEffectiveRole(session)
   const userId = session.user.id
 
   // Owner and admin can edit anything
@@ -147,56 +94,6 @@ export async function requireContentOwnerOrAdmin(resourceOwnerId: string): Promi
   }
 
   throw new Error("Unauthorized: You do not have permission to modify this resource")
-}
-
-// ============================================
-// PERMISSION HELPERS (pure functions)
-// ============================================
-
-/**
- * Check if role allows uploading content
- */
-export function canUpload(role: EffectiveRole): boolean {
-  return role !== "guest" // owner, admin, member
-}
-
-/**
- * Check if role allows editing content
- */
-export function canEdit(role: EffectiveRole, isContentOwner: boolean): boolean {
-  if (role === "owner" || role === "admin") return true
-  if (role === "member" && isContentOwner) return true
-  return false
-}
-
-/**
- * Check if role allows deleting content
- */
-export function canDelete(role: EffectiveRole, isContentOwner: boolean): boolean {
-  if (role === "owner" || role === "admin") return true
-  if (role === "member" && isContentOwner) return true
-  return false
-}
-
-/**
- * Check if role allows publishing content (owner only)
- */
-export function canPublish(role: EffectiveRole): boolean {
-  return role === "owner"
-}
-
-/**
- * Check if role allows managing users
- */
-export function canManageUsers(role: EffectiveRole): boolean {
-  return role === "owner" || role === "admin"
-}
-
-/**
- * Check if role allows inviting users
- */
-export function canInvite(role: EffectiveRole): boolean {
-  return role === "owner" || role === "admin"
 }
 
 // ============================================

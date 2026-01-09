@@ -47,6 +47,12 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      status: {
+        type: "string",
+        required: false,
+        defaultValue: "INVITED",
+        input: false,
+      },
       isAnonymous: {
         type: "boolean",
         required: false,
@@ -104,6 +110,7 @@ export const auth = betterAuth({
             data: {
               role: invite.role,
               discordId: discordId,
+              status: "ACTIVE",
             },
           })
 
@@ -114,6 +121,17 @@ export const auth = betterAuth({
               data: { usedAt: new Date() },
             })
           }
+
+          // Claim any placeholders with matching discordId
+          await prisma.participantPlaceholder.updateMany({
+            where: {
+              discordId: discordId,
+              claimedById: null,
+            },
+            data: {
+              claimedById: account.userId,
+            },
+          })
 
           return { data: account }
         },
