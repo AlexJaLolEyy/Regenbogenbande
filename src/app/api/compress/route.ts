@@ -3,12 +3,12 @@
 // Quality Mode: CRF 20 for high-detail content
 // Preserves source FPS (caps at 60), generates thumbnail
 
-import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { uploadFile } from '@/src/lib/storage-adapter';
 import { exec } from 'child_process';
+import { promises as fs } from 'fs';
+import { NextResponse } from 'next/server';
+import path from 'path';
 import { promisify } from 'util';
-import { uploadFile, getStorageMode } from '@/src/lib/storage-adapter';
 
 const execAsync = promisify(exec);
 
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    console.log(`[Compress] Using ${getStorageMode()} storage mode, Quality mode: ${qualityMode}`);
+    console.log(`[Compress] Using R2 storage mode, Quality mode: ${qualityMode}`);
 
     // Create temp directory
     const tempDir = path.join(process.cwd(), 'tmp');
@@ -95,9 +95,7 @@ export async function POST(req: Request) {
         .substring(0, 100);
     };
 
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 9);
-    const uniqueId = `${timestamp}-${randomId}`;
+    const uniqueId = crypto.randomUUID();
 
     const baseName = title && title.trim()
       ? sanitizeFilename(title.trim())
@@ -256,7 +254,6 @@ export async function POST(req: Request) {
       },
       attempts,
       qualityMode,
-      storageMode: getStorageMode(),
     });
   } catch (error) {
     console.error('Video compression error:', error);

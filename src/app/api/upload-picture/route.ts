@@ -5,9 +5,9 @@
 // GIFs: Keep as-is (no conversion)
 // Files < 50KB: Skip compression
 
+import { uploadFile } from '@/src/lib/storage-adapter';
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { uploadFile, getStorageMode } from '@/src/lib/storage-adapter';
 
 // Compression settings
 const DEFAULT_QUALITY = 85;
@@ -27,7 +27,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    console.log(`[Picture Upload] Using ${getStorageMode()} storage mode, Quality mode: ${qualityMode}`);
 
     // Generate unique filename
     const sanitizeFilename = (name: string) => {
@@ -39,9 +38,7 @@ export async function POST(req: Request) {
         .substring(0, 100);
     };
 
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 9);
-    const uniqueId = `${timestamp}-${randomId}`;
+    const uniqueId = crypto.randomUUID();
 
     const baseName = title && title.trim()
       ? sanitizeFilename(title.trim())
@@ -200,7 +197,6 @@ export async function POST(req: Request) {
       formatChanged: optimizationStats.formatChanged,
       qualityMode: optimizationStats.qualityMode,
       skippedReason: optimizationStats.skippedReason,
-      storageMode: getStorageMode(),
     });
   } catch (error) {
     console.error('Image upload error:', error);

@@ -1,12 +1,12 @@
 // app/api/upload/route.ts - API route for saving uploaded video with thumbnail generation
 // Supports both local storage (development) and R2 (production)
 
-import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { uploadFile } from '@/src/lib/storage-adapter';
 import { exec } from 'child_process';
+import { promises as fs } from 'fs';
+import { NextResponse } from 'next/server';
+import path from 'path';
 import { promisify } from 'util';
-import { uploadFile, getStorageMode } from '@/src/lib/storage-adapter';
 
 const execAsync = promisify(exec);
 
@@ -20,7 +20,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    console.log(`[Upload] Using ${getStorageMode()} storage mode`);
 
     // Generate unique filename
     const sanitizeFilename = (name: string) => {
@@ -32,9 +31,7 @@ export async function POST(req: Request) {
         .substring(0, 100);
     };
 
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 9);
-    const uniqueId = `${timestamp}-${randomId}`;
+    const uniqueId = crypto.randomUUID();
 
     const baseName = title && title.trim()
       ? sanitizeFilename(title.trim())
@@ -85,7 +82,6 @@ export async function POST(req: Request) {
       message: 'File uploaded successfully!',
       path: videoUrl,
       thumbnailPath: thumbnailUrl || '',
-      storageMode: getStorageMode(),
     });
   } catch (error) {
     console.error('File upload error:', error);
