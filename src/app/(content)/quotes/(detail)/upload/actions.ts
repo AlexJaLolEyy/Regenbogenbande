@@ -1,10 +1,9 @@
 "use server"
 
 import { addQuote, getUserById } from '@/src/app/current-storage/storage';
+import { checkUploadPermission } from '@/src/lib/auth-utils';
 import { Quote, User } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
-import { getAllQuotes } from '@/src/app/current-storage/storage';
-import { checkUploadPermission } from '@/src/lib/auth-utils';
 
 interface Message {
   userId: string;
@@ -12,6 +11,7 @@ interface Message {
 }
 
 interface QuoteFormData {
+  id?: string;
   uploadedBy: User | string;
   uploadedAt: Date;
   createdAt: Date;
@@ -22,11 +22,20 @@ interface QuoteFormData {
  * Creates a quote in the database
  */
 export async function createQuote(data: QuoteFormData) {
-  await checkUploadPermission();
+  const session = await checkUploadPermission();
+
   // Handle uploadedBy - can be string ID or User object
   let uploadedBy: User;
-  if (typeof data.uploadedBy === "string") {
-    uploadedBy = await getUserById(parseInt(data.uploadedBy));
+  if (!data.uploadedBy) {
+    uploadedBy = {
+      id: session.user.id,
+      username: session.user.name,
+      profilePicture: session.user.image || null,
+    };
+  } else if (typeof data.uploadedBy === "string") {
+    const user = await getUserById(data.uploadedBy);
+    if (!user) throw new Error(`User with ID ${data.uploadedBy} not found`);
+    uploadedBy = user;
   } else {
     uploadedBy = data.uploadedBy;
   }
@@ -34,49 +43,38 @@ export async function createQuote(data: QuoteFormData) {
   // Convert messages to quote format
   const fullQuote = await Promise.all(
     data.messages.map(async (msg) => {
-      const userId = typeof msg.userId === 'string' ? parseInt(msg.userId) : msg.userId;
-      const user = await getUserById(userId);
+      const user = await getUserById(msg.userId);
+      
+      if (!user) {
+        throw new Error(`Speaker with ID ${msg.userId} not found. Please make sure all speakers are valid users or invited members.`);
+      }
       return {
-        user: user,
+        user,
         msg: msg.message,
       };
     })
   );
 
   // Auto-detect participants from messages (unique users)
-  const participantIds = Array.from(new Set(data.messages.map(m => m.userId)));
-  const participants = await Promise.all(
-    participantIds.map(id => {
-      const userId = typeof id === 'string' ? parseInt(id) : id;
-      return getUserById(userId);
-    })
-  );
-
-  // Generate a new ID if not provided
-  const allQuotes = await getAllQuotes();
-  const maxId = allQuotes.length > 0
-    ? Math.max(...allQuotes.map(q => typeof q.id === 'number' ? q.id : parseInt(q.id.toString())))
-    : 0;
-  const quoteId = maxId + 1;
-
+  // We already have the fullQuote with users, so we can use that
+  const uniqueUsers = Array.from(new Map(fullQuote.map(fq => [fq.user.id, fq.user])).values());
+  
   // Create quote object
   const quote: Quote = {
-    id: quoteId,
+    id: data.id || "", // Prisma will generate if empty
     uploadedBy: uploadedBy,
     uploadedAt: data.uploadedAt || new Date(),
     createdAt: data.createdAt || new Date(),
-    fullQuote: fullQuote,
-    participants: participants,
-    metadata: {
-      views: 0,
-      rating: [],
-    },
+    messages: fullQuote.map((fq, i) => ({ id: String(i), message: fq.msg, user: fq.user })),
+    participants: uniqueUsers.map(u => ({ type: 'user', data: u })),
+    views: 0,
+    isPublic: false,
+    publishedAt: null,
   };
 
   // Add to database
-  await addQuote(quote);
+  const createdQuote = await addQuote(quote);
 
   // Redirect to the quote detail page
-  redirect(`/quotes/${quoteId}/`);
+  redirect(`/quotes/${createdQuote.id}/`);
 }
-

@@ -1,67 +1,149 @@
 "use server"
 
-import { auth } from "@/src/lib/auth"
 import { prisma } from "@/src/lib/prisma"
-import bcrypt from "bcrypt"
+import { requireAdmin } from "@/src/lib/auth-utils"
 import { revalidatePath } from "next/cache"
-import { Role } from "@prisma/client"
-
-// Helper to check admin status
-async function checkAdmin() {
-    const session = await auth()
-    // @ts-expect-error - Dynamic property
-    if (session?.user?.role !== "admin") {
-        throw new Error("Unauthorized: Admin access required")
-    }
-    return session
-}
+import { Role } from "@/src/generated/prisma"
 
 export async function getUsers() {
-    await checkAdmin()
+    await requireAdmin()
     return await prisma.user.findMany({
         orderBy: { createdAt: "desc" },
         select: {
             id: true,
-            username: true,
+            name: true,
             email: true,
             role: true,
-            profilePicture: true,
+            image: true,
+            discordId: true,
+            status: true,
             createdAt: true,
         }
     })
 }
 
-export async function createUser(username: string, role: string = "member") {
-    await checkAdmin()
+export async function getInvites() {
+    await requireAdmin()
+    
+    const invites = await prisma.invite.findMany({
+        orderBy: { createdAt: "desc" },
+    })
 
-    // Generate a random temporary password
-    const tempPassword = Math.random().toString(36).slice(-8)
-    const hashedPassword = await bcrypt.hash(tempPassword, 10)
+    return invites.map(invite => ({
+        id: invite.id,
+        discordId: invite.discordId,
+        discordName: invite.discordName,
+        role: invite.role,
+        usedAt: invite.usedAt,
+        createdAt: invite.createdAt,
+    }))
+}
+
+export async function createInvite(discordId: string, discordName: string, role: string = "member") {
+    const session = await requireAdmin()
+
+    if (!discordId || discordId.length < 17) {
+        return { success: false, error: "Invalid Discord ID. It should be a 17-19 digit number." }
+    }
 
     try {
-        const user = await prisma.user.create({
-            data: {
-                username,
-                password: hashedPassword,
-                role: role as Role,
-            }
-        })
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create the invite
+            const invite = await tx.invite.create({
+                data: {
+                    discordId,
+                    discordName: discordName || null,
+                    role: role as Role,
+                    createdById: session.user.id,
+                }
+            });
+
+            // 2. Create the User record (unverified)
+            // This allows the user to be selected as participant/author immediately
+            const user = await tx.user.upsert({
+                where: { discordId },
+                update: {
+                    name: discordName || `User ${discordId.slice(-4)}`,
+                    role: role as Role,
+                },
+                create: {
+                    name: discordName || `User ${discordId.slice(-4)}`,
+                    discordId,
+                    role: role as Role,
+                    status: "INVITED",
+                }
+            });
+
+            // 3. Create the Account record to link Discord login to this User
+            // This ensures better-auth uses this User record when they log in
+            await tx.account.upsert({
+                where: {
+                    providerId_accountId: {
+                        providerId: "discord",
+                        accountId: discordId,
+                    }
+                },
+                update: {
+                    userId: user.id,
+                },
+                create: {
+                    userId: user.id,
+                    providerId: "discord",
+                    accountId: discordId,
+                }
+            });
+
+            return invite;
+        });
 
         revalidatePath("/admin/users")
-        return { success: true, user, tempPassword }
+        return { success: true, invite: result }
     } catch (error) {
-        console.error("Create user error:", error)
-        return { success: false, error: "Failed to create user. Username might be taken." }
+        console.error("Create invite error:", error)
+        return { success: false, error: "Failed to create invite. Discord ID might already be invited." }
+    }
+}
+
+export async function deleteInvite(inviteId: string) {
+    await requireAdmin()
+
+    try {
+        const invite = await prisma.invite.findUnique({
+            where: { id: inviteId }
+        })
+
+        if (invite?.discordId) {
+            // Find the user associated with this discordId
+            const user = await prisma.user.findUnique({
+                where: { discordId: invite.discordId },
+                include: { accounts: true }
+            });
+
+            // If the user hasn't logged in yet (no email), we can clean up
+            if (user && !user.email) {
+                await prisma.user.delete({
+                    where: { id: user.id }
+                });
+            }
+        }
+
+        await prisma.invite.delete({
+            where: { id: inviteId }
+        })
+        revalidatePath("/admin/users")
+        return { success: true }
+    } catch (error) {
+        console.error("Delete invite error:", error)
+        return { success: false, error: "Failed to delete invite" }
     }
 }
 
 export async function updateUserRole(userId: string, newRole: string) {
-    const session = await checkAdmin()
+    const session = await requireAdmin()
 
-    // Prevent self-demotion if you are the last admin (optional check, but good for safety)
-    // For now just basic protection
-    if (session?.user?.id === userId && newRole !== "admin") {
-        // Allow for now, but good to warn.
+    // Prevent self-demotion
+    if (session.user.id === userId && newRole !== "admin") {
+        return { success: false, error: "You cannot remove your own admin status" }
     }
 
     try {
@@ -78,15 +160,16 @@ export async function updateUserRole(userId: string, newRole: string) {
 }
 
 export async function deleteUser(userId: string) {
-    const session = await checkAdmin()
+    const session = await requireAdmin()
 
-    if (session?.user?.id === userId) {
+    if (session.user.id === userId) {
         return { success: false, error: "You cannot delete your own account" }
     }
 
     try {
-        await prisma.user.delete({
-            where: { id: userId }
+        await prisma.user.update({
+            where: { id: userId },
+            data: { status: "DISABLED" }
         })
         revalidatePath("/admin/users")
         return { success: true }

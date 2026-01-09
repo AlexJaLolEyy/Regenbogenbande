@@ -1,65 +1,43 @@
 "use server"
 
+import { requireAuth } from "@/src/lib/auth-utils"
 import { prisma } from "@/src/lib/prisma"
-import { checkAuth } from "@/src/lib/auth-utils"
-import bcrypt from "bcrypt"
 import { revalidatePath } from "next/cache"
 
-export async function updateUsername(newUsername: string) {
-    const session = await checkAuth()
-    if (!session?.user?.id) return { success: false, error: "User not found" }
+export async function updateDisplayName(newName: string) {
+    const session = await requireAuth()
     const userId = session.user.id
 
-    if (!newUsername || newUsername.length < 3) {
-        return { success: false, error: "Username must be at least 3 characters long" }
+    if (!newName || newName.length < 2) {
+        return { success: false, error: "Display name must be at least 2 characters long" }
+    }
+
+    if (newName.length > 32) {
+        return { success: false, error: "Display name must be 32 characters or less" }
     }
 
     try {
         await prisma.user.update({
             where: { id: userId },
-            data: { username: newUsername }
+            data: { name: newName }
         })
         revalidatePath("/profile")
+        revalidatePath("/", "layout")
         return { success: true }
     } catch {
-        return { success: false, error: "Username already taken or invalid" }
+        return { success: false, error: "Failed to update display name" }
     }
 }
 
-export async function updatePassword(newPassword: string) {
-    const session = await checkAuth()
-    if (!session?.user?.id) return { success: false, error: "User not found" }
-    const userId = session.user.id
-
-    if (!newPassword || newPassword.length < 6) {
-        return { success: false, error: "Password must be at least 6 characters long" }
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10)
-
-    try {
-        await prisma.user.update({
-            where: { id: userId },
-            data: { password: hashedPassword }
-        })
-        return { success: true }
-    } catch {
-        return { success: false, error: "Failed to update password" }
-    }
-}
-
-// TODO: Implement actual file upload for profile picture
-// For now, allow setting a URL or handle upload in a separate route that returns a URL
 export async function updateProfilePicture(url: string) {
-    const session = await checkAuth()
-    if (!session?.user?.id) return { success: false, error: "User not found" }
+    const session = await requireAuth()
+    
     try {
         await prisma.user.update({
             where: { id: session.user.id },
-            data: { profilePicture: url }
+            data: { image: url }
         })
         revalidatePath("/profile")
-        // Also validate global nav
         revalidatePath("/", "layout")
         return { success: true }
     } catch {

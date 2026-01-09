@@ -1,10 +1,9 @@
 "use server"
 
 import { addVideo, getUserById } from '@/src/app/current-storage/storage';
+import { checkUploadPermission } from '@/src/lib/auth-utils';
 import { UploadVideo, User, Video } from '@/src/lib/types/types';
 import { redirect } from 'next/navigation';
-import { getAllVideos } from '@/src/app/current-storage/storage';
-import { checkUploadPermission } from '@/src/lib/auth-utils';
 
 /**
  * Type for video metadata without File objects (for Server Actions)
@@ -27,9 +26,10 @@ export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath:
         const participantsStr = video.participants as string;
         const userIds = participantsStr.split(",").filter((id: string) => id.trim() !== "");
         const userPromises = userIds.map((userid: string) => {
-            return getUserById(parseInt(userid));
+            return getUserById(userid);
         });
-        participants = await Promise.all(userPromises);
+        const fetchedUsers = await Promise.all(userPromises);
+        participants = fetchedUsers.filter((u): u is User => u !== null);
     } else if (Array.isArray(video.participants)) {
         // If it's already an array of Users, use it directly
         participants = video.participants;
@@ -38,37 +38,28 @@ export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath:
     // Handle uploadedBy - can be string ID or User object
     let uploadedBy: User;
     if (typeof video.uploadedBy === "string") {
-        uploadedBy = await getUserById(parseInt(video.uploadedBy));
+        const user = await getUserById(video.uploadedBy);
+        if (!user) throw new Error(`User with ID ${video.uploadedBy} not found`);
+        uploadedBy = user;
     } else {
         uploadedBy = video.uploadedBy;
     }
 
-    // Generate a new ID if not provided (for new uploads)
-    let videoId = video.id;
-    if (!videoId || videoId === 0) {
-        // Get the highest existing ID and add 1
-        const allVideos = await getAllVideos();
-        const maxId = allVideos.length > 0
-            ? Math.max(...allVideos.map(v => v.id))
-            : 0;
-        videoId = maxId + 1;
-    }
-
-    // Convert UploadVideo to Video
+    // Parse and convert UploadVideo to Video
     const videoData: Video = {
-        id: videoId,
+        id: video.id || "", // Prisma will generate if empty
         title: video.title,
-        description: video.description,
-        video: videoPath, // Use the path from file upload, not the File object
-        thumbnail: thumbnailPath, // Use the thumbnail path
-        participants: participants,
+        description: video.description || null,
+        videoUrl: videoPath,
+        thumbnailUrl: thumbnailPath,
+        participants: participants.map(u => ({ type: 'user', data: u })),
         uploadedBy: uploadedBy,
         uploadedAt: video.uploadedAt || new Date(),
         createdAt: video.createdAt || new Date(),
-        metadata: {
-            views: 0,
-            rating: [],
-        },
+        views: 0,
+        category: { id: video.categoryId, name: "", iconUrl: null }, // Partial category is fine for addVideo
+        isPublic: false,
+        publishedAt: null,
     };
 
     return videoData;
@@ -79,15 +70,27 @@ export async function parseUploadVideoToBackend(video: VideoMetadata, videoPath:
  * Note: video parameter should NOT contain File objects (they cause body size limit errors)
  */
 export async function createVideo(video: VideoMetadata, videoPath: string, thumbnailPath: string) {
-    await checkUploadPermission();
+    const session = await checkUploadPermission();
+    
+    if (!video.categoryId) {
+        throw new Error("categoryId is required");
+    }
+
+    // Fallback: If uploadedBy is missing, use session user
+    if (!video.uploadedBy) {
+        video.uploadedBy = {
+            id: session.user.id,
+            username: session.user.name,
+            profilePicture: session.user.image || null,
+        };
+    }
+
     // Parse and convert UploadVideo to Video
     const videoData = await parseUploadVideoToBackend(video, videoPath, thumbnailPath);
 
     // Add to database (await it!)
-    await addVideo(videoData);
+    const createdVideo = await addVideo(videoData);
 
     // Redirect to the video detail page
-    // Note: redirect() throws a special NEXT_REDIRECT error that Next.js handles
-    // This is normal behavior, not an actual error
-    redirect(`/videos/${videoData.id}/`);
+    redirect(`/videos/${createdVideo.id}/`);
 }

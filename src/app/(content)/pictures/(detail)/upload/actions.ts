@@ -1,10 +1,9 @@
 "use server"
 
 import { addPicture, getUserById } from '@/src/app/current-storage/storage';
-import { UploadPicture, User, Picture } from '@/src/lib/types/types';
-import { redirect } from 'next/navigation';
-import { getAllPictures } from '@/src/app/current-storage/storage';
 import { checkUploadPermission } from '@/src/lib/auth-utils';
+import { Picture, UploadPicture, User } from '@/src/lib/types/types';
+import { redirect } from 'next/navigation';
 
 /**
  * Type for picture metadata without File objects (for Server Actions)
@@ -26,9 +25,10 @@ export async function parseUploadPictureToBackend(picture: PictureMetadata, imag
         const participantsStr = picture.participants as string;
         const userIds = participantsStr.split(",").filter((id: string) => id.trim() !== "");
         const userPromises = userIds.map((userid: string) => {
-            return getUserById(parseInt(userid));
+            return getUserById(userid);
         });
-        participants = await Promise.all(userPromises);
+        const fetchedUsers = await Promise.all(userPromises);
+        participants = fetchedUsers.filter((u): u is User => u !== null);
     } else if (Array.isArray(picture.participants)) {
         // If it's already an array of Users, use it directly
         participants = picture.participants;
@@ -37,37 +37,28 @@ export async function parseUploadPictureToBackend(picture: PictureMetadata, imag
     // Handle uploadedBy - can be string ID or User object
     let uploadedBy: User;
     if (typeof picture.uploadedBy === "string") {
-        uploadedBy = await getUserById(parseInt(picture.uploadedBy));
+        const user = await getUserById(picture.uploadedBy);
+        if (!user) throw new Error(`User with ID ${picture.uploadedBy} not found`);
+        uploadedBy = user;
     } else {
         uploadedBy = picture.uploadedBy;
     }
 
-    // Generate a new ID if not provided (for new uploads)
-    let pictureId = picture.id;
-    if (!pictureId || pictureId === 0) {
-        // Get the highest existing ID and add 1
-        const allPictures = await getAllPictures();
-        const maxId = allPictures.length > 0
-            ? Math.max(...allPictures.map(p => p.id))
-            : 0;
-        pictureId = maxId + 1;
-    }
-
     // Convert UploadPicture to Picture
     const pictureData: Picture = {
-        id: pictureId,
+        id: picture.id || "", // Prisma will generate if empty
         title: picture.title,
-        description: picture.description,
-        img: imagePath, // Use the path from file upload, not the File object
-        thumbnail: thumbnailPath, // Thumbnail path for list views
-        participants: participants,
+        description: picture.description || null,
+        imageUrl: imagePath,
+        thumbnailUrl: thumbnailPath || "",
+        participants: participants.map(u => ({ type: 'user', data: u })),
         uploadedBy: uploadedBy,
         uploadedAt: picture.uploadedAt || new Date(),
         createdAt: picture.createdAt || new Date(),
-        metadata: {
-            views: 0,
-            rating: [],
-        },
+        views: 0,
+        category: { id: picture.categoryId, name: "", iconUrl: null },
+        isPublic: false,
+        publishedAt: null,
     };
 
     return pictureData;
@@ -78,16 +69,27 @@ export async function parseUploadPictureToBackend(picture: PictureMetadata, imag
  * Note: picture parameter should NOT contain File objects (they cause body size limit errors)
  */
 export async function createPicture(picture: PictureMetadata, imagePath: string, thumbnailPath?: string) {
-    await checkUploadPermission();
+    const session = await checkUploadPermission();
+    
+    if (!picture.categoryId) {
+        throw new Error("categoryId is required");
+    }
+
+    // Fallback: If uploadedBy is missing, use session user
+    if (!picture.uploadedBy) {
+        picture.uploadedBy = {
+            id: session.user.id,
+            username: session.user.name,
+            profilePicture: session.user.image || null,
+        };
+    }
+
     // Parse and convert UploadPicture to Picture
     const pictureData = await parseUploadPictureToBackend(picture, imagePath, thumbnailPath);
 
     // Add to database (await it!)
-    await addPicture(pictureData);
+    const createdPicture = await addPicture(pictureData);
 
     // Redirect to the picture detail page
-    // Note: redirect() throws a special NEXT_REDIRECT error that Next.js handles
-    // This is normal behavior, not an actual error
-    redirect(`/pictures/${pictureData.id}/`);
+    redirect(`/pictures/${createdPicture.id}/`);
 }
-
