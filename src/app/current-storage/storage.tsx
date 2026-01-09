@@ -1,9 +1,29 @@
 'use server'
 
-import { Picture, Quote, Rating, User, Video } from "@/src/lib/types/types";
+import { Session } from "@/src/lib/auth";
+import {
+  checkOwnerOrAdmin,
+  checkUploadPermission,
+  getEffectiveRole,
+  requireOwner
+} from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
-import { checkUploadPermission, checkOwnerOrAdmin } from "@/src/lib/auth-utils";
 import { deleteFile } from "@/src/lib/storage-adapter";
+import { Prisma } from "@/src/generated/prisma";
+import { SortOption, DateRange } from '@/src/lib/types/filters';
+import { getDateRangeFilter, getSortOrder } from '@/src/lib/utils/date-filters';
+import {
+  Category,
+  Participant,
+  ParticipantPlaceholder,
+  Picture,
+  Quote,
+  Rating,
+  User,
+  Video
+} from "@/src/lib/types/types";
+
+// Note: After schema changes, run `prisma generate` to regenerate types
 
 // ============================================
 // TRANSFORMATION FUNCTIONS
@@ -13,99 +33,111 @@ import { deleteFile } from "@/src/lib/storage-adapter";
 function transformUser(prismaUser: any): User {
   if (!prismaUser) return null as any;
 
-  // Try to parse ID as number, if it's a cuid, use a hash
-  let id: number;
-  if (typeof prismaUser.id === 'string') {
-    const parsed = parseInt(prismaUser.id, 10);
-    id = isNaN(parsed) ? hashStringToNumber(prismaUser.id) : parsed;
-  } else {
-    id = prismaUser.id;
-  }
+  return {
+    id: prismaUser.id,
+    username: prismaUser.name || '',
+    profilePicture: prismaUser.image || null,
+    status: prismaUser.status,
+  };
+}
+
+function transformPlaceholder(prismaPlaceholder: any): ParticipantPlaceholder {
+  if (!prismaPlaceholder) return null as any;
 
   return {
-    id,
-    username: prismaUser.username || '',
-    password: prismaUser.password || '',
-    profilepicture: prismaUser.profilePicture || '',
+    id: prismaPlaceholder.id,
+    displayName: prismaPlaceholder.displayName || '',
+    discordId: prismaPlaceholder.discordId || null,
+    claimedById: prismaPlaceholder.claimedById || null,
   };
+}
+
+function transformParticipant(participantRelation: any): Participant {
+  // XOR: exactly one of user or placeholder should be set
+  if (participantRelation.user) {
+    return {
+      type: "user",
+      data: transformUser(participantRelation.user),
+    };
+  }
+  if (participantRelation.placeholder) {
+    return {
+      type: "placeholder",
+      data: transformPlaceholder(participantRelation.placeholder),
+    };
+  }
+  throw new Error("Invalid participant: neither user nor placeholder");
 }
 
 function transformRating(prismaRating: any): Rating {
   if (!prismaRating) return null as any;
 
-  let userId: number;
-  if (typeof prismaRating.userId === 'string') {
-    const parsed = parseInt(prismaRating.userId, 10);
-    userId = isNaN(parsed) ? hashStringToNumber(prismaRating.userId) : parsed;
-  } else {
-    userId = prismaRating.userId;
-  }
-
   return {
-    user: userId,
+    userId: prismaRating.userId || '',
     value: prismaRating.value || 0,
   };
+}
+
+function calculateAvgRating(ratings: { value: number }[]): number | undefined {
+  if (!ratings || ratings.length === 0) return undefined;
+  const sum = ratings.reduce((acc, r) => acc + r.value, 0);
+  return sum / ratings.length;
 }
 
 function transformVideo(prismaVideo: any): Video {
   if (!prismaVideo) return null as any;
 
-  let id: number;
-  if (typeof prismaVideo.id === 'string') {
-    const parsed = parseInt(prismaVideo.id, 10);
-    id = isNaN(parsed) ? hashStringToNumber(prismaVideo.id) : parsed;
-  } else {
-    id = prismaVideo.id;
-  }
-
   return {
-    id,
+    id: prismaVideo.id,
     title: prismaVideo.title || '',
     description: prismaVideo.description || null,
-    video: prismaVideo.videoUrl || '',
-    thumbnail: prismaVideo.thumbnailUrl || '',
-    participants: prismaVideo.participants?.map((p: any) => transformUser(p.user)) || [],
+    videoUrl: prismaVideo.videoUrl || '',
+    thumbnailUrl: prismaVideo.thumbnailUrl || '',
+    participants: prismaVideo.participants?.map((p: any) => transformParticipant(p)) || [],
     uploadedBy: transformUser(prismaVideo.uploadedBy),
     uploadedAt: prismaVideo.uploadedAt ? new Date(prismaVideo.uploadedAt) : new Date(),
     createdAt: prismaVideo.createdAt ? new Date(prismaVideo.createdAt) : new Date(),
-    metadata: {
-      views: prismaVideo.views || 0,
-      rating: prismaVideo.ratings?.map((r: any) => transformRating(r)) || [],
-    },
+    views: prismaVideo.views || 0,
+    category: prismaVideo.category ? {
+      id: prismaVideo.category.id,
+      name: prismaVideo.category.name,
+      iconUrl: prismaVideo.category.iconUrl || null,
+    } : { id: '', name: '', iconUrl: null },
+    isPublic: prismaVideo.isPublic ?? false,
+    publishedAt: prismaVideo.publishedAt ? new Date(prismaVideo.publishedAt) : null,
+    averageRating: calculateAvgRating(prismaVideo.ratings),
   };
 }
 
 function transformPicture(prismaPicture: any): Picture {
   if (!prismaPicture) return null as any;
 
-  let id: number;
-  if (typeof prismaPicture.id === 'string') {
-    const parsed = parseInt(prismaPicture.id, 10);
-    id = isNaN(parsed) ? hashStringToNumber(prismaPicture.id) : parsed;
-  } else {
-    id = prismaPicture.id;
-  }
-
   return {
-    id,
+    id: prismaPicture.id,
     title: prismaPicture.title || '',
     description: prismaPicture.description || null,
-    img: prismaPicture.imageUrl || '',
-    thumbnail: prismaPicture.thumbnailUrl || undefined,
-    participants: prismaPicture.participants?.map((p: any) => transformUser(p.user)) || [],
+    imageUrl: prismaPicture.imageUrl || '',
+    thumbnailUrl: prismaPicture.thumbnailUrl || '',
+    participants: prismaPicture.participants?.map((p: any) => transformParticipant(p)) || [],
     uploadedBy: transformUser(prismaPicture.uploadedBy),
     uploadedAt: prismaPicture.uploadedAt ? new Date(prismaPicture.uploadedAt) : new Date(),
     createdAt: prismaPicture.createdAt ? new Date(prismaPicture.createdAt) : new Date(),
-    metadata: {
-      views: prismaPicture.views || 0,
-      rating: prismaPicture.ratings?.map((r: any) => transformRating(r)) || [],
-    },
+    views: prismaPicture.views || 0,
+    category: prismaPicture.category ? {
+      id: prismaPicture.category.id,
+      name: prismaPicture.category.name,
+      iconUrl: prismaPicture.category.iconUrl || null,
+    } : { id: '', name: '', iconUrl: null },
+    isPublic: prismaPicture.isPublic ?? false,
+    publishedAt: prismaPicture.publishedAt ? new Date(prismaPicture.publishedAt) : null,
+    averageRating: calculateAvgRating(prismaPicture.ratings),
   };
 }
 
-function transformQuoteMessage(prismaMessage: any): { msg: string; user: User } {
+function transformQuoteMessage(prismaMessage: any): { id: string; message: string; user: User } {
   return {
-    msg: prismaMessage.message || '',
+    id: prismaMessage.id || '',
+    message: prismaMessage.message || '',
     user: transformUser(prismaMessage.user),
   };
 }
@@ -113,62 +145,77 @@ function transformQuoteMessage(prismaMessage: any): { msg: string; user: User } 
 function transformQuote(prismaQuote: any): Quote {
   if (!prismaQuote) return null as any;
 
-  let id: number;
-  if (typeof prismaQuote.id === 'string') {
-    const parsed = parseInt(prismaQuote.id, 10);
-    id = isNaN(parsed) ? hashStringToNumber(prismaQuote.id) : parsed;
-  } else {
-    id = prismaQuote.id;
-  }
-
   return {
-    id,
-    fullQuote: prismaQuote.messages?.map((m: any) => transformQuoteMessage(m)) || [],
-    participants: prismaQuote.participants?.map((p: any) => transformUser(p.user)) || [],
+    id: prismaQuote.id,
+    messages: prismaQuote.messages?.map((m: any) => transformQuoteMessage(m)) || [],
+    participants: prismaQuote.participants?.map((p: any) => transformParticipant(p)) || [],
     uploadedBy: transformUser(prismaQuote.uploadedBy),
     uploadedAt: prismaQuote.uploadedAt ? new Date(prismaQuote.uploadedAt) : new Date(),
     createdAt: prismaQuote.createdAt ? new Date(prismaQuote.createdAt) : new Date(),
-    metadata: {
-      views: prismaQuote.views || 0,
-      rating: prismaQuote.ratings?.map((r: any) => transformRating(r)) || [],
-    },
+    views: prismaQuote.views || 0,
+    isPublic: prismaQuote.isPublic ?? false,
+    publishedAt: prismaQuote.publishedAt ? new Date(prismaQuote.publishedAt) : null,
+    averageRating: calculateAvgRating(prismaQuote.ratings),
   };
 }
 
-// Simple hash function to convert string to number
-function hashStringToNumber(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
+// Common include for participant relations (supports both User and Placeholder)
+const participantInclude = {
+  user: true,
+  placeholder: true,
+};
+
+interface FetchOptions {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: SortOption;
+  categoryId?: string | null;
+  dateRange?: DateRange;
 }
 
 // ============================================
 // GET ALL FUNCTIONS
 // ============================================
 
-export async function getAllVideos(): Promise<Video[]> {
+export async function getAllVideos(session?: Session | null, options?: FetchOptions): Promise<Video[]> {
   try {
+    const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+    const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
+
+    const where: Prisma.VideoWhereInput = {};
+
+    if (effectiveRole === "guest") {
+      where.isPublic = true;
+    }
+
+    if (search) {
+      where.title = { contains: search, mode: 'insensitive' };
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    if (dateRange && dateRange !== 'all') {
+      where.createdAt = getDateRangeFilter(dateRange);
+    }
+
+    const orderBy = getSortOrder(sort);
+
     const videos = await prisma.video.findMany({
+      where,
       include: {
         uploadedBy: true,
+        category: true,
         participants: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
-        ratings: {
-          include: {
-            user: true,
-          },
-        },
+        ratings: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     });
     return videos.map(transformVideo);
   } catch (error) {
@@ -177,25 +224,44 @@ export async function getAllVideos(): Promise<Video[]> {
   }
 }
 
-export async function getAllPictures(): Promise<Picture[]> {
+export async function getAllPictures(session?: Session | null, options?: FetchOptions): Promise<Picture[]> {
   try {
+    const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+    const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
+
+    const where: Prisma.PictureWhereInput = {};
+
+    if (effectiveRole === "guest") {
+      where.isPublic = true;
+    }
+
+    if (search) {
+      where.title = { contains: search, mode: 'insensitive' };
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    if (dateRange && dateRange !== 'all') {
+      where.createdAt = getDateRangeFilter(dateRange);
+    }
+
+    const orderBy = getSortOrder(sort);
+
     const pictures = await prisma.picture.findMany({
+      where,
       include: {
         uploadedBy: true,
+        category: true,
         participants: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
-        ratings: {
-          include: {
-            user: true,
-          },
-        },
+        ratings: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     });
     return pictures.map(transformPicture);
   } catch (error) {
@@ -204,9 +270,36 @@ export async function getAllPictures(): Promise<Picture[]> {
   }
 }
 
-export async function getAllQuotes(): Promise<Quote[]> {
+export async function getAllQuotes(session?: Session | null, options?: FetchOptions): Promise<Quote[]> {
   try {
+    const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+    const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
+
+    const where: Prisma.QuoteWhereInput = {};
+
+    if (effectiveRole === "guest") {
+      where.isPublic = true;
+    }
+
+    if (search) {
+      where.messages = { some: { message: { contains: search, mode: 'insensitive' } } };
+    }
+
+    if (categoryId) {
+      // Quotes don't have categories directly, but messages could be categorized
+      // This requires a more complex query or a different schema design
+      // For now, we will ignore category filter for quotes
+      console.warn("Category filtering is not supported for quotes with the current schema.");
+    }
+
+    if (dateRange && dateRange !== 'all') {
+      where.createdAt = getDateRangeFilter(dateRange);
+    }
+
+    const orderBy = getSortOrder(sort);
+
     const quotes = await prisma.quote.findMany({
+      where,
       include: {
         uploadedBy: true,
         messages: {
@@ -218,19 +311,13 @@ export async function getAllQuotes(): Promise<Quote[]> {
           },
         },
         participants: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
-        ratings: {
-          include: {
-            user: true,
-          },
-        },
+        ratings: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     });
     return quotes.map(transformQuote);
   } catch (error) {
@@ -242,6 +329,9 @@ export async function getAllQuotes(): Promise<Quote[]> {
 export async function getAllUsers(): Promise<User[]> {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        status: { not: 'DISABLED' }
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -253,79 +343,338 @@ export async function getAllUsers(): Promise<User[]> {
   }
 }
 
+export async function getAllSelectableParticipants(): Promise<Participant[]> {
+  try {
+    // 1. Fetch all users who are INVITED or ACTIVE
+    const users = await prisma.user.findMany({
+      where: { 
+        isAnonymous: false,
+        status: { in: ['INVITED', 'ACTIVE'] }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // 2. Map users to participants
+    return users.map(u => ({
+      type: "user",
+      data: transformUser(u),
+    }));
+  } catch (error) {
+    console.error('Error fetching selectable participants:', error);
+    return [];
+  }
+}
+
+export async function getAllCategories(): Promise<Category[]> {
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { name: 'asc' },
+    });
+    return categories.map(c => ({
+      id: c.id,
+      name: c.name,
+      iconUrl: c.iconUrl,
+    }));
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+}
+
 // ============================================
 // GET BY ID FUNCTIONS
 // ============================================
 
-export async function getVideoById(id: number): Promise<Video> {
+export async function getVideoById(id: string): Promise<Video | null> {
   try {
-    // Try to find by numeric ID first, then by string
-    const video = await prisma.video.findFirst({
-      where: {
-        OR: [
-          { id: String(id) },
-          { id: id.toString() },
-        ],
-      },
+    const video = await prisma.video.findUnique({
+      where: { id },
       include: {
         uploadedBy: true,
+        category: true,
         participants: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
-        ratings: {
-          include: {
-            user: true,
-          },
-        },
+        ratings: true,
       },
     });
-    return transformVideo(video);
+    return video ? transformVideo(video) : null;
   } catch (error) {
     console.error('Error fetching video by ID:', error);
-    return null as any;
+    return null;
   }
 }
 
-export async function getPictureById(id: number): Promise<Picture> {
+export async function getPictureById(id: string): Promise<Picture | null> {
   try {
-    const picture = await prisma.picture.findFirst({
-      where: {
-        OR: [
-          { id: String(id) },
-          { id: id.toString() },
-        ],
+    const picture = await prisma.picture.findUnique({
+      where: { id },
+      include: {
+        uploadedBy: true,
+        category: true,
+        participants: {
+          include: participantInclude,
+        },
+        ratings: true,
+      },
+    });
+    return picture ? transformPicture(picture) : null;
+  } catch (error) {
+    console.error('Error fetching picture by ID:', error);
+    return null;
+  }
+}
+
+export async function getQuoteById(id: string): Promise<Quote | null> {
+  try {
+    const quote = await prisma.quote.findUnique({
+      where: { id },
+      include: {
+        uploadedBy: true,
+        messages: {
+          include: {
+            user: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+        participants: {
+          include: participantInclude,
+        },
+        ratings: true,
+      },
+    });
+    return quote ? transformQuote(quote) : null;
+  } catch (error) {
+    console.error('Error fetching quote by ID:', error);
+    return null;
+  }
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+    return user ? transformUser(user) : null;
+  } catch (error) {
+    console.error('Error fetching user by ID:', error);
+    return null;
+  }
+}
+
+// ============================================
+// ADD FUNCTIONS
+// ============================================
+
+export async function addVideo(video: Video): Promise<Video> {
+  try {
+    await checkUploadPermission();
+    
+    // Null safety check
+    if (!video.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    // Ensure uploadedBy user exists
+    const uploader = await prisma.user.upsert({
+      where: { id: video.uploadedBy.id },
+      update: {
+        name: video.uploadedBy.username,
+        image: video.uploadedBy.profilePicture,
+      },
+      create: {
+        id: video.uploadedBy.id,
+        name: video.uploadedBy.username,
+        image: video.uploadedBy.profilePicture,
+      },
+    });
+
+    // Create video
+    const createdVideo = await prisma.video.create({
+      data: {
+        ...(video.id ? { id: video.id } : {}),
+        title: video.title,
+        description: video.description || null,
+        videoUrl: video.videoUrl,
+        thumbnailUrl: video.thumbnailUrl,
+        uploadedById: uploader.id,
+        categoryId: video.category.id,
+        uploadedAt: video.uploadedAt,
+        createdAt: video.createdAt,
+        views: video.views || 0,
+        isPublic: video.isPublic ?? false,
+        publishedAt: video.publishedAt,
       },
       include: {
         uploadedBy: true,
+        category: true,
         participants: {
-          include: {
-            user: true,
-          },
-        },
-        ratings: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
       },
     });
-    return transformPicture(picture);
+
+    // Add participants (supports both User and Placeholder)
+    for (const participant of video.participants) {
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
+
+        await prisma.videoParticipant.create({
+          data: {
+            videoId: createdVideo.id,
+            userId: user.id,
+          },
+        });
+      } else if (participant.type === "placeholder") {
+        await prisma.videoParticipant.create({
+          data: {
+            videoId: createdVideo.id,
+            placeholderId: participant.data.id,
+          },
+        });
+      }
+    }
+
+    return transformVideo(createdVideo);
   } catch (error) {
-    console.error('Error fetching picture by ID:', error);
-    return null as any;
+    console.error('Error adding video:', error);
+    throw error;
   }
 }
 
-export async function getQuoteById(id: number): Promise<Quote> {
+export async function addPicture(picture: Picture): Promise<Picture> {
   try {
-    const quote = await prisma.quote.findFirst({
-      where: {
-        OR: [
-          { id: String(id) },
-          { id: id.toString() },
-        ],
+    await checkUploadPermission();
+    
+    // Null safety check
+    if (!picture.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    // Ensure uploadedBy user exists
+    const uploader = await prisma.user.upsert({
+      where: { id: picture.uploadedBy.id },
+      update: {
+        name: picture.uploadedBy.username,
+        image: picture.uploadedBy.profilePicture,
+      },
+      create: {
+        id: picture.uploadedBy.id,
+        name: picture.uploadedBy.username,
+        image: picture.uploadedBy.profilePicture,
+      },
+    });
+
+    // Create picture
+    const createdPicture = await prisma.picture.create({
+      data: {
+        ...(picture.id ? { id: picture.id } : {}),
+        title: picture.title,
+        description: picture.description || null,
+        imageUrl: picture.imageUrl,
+        thumbnailUrl: picture.thumbnailUrl,
+        uploadedById: uploader.id,
+        categoryId: picture.category.id,
+        uploadedAt: picture.uploadedAt,
+        createdAt: picture.createdAt,
+        views: picture.views || 0,
+        isPublic: picture.isPublic ?? false,
+        publishedAt: picture.publishedAt,
+      },
+      include: {
+        uploadedBy: true,
+        category: true,
+        participants: {
+          include: participantInclude,
+        },
+      },
+    });
+
+    // Add participants (supports both User and Placeholder)
+    for (const participant of picture.participants) {
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
+
+        await prisma.pictureParticipant.create({
+          data: {
+            pictureId: createdPicture.id,
+            userId: user.id,
+          },
+        });
+      } else if (participant.type === "placeholder") {
+        await prisma.pictureParticipant.create({
+          data: {
+            pictureId: createdPicture.id,
+            placeholderId: participant.data.id,
+          },
+        });
+      }
+    }
+
+    return transformPicture(createdPicture);
+  } catch (error) {
+    console.error('Error adding picture:', error);
+    throw error;
+  }
+}
+
+export async function addQuote(quote: Quote): Promise<Quote> {
+  try {
+    await checkUploadPermission();
+    
+    // Null safety check
+    if (!quote.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    // Ensure uploadedBy user exists
+    const uploader = await prisma.user.upsert({
+      where: { id: quote.uploadedBy.id },
+      update: {
+        name: quote.uploadedBy.username,
+        image: quote.uploadedBy.profilePicture,
+      },
+      create: {
+        id: quote.uploadedBy.id,
+        name: quote.uploadedBy.username,
+        image: quote.uploadedBy.profilePicture,
+      },
+    });
+
+    // Create quote
+    const createdQuote = await prisma.quote.create({
+      data: {
+        ...(quote.id ? { id: quote.id } : {}),
+        uploadedById: uploader.id,
+        uploadedAt: quote.uploadedAt,
+        createdAt: quote.createdAt,
+        views: quote.views || 0,
+        isPublic: quote.isPublic ?? false,
+        publishedAt: quote.publishedAt,
       },
       include: {
         uploadedBy: true,
@@ -338,255 +687,28 @@ export async function getQuoteById(id: number): Promise<Quote> {
           },
         },
         participants: {
-          include: {
-            user: true,
-          },
+          include: participantInclude,
         },
-        ratings: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
-    return transformQuote(quote);
-  } catch (error) {
-    console.error('Error fetching quote by ID:', error);
-    return null as any;
-  }
-}
-
-export async function getUserById(id: number): Promise<User> {
-  try {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { id: String(id) },
-          { id: id.toString() },
-        ],
-      },
-    });
-    return transformUser(user);
-  } catch (error) {
-    console.error('Error fetching user by ID:', error);
-    return null as any;
-  }
-}
-
-// ============================================
-// ADD FUNCTIONS
-// ============================================
-
-export async function addVideo(video: Video): Promise<void> {
-  try {
-    await checkUploadPermission();
-    // Ensure uploadedBy user exists
-    const uploader = await prisma.user.upsert({
-      where: { id: String(video.uploadedBy.id) },
-      update: {
-        username: video.uploadedBy.username,
-        profilePicture: video.uploadedBy.profilepicture,
-      },
-      create: {
-        id: String(video.uploadedBy.id),
-        username: video.uploadedBy.username,
-        password: video.uploadedBy.password,
-        profilePicture: video.uploadedBy.profilepicture,
-      },
-    });
-
-    // Create video
-    const createdVideo = await prisma.video.create({
-      data: {
-        id: String(video.id),
-        title: video.title,
-        description: video.description || null,
-        videoUrl: video.video,
-        thumbnailUrl: video.thumbnail,
-        uploadedById: uploader.id,
-        uploadedAt: video.uploadedAt,
-        createdAt: video.createdAt,
-        views: video.metadata.views || 0,
-      },
-    });
-
-    // Add participants
-    for (const participant of video.participants) {
-      const user = await prisma.user.upsert({
-        where: { id: String(participant.id) },
-        update: {
-          username: participant.username,
-          profilePicture: participant.profilepicture,
-        },
-        create: {
-          id: String(participant.id),
-          username: participant.username,
-          password: participant.password,
-          profilePicture: participant.profilepicture,
-        },
-      });
-
-      await prisma.videoParticipant.create({
-        data: {
-          videoId: createdVideo.id,
-          userId: user.id,
-        },
-      });
-    }
-
-    // Add ratings
-    for (const rating of video.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
-          data: {
-            videoId: createdVideo.id,
-            userId: user.id,
-            value: rating.value,
-          },
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error adding video:', error);
-    throw error;
-  }
-}
-
-export async function addPicture(picture: Picture): Promise<void> {
-  try {
-    await checkUploadPermission();
-    // Ensure uploadedBy user exists
-    const uploader = await prisma.user.upsert({
-      where: { id: String(picture.uploadedBy.id) },
-      update: {
-        username: picture.uploadedBy.username,
-        profilePicture: picture.uploadedBy.profilepicture,
-      },
-      create: {
-        id: String(picture.uploadedBy.id),
-        username: picture.uploadedBy.username,
-        password: picture.uploadedBy.password,
-        profilePicture: picture.uploadedBy.profilepicture,
-      },
-    });
-
-    // Create picture
-    const createdPicture = await prisma.picture.create({
-      data: {
-        id: String(picture.id),
-        title: picture.title,
-        description: picture.description || null,
-        imageUrl: picture.img,
-        thumbnailUrl: picture.thumbnail || null,
-        uploadedById: uploader.id,
-        uploadedAt: picture.uploadedAt,
-        createdAt: picture.createdAt,
-        views: picture.metadata.views || 0,
-      },
-    });
-
-    // Add participants
-    for (const participant of picture.participants) {
-      const user = await prisma.user.upsert({
-        where: { id: String(participant.id) },
-        update: {
-          username: participant.username,
-          profilePicture: participant.profilepicture,
-        },
-        create: {
-          id: String(participant.id),
-          username: participant.username,
-          password: participant.password,
-          profilePicture: participant.profilepicture,
-        },
-      });
-
-      await prisma.pictureParticipant.create({
-        data: {
-          pictureId: createdPicture.id,
-          userId: user.id,
-        },
-      });
-    }
-
-    // Add ratings
-    for (const rating of picture.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
-          data: {
-            pictureId: createdPicture.id,
-            userId: user.id,
-            value: rating.value,
-          },
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error adding picture:', error);
-    throw error;
-  }
-}
-
-export async function addQuote(quote: Quote): Promise<void> {
-  try {
-    await checkUploadPermission();
-    // Ensure uploadedBy user exists
-    const uploader = await prisma.user.upsert({
-      where: { id: String(quote.uploadedBy.id) },
-      update: {
-        username: quote.uploadedBy.username,
-        profilePicture: quote.uploadedBy.profilepicture,
-      },
-      create: {
-        id: String(quote.uploadedBy.id),
-        username: quote.uploadedBy.username,
-        password: quote.uploadedBy.password,
-        profilePicture: quote.uploadedBy.profilepicture,
-      },
-    });
-
-    // Create quote
-    const createdQuote = await prisma.quote.create({
-      data: {
-        id: String(quote.id),
-        uploadedById: uploader.id,
-        uploadedAt: quote.uploadedAt,
-        createdAt: quote.createdAt,
-        views: quote.metadata.views || 0,
       },
     });
 
     // Add messages
-    for (const message of quote.fullQuote) {
+    for (const message of quote.messages) {
+      if (!message.user?.id) {
+        console.warn(`Skipping message without user: ${message.message}`);
+        continue;
+      }
+
       const user = await prisma.user.upsert({
-        where: { id: String(message.user.id) },
+        where: { id: message.user.id },
         update: {
-          username: message.user.username,
-          profilePicture: message.user.profilepicture,
+          name: message.user.username,
+          image: message.user.profilePicture,
         },
         create: {
-          id: String(message.user.id),
-          username: message.user.username,
-          password: message.user.password,
-          profilePicture: message.user.profilepicture,
+          id: message.user.id,
+          name: message.user.username,
+          image: message.user.profilePicture,
         },
       });
 
@@ -594,49 +716,44 @@ export async function addQuote(quote: Quote): Promise<void> {
         data: {
           quoteId: createdQuote.id,
           userId: user.id,
-          message: message.msg,
+          message: message.message,
         },
       });
     }
 
-    // Add participants (auto-detected from messages)
-    const participantIds = Array.from(new Set(quote.fullQuote.map(m => String(m.user.id))));
-    for (const participantId of participantIds) {
-      const user = await prisma.user.findFirst({
-        where: { id: participantId },
-      });
+    // Add participants (supports both User and Placeholder)
+    for (const participant of quote.participants) {
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
 
-      if (user) {
         await prisma.quoteParticipant.create({
           data: {
             quoteId: createdQuote.id,
             userId: user.id,
           },
         });
-      }
-    }
-
-    // Add ratings
-    for (const rating of quote.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
+      } else if (participant.type === "placeholder") {
+        await prisma.quoteParticipant.create({
           data: {
             quoteId: createdQuote.id,
-            userId: user.id,
-            value: rating.value,
+            placeholderId: participant.data.id,
           },
         });
       }
     }
+
+    return transformQuote(createdQuote);
   } catch (error) {
     console.error('Error adding quote:', error);
     throw error;
@@ -645,18 +762,20 @@ export async function addQuote(quote: Quote): Promise<void> {
 
 export async function addUser(user: User): Promise<void> {
   try {
+    if (!user?.id) {
+      throw new Error("user.id is required");
+    }
+    
     await prisma.user.upsert({
-      where: { id: String(user.id) },
+      where: { id: user.id },
       update: {
-        username: user.username,
-        password: user.password,
-        profilePicture: user.profilepicture,
+        name: user.username,
+        image: user.profilePicture,
       },
       create: {
-        id: String(user.id),
-        username: user.username,
-        password: user.password,
-        profilePicture: user.profilepicture,
+        id: user.id,
+        name: user.username,
+        image: user.profilePicture,
       },
     });
   } catch (error) {
@@ -669,11 +788,11 @@ export async function addUser(user: User): Promise<void> {
 // DELETE FUNCTIONS
 // ============================================
 
-export async function deleteVideo(videoId: number): Promise<void> {
+export async function deleteVideo(videoId: string): Promise<void> {
   try {
     // 1. Fetch video to get owner and file path
     const video = await prisma.video.findUnique({
-      where: { id: String(videoId) },
+      where: { id: videoId },
       include: { uploadedBy: true }
     });
 
@@ -682,31 +801,17 @@ export async function deleteVideo(videoId: number): Promise<void> {
     }
 
     // 2. Check Permission (Admin or Owner)
-    await checkOwnerOrAdmin(parseInt(video.uploadedById));
+    await checkOwnerOrAdmin(video.uploadedById);
 
     // 3. Delete from Storage (R2/Local)
     // Helper to extract key from URL
     const extractKey = (url: string) => {
       if (!url) return null;
-      // Assume URL format corresponds to how we store it.
-      // If it's a full URL, we need to extract the part after the bucket/domain
-      // Quick fix: Our keys are stored as "videos/..." or "thumbnails/..." in DB? 
-      // Wait, transformVideo says `videoUrl`. 
-      // In local mode: `/uploads/videos/foo.mp4` -> we need `videos/foo.mp4`
-      // In R2 mode: `https://.../videos/foo.mp4` -> we need `videos/foo.mp4`
-
-      // Simplest strategy: The key is usually the last 2 segments? 
-      // No, let's just strip known prefixes.
-
       if (url.includes("/uploads/")) {
         return url.split("/uploads/")[1];
       }
-      // For R2, it might be the whole path after the domain?
-      // safest is to store the KEY in db, but we store URL. 
-      // Let's rely on standard "videos/" and "thumbnails/" folders.
       if (url.includes("/videos/")) return "videos/" + url.split("/videos/")[1];
       if (url.includes("/thumbnails/")) return "thumbnails/" + url.split("/thumbnails/")[1];
-
       return null;
     };
 
@@ -718,7 +823,7 @@ export async function deleteVideo(videoId: number): Promise<void> {
 
     // 4. Delete from Database
     await prisma.video.delete({
-      where: { id: String(videoId) },
+      where: { id: videoId },
     });
   } catch (error) {
     console.error('Error deleting video:', error);
@@ -726,24 +831,21 @@ export async function deleteVideo(videoId: number): Promise<void> {
   }
 }
 
-export async function deletePicture(pictureId: number): Promise<void> {
+export async function deletePicture(pictureId: string): Promise<void> {
   try {
     const picture = await prisma.picture.findUnique({
-      where: { id: String(pictureId) },
+      where: { id: pictureId },
       include: { uploadedBy: true }
     });
 
     if (!picture) throw new Error("Picture not found");
 
-    await checkOwnerOrAdmin(parseInt(picture.uploadedById));
+    await checkOwnerOrAdmin(picture.uploadedById);
 
     // Extract keys
     const extractKey = (url: string) => {
       if (!url) return null;
       if (url.includes("/uploads/")) return url.split("/uploads/")[1];
-      // Start after "pictures/"? Wait, folder is defined in upload.
-      // Assuming "pictures/" or similar. 
-      // Pictures upload key is usually `pictures/filename`.
       if (url.includes("/pictures/")) return "pictures/" + url.split("/pictures/")[1];
       if (url.includes("/thumbnails/")) return "thumbnails/" + url.split("/thumbnails/")[1];
       return null;
@@ -756,7 +858,7 @@ export async function deletePicture(pictureId: number): Promise<void> {
     if (thumbKey) await deleteFile(thumbKey);
 
     await prisma.picture.delete({
-      where: { id: String(pictureId) },
+      where: { id: pictureId },
     });
   } catch (error) {
     console.error('Error deleting picture:', error);
@@ -764,17 +866,17 @@ export async function deletePicture(pictureId: number): Promise<void> {
   }
 }
 
-export async function deleteQuote(quoteId: number): Promise<void> {
+export async function deleteQuote(quoteId: string): Promise<void> {
   try {
     const quote = await prisma.quote.findUnique({
-      where: { id: String(quoteId) },
+      where: { id: quoteId },
     });
     if (!quote) throw new Error("Quote not found");
 
-    await checkOwnerOrAdmin(parseInt(quote.uploadedById));
+    await checkOwnerOrAdmin(quote.uploadedById);
 
     await prisma.quote.delete({
-      where: { id: String(quoteId) },
+      where: { id: quoteId },
     });
   } catch (error) {
     console.error('Error deleting quote:', error);
@@ -782,10 +884,10 @@ export async function deleteQuote(quoteId: number): Promise<void> {
   }
 }
 
-export async function deleteUser(userid: number): Promise<void> {
+export async function deleteUser(userId: string): Promise<void> {
   try {
     await prisma.user.delete({
-      where: { id: String(userid) },
+      where: { id: userId },
     });
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -799,72 +901,62 @@ export async function deleteUser(userid: number): Promise<void> {
 
 export async function editVideo(updatedVideo: Video): Promise<void> {
   try {
-    await checkOwnerOrAdmin(parseInt(String(updatedVideo.uploadedBy.id)));
+    // Null safety check
+    if (!updatedVideo.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    await checkOwnerOrAdmin(updatedVideo.uploadedBy.id);
+    
     // Update video
     await prisma.video.update({
-      where: { id: String(updatedVideo.id) },
+      where: { id: updatedVideo.id },
       data: {
         title: updatedVideo.title,
         description: updatedVideo.description || null,
-        videoUrl: updatedVideo.video,
-        thumbnailUrl: updatedVideo.thumbnail,
+        videoUrl: updatedVideo.videoUrl,
+        thumbnailUrl: updatedVideo.thumbnailUrl,
+        categoryId: updatedVideo.category.id,
         uploadedAt: updatedVideo.uploadedAt,
         createdAt: updatedVideo.createdAt,
-        views: updatedVideo.metadata.views || 0,
+        views: updatedVideo.views || 0,
+        isPublic: updatedVideo.isPublic ?? false,
+        publishedAt: updatedVideo.publishedAt,
       },
     });
 
-    // Delete existing participants and ratings
+    // Delete existing participants
     await prisma.videoParticipant.deleteMany({
-      where: { videoId: String(updatedVideo.id) },
-    });
-    await prisma.rating.deleteMany({
-      where: {
-        videoId: String(updatedVideo.id),
-      },
+      where: { videoId: updatedVideo.id },
     });
 
-    // Re-add participants
+    // Re-add participants (supports both User and Placeholder)
     for (const participant of updatedVideo.participants) {
-      const user = await prisma.user.upsert({
-        where: { id: String(participant.id) },
-        update: {
-          username: participant.username,
-          profilePicture: participant.profilepicture,
-        },
-        create: {
-          id: String(participant.id),
-          username: participant.username,
-          password: participant.password,
-          profilePicture: participant.profilepicture,
-        },
-      });
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
 
-      await prisma.videoParticipant.create({
-        data: {
-          videoId: String(updatedVideo.id),
-          userId: user.id,
-        },
-      });
-    }
-
-    // Re-add ratings
-    for (const rating of updatedVideo.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
+        await prisma.videoParticipant.create({
           data: {
-            videoId: String(updatedVideo.id),
+            videoId: updatedVideo.id,
             userId: user.id,
-            value: rating.value,
+          },
+        });
+      } else if (participant.type === "placeholder") {
+        await prisma.videoParticipant.create({
+          data: {
+            videoId: updatedVideo.id,
+            placeholderId: participant.data.id,
           },
         });
       }
@@ -877,68 +969,61 @@ export async function editVideo(updatedVideo: Video): Promise<void> {
 
 export async function editPicture(updatedPicture: Picture): Promise<void> {
   try {
-    await checkOwnerOrAdmin(parseInt(String(updatedPicture.uploadedBy.id)));
+    // Null safety check
+    if (!updatedPicture.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    await checkOwnerOrAdmin(updatedPicture.uploadedBy.id);
+    
     await prisma.picture.update({
-      where: { id: String(updatedPicture.id) },
+      where: { id: updatedPicture.id },
       data: {
         title: updatedPicture.title,
         description: updatedPicture.description || null,
-        imageUrl: updatedPicture.img,
+        imageUrl: updatedPicture.imageUrl,
+        thumbnailUrl: updatedPicture.thumbnailUrl,
+        categoryId: updatedPicture.category.id,
         uploadedAt: updatedPicture.uploadedAt,
         createdAt: updatedPicture.createdAt,
-        views: updatedPicture.metadata.views || 0,
+        views: updatedPicture.views || 0,
+        isPublic: updatedPicture.isPublic ?? false,
+        publishedAt: updatedPicture.publishedAt,
       },
     });
 
-    // Delete and re-add participants and ratings (similar to video)
+    // Delete existing participants
     await prisma.pictureParticipant.deleteMany({
-      where: { pictureId: String(updatedPicture.id) },
-    });
-    await prisma.rating.deleteMany({
-      where: {
-        pictureId: String(updatedPicture.id),
-      },
+      where: { pictureId: updatedPicture.id },
     });
 
+    // Re-add participants (supports both User and Placeholder)
     for (const participant of updatedPicture.participants) {
-      const user = await prisma.user.upsert({
-        where: { id: String(participant.id) },
-        update: {
-          username: participant.username,
-          profilePicture: participant.profilepicture,
-        },
-        create: {
-          id: String(participant.id),
-          username: participant.username,
-          password: participant.password,
-          profilePicture: participant.profilepicture,
-        },
-      });
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
 
-      await prisma.pictureParticipant.create({
-        data: {
-          pictureId: String(updatedPicture.id),
-          userId: user.id,
-        },
-      });
-    }
-
-    for (const rating of updatedPicture.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
+        await prisma.pictureParticipant.create({
           data: {
-            pictureId: String(updatedPicture.id),
+            pictureId: updatedPicture.id,
             userId: user.id,
-            value: rating.value,
+          },
+        });
+      } else if (participant.type === "placeholder") {
+        await prisma.pictureParticipant.create({
+          data: {
+            pictureId: updatedPicture.id,
+            placeholderId: participant.data.id,
           },
         });
       }
@@ -951,87 +1036,83 @@ export async function editPicture(updatedPicture: Picture): Promise<void> {
 
 export async function editQuote(updatedQuote: Quote): Promise<void> {
   try {
+    // Null safety check
+    if (!updatedQuote.uploadedBy?.id) {
+      throw new Error("uploadedBy is required");
+    }
+
+    await checkOwnerOrAdmin(updatedQuote.uploadedBy.id);
+
     await prisma.quote.update({
-      where: { id: String(updatedQuote.id) },
+      where: { id: updatedQuote.id },
       data: {
         uploadedAt: updatedQuote.uploadedAt,
         createdAt: updatedQuote.createdAt,
-        views: updatedQuote.metadata.views || 0,
+        views: updatedQuote.views || 0,
+        isPublic: updatedQuote.isPublic ?? false,
+        publishedAt: updatedQuote.publishedAt,
       },
     });
 
-    // Delete and re-add messages, participants, ratings
+    // Delete and re-add messages, participants
     await prisma.quoteMessage.deleteMany({
-      where: { quoteId: String(updatedQuote.id) },
+      where: { quoteId: updatedQuote.id },
     });
     await prisma.quoteParticipant.deleteMany({
-      where: { quoteId: String(updatedQuote.id) },
-    });
-    await prisma.rating.deleteMany({
-      where: {
-        quoteId: String(updatedQuote.id),
-      },
+      where: { quoteId: updatedQuote.id },
     });
 
     // Re-add messages
-    for (const message of updatedQuote.fullQuote) {
+    for (const message of updatedQuote.messages) {
       const user = await prisma.user.upsert({
-        where: { id: String(message.user.id) },
+        where: { id: message.user.id },
         update: {
-          username: message.user.username,
-          profilePicture: message.user.profilepicture,
+          name: message.user.username,
+          image: message.user.profilePicture,
         },
         create: {
-          id: String(message.user.id),
-          username: message.user.username,
-          password: message.user.password,
-          profilePicture: message.user.profilepicture,
+          id: message.user.id,
+          name: message.user.username,
+          image: message.user.profilePicture,
         },
       });
 
       await prisma.quoteMessage.create({
         data: {
-          quoteId: String(updatedQuote.id),
+          quoteId: updatedQuote.id,
           userId: user.id,
-          message: message.msg,
+          message: message.message,
         },
       });
     }
 
-    // Re-add participants
-    const participantIds = Array.from(new Set(updatedQuote.fullQuote.map(m => String(m.user.id))));
-    for (const participantId of participantIds) {
-      const user = await prisma.user.findFirst({
-        where: { id: participantId },
-      });
+    // Re-add participants (supports both User and Placeholder)
+    for (const participant of updatedQuote.participants) {
+      if (participant.type === "user") {
+        const user = await prisma.user.upsert({
+          where: { id: participant.data.id },
+          update: {
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+          create: {
+            id: participant.data.id,
+            name: participant.data.username,
+            image: participant.data.profilePicture,
+          },
+        });
 
-      if (user) {
         await prisma.quoteParticipant.create({
           data: {
-            quoteId: String(updatedQuote.id),
+            quoteId: updatedQuote.id,
             userId: user.id,
           },
         });
-      }
-    }
-
-    // Re-add ratings
-    for (const rating of updatedQuote.metadata.rating || []) {
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { id: String(rating.user) },
-            { id: rating.user.toString() },
-          ],
-        },
-      });
-
-      if (user) {
-        await prisma.rating.create({
+      } else if (participant.type === "placeholder") {
+        await prisma.quoteParticipant.create({
           data: {
-            quoteId: String(updatedQuote.id),
-            userId: user.id,
-            value: rating.value,
+            quoteId: updatedQuote.id,
+            placeholderId: participant.data.id,
           },
         });
       }
@@ -1044,16 +1125,117 @@ export async function editQuote(updatedQuote: Quote): Promise<void> {
 
 export async function editUser(updatedUser: User): Promise<void> {
   try {
+    if (!updatedUser?.id) {
+      throw new Error("user.id is required");
+    }
+    
     await prisma.user.update({
-      where: { id: String(updatedUser.id) },
+      where: { id: updatedUser.id },
       data: {
-        username: updatedUser.username,
-        password: updatedUser.password,
-        profilePicture: updatedUser.profilepicture,
+        name: updatedUser.username,
+        image: updatedUser.profilePicture,
       },
     });
   } catch (error) {
     console.error('Error editing user:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// PUBLISH/UNPUBLISH FUNCTIONS (Owner-only)
+// ============================================
+
+export async function publishVideo(videoId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.video.update({
+      where: { id: videoId },
+      data: { 
+        isPublic: true, 
+        publishedAt: new Date() 
+      },
+    });
+  } catch (error) {
+    console.error('Error publishing video:', error);
+    throw error;
+  }
+}
+
+export async function unpublishVideo(videoId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.video.update({
+      where: { id: videoId },
+      data: { isPublic: false },
+      // Note: publishedAt is NOT cleared - keeps history
+    });
+  } catch (error) {
+    console.error('Error unpublishing video:', error);
+    throw error;
+  }
+}
+
+export async function publishPicture(pictureId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.picture.update({
+      where: { id: pictureId },
+      data: { 
+        isPublic: true, 
+        publishedAt: new Date() 
+      },
+    });
+  } catch (error) {
+    console.error('Error publishing picture:', error);
+    throw error;
+  }
+}
+
+export async function unpublishPicture(pictureId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.picture.update({
+      where: { id: pictureId },
+      data: { isPublic: false },
+    });
+  } catch (error) {
+    console.error('Error unpublishing picture:', error);
+    throw error;
+  }
+}
+
+export async function publishQuote(quoteId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.quote.update({
+      where: { id: quoteId },
+      data: { 
+        isPublic: true, 
+        publishedAt: new Date() 
+      },
+    });
+  } catch (error) {
+    console.error('Error publishing quote:', error);
+    throw error;
+  }
+}
+
+export async function unpublishQuote(quoteId: string): Promise<void> {
+  try {
+    await requireOwner();
+    
+    await prisma.quote.update({
+      where: { id: quoteId },
+      data: { isPublic: false },
+    });
+  } catch (error) {
+    console.error('Error unpublishing quote:', error);
     throw error;
   }
 }
