@@ -1,560 +1,500 @@
 "use client"
 
-import { getAllUsers } from "@/src/app/current-storage/storage";
-import { faCalendarPlus, faUser } from "@fortawesome/free-regular-svg-icons";
-import { faArrowUpFromBracket, faInfo, faSignature, faUpload, faUsers, faImage, faClock } from "@fortawesome/free-solid-svg-icons";
+import { getAllCategories, getAllSelectableParticipants } from "@/src/app/current-storage/storage";
+import { useSession } from "@/src/lib/auth-client";
+import {
+  faArrowUpFromBracket,
+  faInfoCircle,
+  faTimes
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Chip,
+  DateInput,
+  Input,
+  Progress,
+  Select,
+  SelectItem,
+  Textarea
+} from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Image, Input, Select, SelectedItems, SelectItem, Textarea, Checkbox } from "@heroui/react";
 import EXIF from 'exif-js';
-import NextImage from "next/image";
-import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import { UploadPicture, User } from "../../../types/types";
+import type { Category, Participant, UploadPicture, User } from "../../../types/types";
+import { GlassDropZone } from "../../ui/glass-drop-zone";
 
 export default function PictureUpload() {
+  const { data: session, isPending: isSessionPending } = useSession();
+  const router = useRouter();
 
-    const {
-        register,
-        handleSubmit,
-        watch,
-        control,
-        setValue,
-        trigger,
-        formState: { errors },
-    } = useForm<UploadPicture>({
-        defaultValues: {
-            uploadedAt: new Date(),
-            participants: [],
-        }
-    })
-
-    const [preview, setPreview] = useState<File | null>(null);
-    const [creationDate, setCreationDate] = useState<Date | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
-    const [manualDateOverride, setManualDateOverride] = useState(false);
-    const [qualityMode, setQualityMode] = useState(false); // Q95 instead of Q85
-    const [uploadStats, setUploadStats] = useState<{
-        originalSize?: string;
-        finalSize?: string;
-        sizeReduction?: string;
-        formatChanged?: boolean;
-    }>({});
-    const [imageMetadata, setImageMetadata] = useState<{
-        size?: string;
-        resolution?: string;
-        format?: string;
-    }>({});
-
-    useEffect(() => {
-        getAllUsers().then((users) => {
-            setUsers(users);
-        });
-        if (creationDate && !manualDateOverride) {
-            setValue('createdAt', creationDate);
-        }
-    }, [creationDate, setValue, manualDateOverride]);
-
-    const formatFileSize = (bytes: number): string => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
-
-    const onSubmit: SubmitHandler<UploadPicture> = async (data) => {
-        console.log("errors: ", errors);
-        console.log("data: ", data);
-
-        if (!preview) {
-            console.error("No image file selected");
-            return;
-        }
-
-        try {
-            // Use FormData to send the file
-            const formData = new FormData();
-            formData.append('image', preview);
-            formData.append('title', data.title);
-            formData.append('qualityMode', qualityMode.toString());
-
-            const uploadResponse = await fetch('/api/upload-picture', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!uploadResponse.ok) {
-                const errorData = await uploadResponse.json();
-                console.error('Image upload failed:', errorData);
-                return;
-            }
-
-            const uploadResult = await uploadResponse.json();
-            console.log('Upload result:', uploadResult);
-
-            // Display optimization stats if available
-            if (uploadResult.originalSize && uploadResult.finalSize) {
-                setUploadStats({
-                    originalSize: formatFileSize(uploadResult.originalSize),
-                    finalSize: formatFileSize(uploadResult.finalSize),
-                    sizeReduction: uploadResult.reductionPercent || '0%',
-                    formatChanged: uploadResult.formatChanged,
-                });
-            }
-
-            // Get image path and thumbnail path from API response
-            const imagePath = uploadResult.path || `/examplePictures/${preview.name}`;
-            const thumbnailPath = uploadResult.thumbnailPath || '';
-
-            // Strip File object from data before sending to Server Action
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { img, ...metadata } = data;
-            const pictureData = {
-                ...metadata,
-                id: 0, // Will be auto-generated
-            };
-
-            // Import createPicture dynamically to avoid issues
-            const { createPicture } = await import('@/src/app/(content)/pictures/(detail)/upload/actions');
-            await createPicture(pictureData, imagePath, thumbnailPath);
-        } catch (error: unknown) {
-            // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
-            if (error && typeof error === 'object' && 'digest' in error) {
-                const digest = (error as { digest?: string }).digest;
-                if (digest?.startsWith('NEXT_REDIRECT')) {
-                    // This is expected - redirect() throws this error
-                    return;
-                }
-            }
-            console.error('Picture upload error:', error);
-        }
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = useForm<UploadPicture>({
+    defaultValues: {
+      uploadedAt: new Date(),
+      participants: [],
     }
+  })
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setPreview(file);
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isSessionPending && !session?.user) {
+      router.push('/login');
+    }
+  }, [session, isSessionPending, router]);
 
-            // Extract basic metadata first
-            setImageMetadata({
-                size: formatFileSize(file.size),
-                format: file.type.split('/')[1].toUpperCase(),
-            });
+  // Auto-populate uploadedBy when session is available
+  useEffect(() => {
+    if (session?.user) {
+      const currentUser: User = {
+        id: session.user.id,
+        username: session.user.name,
+        profilePicture: session.user.image || null,
+      };
+      setValue('uploadedBy', currentUser);
+    }
+  }, [session, setValue]);
 
-            // Extract creation date from EXIF (only for JPEG/JPG) - KEEP ORIGINAL LOGIC
-            if (file.type === "image/jpeg" || file.type === "image/jpg") {
-                // @ts-ignore: type any is fine here
-                EXIF.getData(file, function () {
-                    // @ts-ignore: type any is fine here
-                    const creationDate = EXIF.getTag(this, "DateTimeOriginal");
-                    if (creationDate) {
-                        const formattedDate = creationDate.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
-                        setCreationDate(new Date(formattedDate));
-                    } else {
-                        console.log("Creation date not found in EXIF data.");
-                        setCreationDate(new Date(file.lastModified))
-                    }
-                });
-            } else {
-                console.log("File format doesn't support EXIF data, using file modification date");
-                setCreationDate(new Date(file.lastModified))
-            }
+  const [preview, setPreview] = useState<File | null>(null);
+  const [creationDate, setCreationDate] = useState<Date | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [manualDateOverride, setManualDateOverride] = useState(false);
+  const [qualityMode, setQualityMode] = useState(false);
+  
+  // Progress tracking
+  const [uploadStatus, setUploadStatus] = useState<{
+    stage: 'idle' | 'compressing' | 'uploading' | 'saving' | 'done' | 'error';
+    progress?: number;
+    message: string;
+  }>({ stage: 'idle', message: '' });
 
-            // Get resolution separately after EXIF extraction
-            const img = new window.Image();
-            img.onload = () => {
-                setImageMetadata(prev => ({
-                    ...prev,
-                    resolution: `${img.width}x${img.height}`
-                }));
-            };
-            img.src = URL.createObjectURL(file);
-        }
-    };
+  const [uploadStats, setUploadStats] = useState<{
+    originalSize?: string;
+    finalSize?: string;
+    sizeReduction?: string;
+    formatChanged?: boolean;
+  }>({});
+  
+  const [imageMetadata, setImageMetadata] = useState<{
+    size?: string;
+    resolution?: string;
+    format?: string;
+  }>({});
 
-    return (
-        <div className="max-w-6xl mx-auto p-6 space-y-6">
-            <Breadcrumbs>
-                <BreadcrumbItem href="/">Home</BreadcrumbItem>
-                <BreadcrumbItem href="/pictures">Pictures</BreadcrumbItem>
-                <BreadcrumbItem href="">Upload</BreadcrumbItem>
-            </Breadcrumbs>
+  useEffect(() => {
+    getAllSelectableParticipants().then((p) => {
+      setParticipants(p);
+    });
+    getAllCategories().then((cats) => {
+      setCategories(cats);
+    });
+    if (creationDate && !manualDateOverride) {
+      setValue('createdAt', creationDate);
+    }
+  }, [creationDate, setValue, manualDateOverride]);
 
-            <div className="flex items-center gap-3">
-                <FontAwesomeIcon icon={faImage} className="text-2xl text-primary" />
-                <h1 className="text-3xl font-bold">Upload Picture</h1>
-            </div>
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
-            {/* Enhanced Image Preview */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Image Preview</h2>
+  const handleFileChange = (file: File) => {
+    if (file) {
+      setPreview(file);
 
-                {!preview ? (
-                    <div className="flex justify-center">
-                        <Card className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 p-8">
-                            <div className="text-center space-y-4">
-                                <FontAwesomeIcon icon={faImage} className="text-4xl text-gray-400" />
-                                <p className="text-gray-500">Select an image file to preview</p>
-                            </div>
-                        </Card>
+      // Extract basic metadata
+      setImageMetadata({
+        size: formatFileSize(file.size),
+        format: file.type.split('/')[1].toUpperCase(),
+      });
+
+      // Extract creation date from EXIF (only for JPEG/JPG)
+      if (file.type === "image/jpeg" || file.type === "image/jpg") {
+        // @ts-expect-error - EXIF is not typed
+        EXIF.getData(file, function () {
+          // @ts-expect-error - EXIF is not typed
+          const dateStr = EXIF.getTag(this, "DateTimeOriginal");
+          if (dateStr) {
+            const formattedDate = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+            setCreationDate(new Date(formattedDate));
+          } else {
+            setCreationDate(new Date(file.lastModified))
+          }
+        });
+      } else {
+        setCreationDate(new Date(file.lastModified))
+      }
+
+      // Get resolution
+      const img = new Image();
+      img.onload = () => {
+        setImageMetadata(prev => ({
+          ...prev,
+          resolution: `${img.width}x${img.height}`
+        }));
+      };
+      img.src = URL.createObjectURL(file);
+      setValue("img", file, { shouldValidate: true });
+    }
+  };
+
+  const onSubmit: SubmitHandler<UploadPicture> = async (data) => {
+    if (!preview) return;
+
+    try {
+      setUploadStatus({ stage: 'compressing', message: 'Optimizing image...' });
+      
+      const formData = new FormData();
+      formData.append('image', preview);
+      formData.append('title', data.title);
+      formData.append('qualityMode', qualityMode.toString());
+
+      const uploadResponse = await fetch('/api/upload-picture', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        setUploadStatus({ stage: 'error', message: 'Image upload failed' });
+        return;
+      }
+
+      setUploadStatus({ stage: 'uploading', message: 'Uploading to server...', progress: 50 });
+      
+      const uploadResult = await uploadResponse.json();
+      if (uploadResult.originalSize && uploadResult.finalSize) {
+        setUploadStats({
+          originalSize: formatFileSize(uploadResult.originalSize),
+          finalSize: formatFileSize(uploadResult.finalSize),
+          sizeReduction: uploadResult.reductionPercent || '0%',
+          formatChanged: uploadResult.formatChanged,
+        });
+      }
+
+      const imagePath = uploadResult.path;
+      const thumbnailPath = uploadResult.thumbnailPath;
+
+      setUploadStatus({ stage: 'saving', message: 'Saving metadata...', progress: 80 });
+      
+      const { img, ...metadata } = data;
+      const pictureData = { ...metadata, id: "" };
+
+      const { createPicture } = await import('@/src/app/(content)/pictures/(detail)/upload/actions');
+      await createPicture(pictureData, imagePath, thumbnailPath);
+      
+      setUploadStatus({ stage: 'done', message: 'Upload complete!', progress: 100 });
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+        return;
+      }
+      setUploadStatus({ stage: 'error', message: 'Error uploading picture' });
+    }
+  }
+
+  return (
+    <div className="w-full h-full px-4 md:px-12">
+        
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-[1600px] bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+      >
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+        <div className="flex flex-col lg:flex-row h-full">
+          {/* Left Column: Content Area */}
+          <div className="lg:w-[60%] bg-black/40 rounded-[2rem] m-2 relative group overflow-hidden border border-white/5 flex flex-col min-h-[500px]">
+            
+            <div className="flex-1 flex items-center justify-center p-8 relative">
+              <AnimatePresence mode="wait">
+                {preview ? (
+                  <motion.div 
+                    key="preview"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="w-full h-full flex flex-col items-center justify-center relative"
+                  >
+                    <div className="relative w-full h-full flex items-center justify-center group/preview">
+                      <img 
+                        src={URL.createObjectURL(preview)} 
+                        className="max-w-full max-h-[600px] object-contain shadow-2xl rounded-2xl border border-white/10"
+                        alt="Preview"
+                      />
+                      <button
+                        onClick={() => setPreview(null)}
+                        className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10 opacity-0 group-hover/preview:opacity-100"
+                      >
+                        <FontAwesomeIcon icon={faTimes} />
+                      </button>
+                      
+                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+                        <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{imageMetadata.size}</Chip>
+                        <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{imageMetadata.resolution}</Chip>
+                        <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{imageMetadata.format}</Chip>
+                      </div>
                     </div>
+                    
+                    <div className="mt-6 text-center">
+                      <h2 className="text-xl font-bold text-white mb-1 truncate max-w-md">{preview.name}</h2>
+                      <p className="text-white/40 text-sm">Click the preview to change file</p>
+                    </div>
+                  </motion.div>
                 ) : (
-                    <div className="space-y-4 flex flex-col items-center">
-                        <Card className="w-full overflow-hidden shadow-lg">
-                            <div className="relative w-full h-[500px] bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <Image
-                                        isZoomed
-                                        as={NextImage}
-                                        src={URL.createObjectURL(preview)}
-                                        alt="Image preview"
-                                        width={1024}
-                                        height={576}
-                                        className="object-contain"
-                                        style={{
-                                            width: 'auto',
-                                            maxWidth: '100%'
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Image Metadata */}
-                            <div className="p-6 bg-gray-50 dark:bg-gray-800">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                        <FontAwesomeIcon icon={faImage} className="text-blue-500 text-lg" />
-                                        <div className="text-center">
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.format || 'Loading...'}</div>
-                                            <div className="text-xs text-gray-600 dark:text-gray-400">Format</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                        <FontAwesomeIcon icon={faImage} className="text-green-500 text-lg" />
-                                        <div className="text-center">
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.size}</div>
-                                            <div className="text-xs text-gray-600 dark:text-gray-400">File Size</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                        <FontAwesomeIcon icon={faImage} className="text-purple-500 text-lg" />
-                                        <div className="text-center">
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{imageMetadata.resolution || 'Loading...'}</div>
-                                            <div className="text-xs text-gray-600 dark:text-gray-400">Resolution</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                                        <FontAwesomeIcon icon={faClock} className="text-orange-500 text-lg" />
-                                        <div className="text-center">
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100">
-                                                {creationDate ? creationDate.toLocaleDateString() : 'Not detected'}
-                                            </div>
-                                            <div className="text-xs text-gray-600 dark:text-gray-400">Created</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
+                  <motion.div 
+                    key="dropzone"
+                    className="w-full h-full"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <GlassDropZone 
+                      onFileSelect={handleFileChange} 
+                      accept="image/*"
+                      title="Upload Image"
+                      subtitle="JPEG, PNG, WebP (Max 50MB)"
+                      className="w-full h-full border-none bg-transparent hover:bg-white/5" 
+                    />
+                  </motion.div>
                 )}
+              </AnimatePresence>
             </div>
+          </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* File Upload */}
-                    <div className="md:col-span-2">
-                        <Input
-                            type="file"
-                            label="Upload Image File"
-                            variant="bordered"
-                            isRequired
-                            isInvalid={!!errors.img}
-                            aria-invalid={!!errors.img}
-                            errorMessage="Please submit a Picture!"
-                            startContent={<FontAwesomeIcon icon={faImage} />}
-                            accept="image/*"
-                            {...register("img", { required: true, onChange: (e) => handleFileChange(e) })}
-                        />
-                    </div>
+          {/* Right Column: Metadata form */}
+          <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col">
+            <div className="flex-1 space-y-4">
+              <h2 className="text-2xl font-bold text-white mb-2">Image Details</h2>
 
-                    {/* Image Compression Options */}
-                    {preview && (
-                        <div className="md:col-span-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
-                            {/* Default Compression Info */}
-                            <div className="flex items-start gap-3">
-                                <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <span className="text-white text-xs">✓</span>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        Smart Compression (Q85)
-                                    </p>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                                        PNG → WebP, JPEG optimized with MozJPEG. Files under 50KB are skipped.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Quality Mode Toggle */}
-                            <Checkbox
-                                isSelected={qualityMode}
-                                onValueChange={setQualityMode}
-                                size="md"
-                                classNames={{
-                                    label: "text-sm font-medium text-gray-900 dark:text-gray-100"
-                                }}
-                            >
-                                <div className="flex flex-col gap-1">
-                                    <span>Quality Mode (Q95)</span>
-                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-normal">
-                                        Higher quality for artwork or important screenshots. Larger file size.
-                                    </span>
-                                </div>
-                            </Checkbox>
-
-                            {/* File Info */}
-                            <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                Original: {imageMetadata.size} • {imageMetadata.format} • {imageMetadata.resolution}
-                            </div>
-                        </div>
+              <form className="space-y-4">
+                  <Controller
+                    name="title"
+                    control={control}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        label="Title"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        placeholder="Give your picture a title"
+                        isRequired
+                        isInvalid={!!errors.title}
+                        errorMessage="Title is required"
+                        classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", input: "text-white font-medium", label: "text-white/50" }}
+                      />
                     )}
+                  />
 
-                    {/* Compression Results */}
-                    {uploadStats.originalSize && uploadStats.finalSize && (
-                        <div className="md:col-span-2 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                            <h3 className="text-sm font-semibold mb-2 text-green-800 dark:text-green-200">
-                                Compression Results
-                            </h3>
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Original</div>
-                                    <div className="font-semibold">{uploadStats.originalSize}</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Compressed</div>
-                                    <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.finalSize}</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-600 dark:text-gray-400">Reduction</div>
-                                    <div className="font-semibold text-green-600 dark:text-green-400">{uploadStats.sizeReduction}</div>
-                                </div>
-                            </div>
-                            {uploadStats.formatChanged && (
-                                <p className="text-xs text-gray-500 mt-2">Format converted to WebP</p>
-                            )}
-                        </div>
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <Textarea
+                        {...field}
+                        label="Description"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        placeholder="Tell the story..."
+                        minRows={3}
+                        classNames={{ inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors", input: "text-white", label: "text-white/50" }}
+                      />
                     )}
+                  />
 
-                    {/* Title */}
-                    <div className="md:col-span-2">
-                        <Input
-                            type="text"
-                            label="Title"
-                            variant="bordered"
-                            isRequired
-                            isInvalid={!!errors.title}
-                            aria-invalid={!!errors.title}
-                            errorMessage="Please enter a valid Title!"
-                            startContent={<FontAwesomeIcon icon={faSignature} />}
-                            {...register("title", { required: true })}
-                        />
-                    </div>
-
-                    {/* Description */}
-                    <div className="md:col-span-2">
-                        <Textarea
-                            label="Description"
-                            placeholder="Enter your description"
-                            variant="bordered"
-                            maxLength={255}
-                            maxRows={4}
-                            minRows={3}
-                            startContent={<FontAwesomeIcon icon={faInfo} />}
-                            {...register("description")}
-                        />
-                    </div>
-
-                    {/* Uploaded By */}
-                    <div>
-                        <Select
-                            {...register("uploadedBy", { required: true })}
-                            isRequired
-                            isInvalid={!!errors.uploadedBy}
-                            aria-invalid={!!errors.uploadedBy}
-                            errorMessage={"Please select a User!"}
-                            items={users}
-                            label="Uploaded By"
-                            placeholder="Select a user"
-                            labelPlacement="inside"
-                            variant="bordered"
-                            startContent={<FontAwesomeIcon icon={faUser} />}
-                            classNames={{
-                                base: "w-full",
-                                trigger: "h-14",
-                            }}
-                            renderValue={(items: SelectedItems<User>) => {
-                                return items.map((item) => (
-                                    item.data ? (
-                                        <div key={item.key} className="flex items-center gap-2">
-                                            <Avatar
-                                                alt={item.data.username}
-                                                className="flex-shrink-0"
-                                                size="sm"
-                                                src={item.data?.profilepicture}
-                                            />
-                                            <span className="text-sm">{item.data.username}</span>
-                                        </div>
-                                    ) : null
-                                ));
-                            }}
-                        >
-                            {(user) => (
-                                <SelectItem key={user.id} textValue={user.username}>
-                                    <div className="flex gap-2 items-center">
-                                        <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                                        <span className="text-small">{user.username}</span>
-                                    </div>
-                                </SelectItem>
-                            )}
-                        </Select>
-                    </div>
-
-                    {/* Participants */}
-                    <div>
-                        <Select
-                            {...register("participants", {
-                                required: true,
-                            })}
-                            isRequired
-                            aria-invalid={!!errors.participants}
-                            isInvalid={!!errors.participants}
-                            errorMessage={"Please select atleast one User!"}
-                            items={users}
-                            label="Participants"
-                            variant="bordered"
-                            isMultiline={true}
-                            selectionMode="multiple"
-                            placeholder="Select occurring users"
-                            labelPlacement="inside"
-                            startContent={<FontAwesomeIcon icon={faUsers} />}
-                            classNames={{
-                                base: "w-full",
-                                trigger: "min-h-12 py-2",
-                            }}
-                            renderValue={(items: SelectedItems<User>) => {
-                                return (
-                                    <div className="flex flex-wrap gap-2">
-                                        {items.map((item) => (
-                                            item.data ? <Chip key={item.key} size="sm">{item.data.username}</Chip> : null
-                                        ))}
-                                    </div>
-                                );
-                            }}
-                        >
-                            {(user) => (
-                                <SelectItem key={user.id} textValue={user.username}>
-                                    <div className="flex gap-2 items-center">
-                                        <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                                        <span className="text-small">{user.username}</span>
-                                    </div>
-                                </SelectItem>
-                            )}
-                        </Select>
-                    </div>
-
-                    {/* Uploaded At */}
-                    <div>
-                        <Controller
-                            name="uploadedAt"
-                            control={control}
-                            rules={{
-                                required: true,
-                            }}
-                            render={({ field }) => (
-                                <DateInput
-                                    isRequired
-                                    isInvalid={!!errors.uploadedAt}
-                                    aria-invalid={!!errors.uploadedAt}
-                                    errorMessage={"Please provide a valid Date!"}
-                                    isReadOnly
-                                    startContent={<FontAwesomeIcon icon={faUpload} />}
-                                    label="Uploaded At"
-                                    variant="bordered"
-                                    className="w-full"
-                                    defaultValue={fromDate(field.value, getLocalTimeZone())}
-                                />
-                            )}
-                        />
-                    </div>
-
-                    {/* Created At */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Controller
-                            name="createdAt"
-                            control={control}
-                            rules={{
-                                required: true,
-                            }}
-                            defaultValue={creationDate ? creationDate : undefined}
-                            render={({ field }) => (
-                                <DateInput
-                                    isRequired
-                                    isReadOnly={!manualDateOverride}
-                                    isInvalid={!!errors.createdAt}
-                                    aria-invalid={!!errors.createdAt}
-                                    errorMessage={"Please provide a valid Date!"}
-                                    startContent={<FontAwesomeIcon icon={faCalendarPlus} />}
-                                    label="Created At"
-                                    value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
-                                    onChange={field.onChange}
-                                    variant="bordered"
-                                    className="w-full"
-                                />
-                            )}
-                        />
-
-                        {/* Manual Date Override Checkbox */}
-                        <Checkbox
-                            isSelected={manualDateOverride}
-                            onValueChange={setManualDateOverride}
-                            size="sm"
-                        >
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                                I know the original date and want to set it manually
-                            </span>
-                        </Checkbox>
+                      <label className="text-sm font-medium text-white/50">Uploaded By</label>
+                      <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12">
+                        {isSessionPending ? (
+                          <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        ) : session?.user ? (
+                          <>
+                            <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6" />
+                            <span className="text-sm text-white">{session.user.name}</span>
+                          </>
+                        ) : (
+                          <span className="text-sm text-white/40 italic">Not logged in</span>
+                        )}
+                      </div>
                     </div>
-                </div>
 
-                {/* Submit Button */}
-                <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <Button
-                        type="submit"
-                        color="primary"
-                        size="lg"
-                        startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
-                        onClick={() => { trigger() }}
-                        className="px-8"
+                    <Controller
+                      name="uploadedAt"
+                      control={control}
+                      render={({ field }) => (
+                        <DateInput
+                          {...field}
+                          label="Uploaded At"
+                          variant="bordered"
+                          labelPlacement="outside"
+                          isRequired
+                          isReadOnly
+                          classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 opacity-50", label: "text-white/50" }}
+                          value={field.value ? fromDate(field.value, getLocalTimeZone()) as any : null}
+                          onChange={(date) => field.onChange(date ? (date as any).toDate(getLocalTimeZone()) : new Date())}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      label="Category"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Select Category"
+                      isRequired
+                      classNames={{ trigger: "bg-white/5 border-white/10 h-12", label: "text-white/50", value: "text-white" }}
+                      {...register("categoryId", { required: true })}
+                      items={categories}
                     >
-                        Upload Picture
-                    </Button>
-                </div>
-            </form>
+                      {(category) => (
+                        <SelectItem key={category.id} textValue={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      )}
+                    </Select>
 
-            {/* Debug Info - Keep for now */}
-            <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <h3 className="text-sm font-semibold mb-2">Debug Info:</h3>
-                <div className="text-xs space-y-1">
-                    <p>Created at value: {JSON.stringify(watch("createdAt"))}</p>
-                    <pre className="whitespace-pre-wrap">
-                        {JSON.stringify(errors, (key, value) => {
-                            if (key === "ref") return undefined;
-                            return value;
-                        }, 2)}
-                    </pre>
+                    <div className="space-y-2">
+                      <Controller
+                        name="createdAt"
+                        control={control}
+                        rules={{ required: true }}
+                        render={({ field }) => (
+                          <DateInput
+                            {...field}
+                            label="Created At"
+                            variant="bordered"
+                            labelPlacement="outside"
+                            isRequired
+                            isReadOnly={!manualDateOverride}
+                            isInvalid={!!errors.createdAt}
+                            classNames={{ 
+                              inputWrapper: `bg-white/5 border-white/10 h-12 ${!manualDateOverride ? 'opacity-50' : ''}`, 
+                              label: "text-white/50" 
+                            }}
+                            value={field.value ? fromDate(field.value, getLocalTimeZone()) as any : null}
+                            onChange={(date) => field.onChange(date ? (date as any).toDate(getLocalTimeZone()) : new Date())}
+                          />
+                        )}
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="light" 
+                        className="text-[10px] text-white/40 h-auto p-0 min-w-0"
+                        onPress={() => setManualDateOverride(!manualDateOverride)}
+                      >
+                        {manualDateOverride ? "Cancel manual override" : "I know the original Date and wanna change it"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Select
+                    label="Participants"
+                    variant="bordered"
+                    labelPlacement="outside"
+                    placeholder="Who is in this picture?"
+                    selectionMode="multiple"
+                    isRequired
+                    isInvalid={!!errors.participants}
+                    classNames={{ trigger: "bg-white/5 border-white/10 min-h-12", label: "text-white/50", value: "text-white" }}
+                    {...register("participants", { required: true })}
+                    items={participants}
+                    isMultiline
+                  >
+                    {(participant) => (
+                      <SelectItem key={participant.data.id} textValue={participant.data.username}>
+                        <div className="flex items-center gap-2">
+                          <Avatar src={participant.data.profilePicture || undefined} size="sm" className={participant.data.status === 'INVITED' ? 'bg-warning/20' : ''} />
+                          <span>{participant.data.username}</span>
+                          {participant.data.status === 'INVITED' && (
+                            <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[10px]">Pending</Chip>
+                          )}
+                        </div>
+                      </SelectItem>
+                    )}
+                  </Select>
+                </form>
+              </div>
+
+              {/* Action area fixed at bottom */}
+              <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                {/* Compression Info Panel */}
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-white/60">
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-primary-400" />
+                    <span>Images are automatically optimized (PNG to WebP, JPEG compressed)</span>
+                  </div>
+                  <Checkbox
+                    isSelected={qualityMode}
+                    onValueChange={setQualityMode}
+                    size="sm"
+                    classNames={{ label: "text-white/70 text-xs" }}
+                  >
+                    Quality Mode (Q95) - better detail for artwork
+                  </Checkbox>
                 </div>
+
+                {/* Progress Bar */}
+                {uploadStatus.stage !== 'idle' && (
+                  <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/70">{uploadStatus.message}</span>
+                      {uploadStatus.progress !== undefined && (
+                        <span className="text-white/50">{uploadStatus.progress}%</span>
+                      )}
+                    </div>
+                    <Progress 
+                      aria-label="Upload progress"
+                      value={uploadStatus.progress} 
+                      isIndeterminate={uploadStatus.progress === undefined}
+                      color={uploadStatus.stage === 'error' ? 'danger' : uploadStatus.stage === 'done' ? 'success' : 'primary'}
+                      size="sm"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-4">
+                  <Button
+                    color="primary"
+                    size="lg"
+                    className="flex-1 font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
+                    startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                    onPress={() => handleSubmit(onSubmit)()}
+                    isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
+                  >
+                    Publish Picture
+                  </Button>
+                  <Button 
+                    as={Link} 
+                    href="/pictures" 
+                    variant="bordered" 
+                    size="lg" 
+                    className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             </div>
-        </div>
-    )
+          </div>
+        </motion.div>
+    </div>
+  );
 }

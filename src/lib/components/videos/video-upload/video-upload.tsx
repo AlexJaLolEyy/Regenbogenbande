@@ -1,24 +1,56 @@
 "use client"
 
-import { getAllUsers } from "@/src/app/current-storage/storage";
+import { getAllCategories, getAllSelectableParticipants } from "@/src/app/current-storage/storage";
+import { scrapeMedalClip } from "@/src/app/not-in-use/medal-upload/actions";
+import { useSession } from "@/src/lib/auth-client";
+import {
+  faCloudArrowUp,
+  faFilm,
+  faInfoCircle,
+  faLink,
+  faTimes
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Chip,
+  DateInput,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Progress,
+  Select,
+  SelectItem,
+  Tab,
+  Tabs,
+  Textarea
+} from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
-import { Avatar, BreadcrumbItem, Breadcrumbs, Button, Card, Chip, DateInput, Input, Select, SelectedItems, SelectItem, Textarea, Checkbox } from "@heroui/react";
+import { AnimatePresence, motion } from "motion/react";
 import { createFile } from 'mp4box';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import type { UploadVideo, User } from "../../../types/types";
-
-import { faArrowUpFromBracket, faClock, faFileVideo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Category, Participant, UploadVideo, User } from "../../../types/types";
+import { GlassDropZone } from "../../ui/glass-drop-zone";
 
 export default function VideoUpload() {
+  const { data: session, isPending: isSessionPending } = useSession();
+  const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    watch,
-    control,
     setValue,
+    getValues,
+    reset,
+    control,
     trigger,
     formState: { errors },
   } = useForm<UploadVideo>({
@@ -28,27 +60,67 @@ export default function VideoUpload() {
     }
   })
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isSessionPending && !session?.user) {
+      router.push('/login');
+    }
+  }, [session, isSessionPending, router]);
+
+  // Auto-populate uploadedBy when session is available
+  useEffect(() => {
+    if (session?.user) {
+      const currentUser: User = {
+        id: session.user.id,
+        username: session.user.name,
+        profilePicture: session.user.image || null,
+      };
+      setValue('uploadedBy', currentUser);
+    }
+  }, [session, setValue]);
+
+  // Mode State
+  const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [isScraping, setIsScraping] = useState(false);
+
   const [preview, setPreview] = useState<File | null>(null);
   const [creationDate, setCreationDate] = useState<Date | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [manualDateOverride, setManualDateOverride] = useState(false);
-  const [compressVideo, setCompressVideo] = useState(true); // Default to ON for adaptive compression
-  const [qualityMode, setQualityMode] = useState(false); // Quality mode uses CRF 20 instead of 24
+  const [compressVideo, setCompressVideo] = useState(true);
+  const [qualityMode, setQualityMode] = useState(false);
+
+  // Progress tracking
+  const [uploadStatus, setUploadStatus] = useState<{
+    stage: 'idle' | 'compressing' | 'uploading' | 'saving' | 'done' | 'error';
+    progress?: number;
+    message: string;
+  }>({ stage: 'idle', message: '' });
+
   const [uploadStats, setUploadStats] = useState<{
     originalSize?: string;
     finalSize?: string;
     sizeReduction?: string;
     method?: string;
   }>({});
+
+  // Metadata for preview (applies to both file and link)
   const [videoMetadata, setVideoMetadata] = useState<{
     duration?: number;
     size?: string;
     resolution?: string;
+    videoUrl?: string; // For link preview
+    thumbnailUrl?: string; // For link preview
   }>({});
 
   useEffect(() => {
-    getAllUsers().then((users) => {
-      setUsers(users);
+    getAllSelectableParticipants().then((p) => {
+      setParticipants(p);
+    });
+    getAllCategories().then((cats) => {
+      setCategories(cats);
     });
     if (creationDate && !manualDateOverride) {
       setValue('createdAt', creationDate);
@@ -67,10 +139,7 @@ export default function VideoUpload() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
+    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -78,31 +147,22 @@ export default function VideoUpload() {
     if (file) {
       const fileReader = new FileReader();
       fileReader.readAsArrayBuffer(file);
-
       fileReader.addEventListener("load", () => {
         const buffer = fileReader.result as ArrayBuffer;
-
         const mp4boxBuffer = buffer as ArrayBuffer & { fileStart: number };
         mp4boxBuffer.fileStart = 0;
-
         const mp4boxFile = createFile();
         mp4boxFile.onError = console.error;
         mp4boxFile.onReady = function (info) {
-          console.log(info);
-          // More robust fallback: check for default, invalid, or unreasonably old dates
-          const defaultDate = new Date(1904, 0, 1); // January 1, 1904
+          const defaultDate = new Date(1904, 0, 1);
           const isDefaultDate = info.created.getTime() === defaultDate.getTime();
           const isInvalidDate = isNaN(info.created.getTime());
-          const isTooOld = info.created.getFullYear() < 1990; // Reasonable minimum year
-
+          const isTooOld = info.created.getFullYear() < 1990;
           if (isDefaultDate || isInvalidDate || isTooOld) {
-            console.log("Invalid or default creation date detected, using file's last modified date");
             setCreationDate(new Date(file.lastModified));
           } else {
-            console.log("Using extracted creation date from video metadata");
             setCreationDate(info.created);
           }
-          console.log("Final creationDate:", isDefaultDate || isInvalidDate || isTooOld ? new Date(file.lastModified) : info.created);
         };
         mp4boxFile.appendBuffer(mp4boxBuffer);
         mp4boxFile.flush();
@@ -110,13 +170,10 @@ export default function VideoUpload() {
     }
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileChange = (file: File) => {
     if (file) {
       setPreview(file);
       getCreationDate(file);
-
-      // Extract video metadata
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.onloadedmetadata = () => {
@@ -127,444 +184,501 @@ export default function VideoUpload() {
         });
       };
       video.src = URL.createObjectURL(file);
+      setValue("video", file, { shouldValidate: true });
+    }
+  };
 
-      console.log("file: ", file);
+  // Error Modal State
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleImportLink = async () => {
+    if (!linkUrl) return;
+    setIsScraping(true);
+
+    try {
+      const result = await scrapeMedalClip(linkUrl);
+      if (result.success && result.data) {
+        const { title, description, image, videoUrl, datePublished, fileSize, duration } = result.data;
+
+        if (!videoUrl) {
+          setErrorMessage("Could not extract video file! This link might be a Cloud Storage link or unsupported.");
+          setErrorModalOpen(true);
+          return;
+        }
+
+        const currentValues = getValues();
+        let newDate = new Date();
+        if (datePublished) {
+          const parsed = new Date(datePublished);
+          if (!isNaN(parsed.getTime())) newDate = parsed;
+        }
+        setCreationDate(newDate);
+
+        reset({
+          ...currentValues,
+          title: title || "",
+          description: description || "",
+          createdAt: newDate,
+          duration: duration ? Math.round(duration) : 0,
+        });
+
+        setVideoMetadata(prev => ({
+          ...prev,
+          videoUrl: videoUrl,
+          thumbnailUrl: image || undefined,
+          size: fileSize || "External",
+          duration: duration ? Math.round(duration) : undefined
+        }));
+
+        setPreview(null);
+      } else {
+        setErrorMessage("Failed to import link. Please check if it's valid.");
+        setErrorModalOpen(true);
+      }
+    } catch (e) {
+      setErrorMessage("An error occurred during import.");
+      setErrorModalOpen(true);
+    } finally {
+      setIsScraping(false);
     }
   };
 
   const onSubmit: SubmitHandler<UploadVideo> = async (data) => {
-    console.log("errors: ", errors);
-    console.log("data: ", data);
-
-    if (!preview) {
-      console.error('No video file selected');
-      return;
-    }
+    if (uploadMode === "file" && !preview) return;
+    if (uploadMode === "link" && !videoMetadata.videoUrl) return;
 
     try {
-      // Use FormData to send the file
-      const formData = new FormData();
-      formData.append('video', preview);
-      formData.append('title', data.title); // Pass title for filename generation
-      formData.append('compress', compressVideo.toString());
-      formData.append('qualityMode', qualityMode.toString());
+      let videoPath = "";
+      let thumbnailPath = "";
 
-      // Always use compress endpoint - it handles compression or pass-through
-      const uploadResponse = await fetch('/api/compress', {
-        method: 'POST',
-        body: formData,
-      });
+      if (uploadMode === "file" && preview) {
+        setUploadStatus({ stage: 'compressing', message: 'Compressing video...' });
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        console.error('File upload failed:', errorData);
-        return;
-      }
+        const formData = new FormData();
+        formData.append('video', preview);
+        formData.append('title', data.title);
+        formData.append('compress', compressVideo.toString());
+        formData.append('qualityMode', qualityMode.toString());
 
-      const uploadResult = await uploadResponse.json();
-      console.log('Upload result:', uploadResult);
-
-      // Display optimization stats if available
-      if (uploadResult.original && uploadResult.result) {
-        setUploadStats({
-          originalSize: uploadResult.original.sizeMB + ' MB',
-          finalSize: uploadResult.result.sizeMB + ' MB',
-          sizeReduction: uploadResult.result.reduction,
-          method: uploadResult.result.method,
+        const uploadResponse = await fetch('/api/compress', {
+          method: 'POST',
+          body: formData,
         });
+
+        if (!uploadResponse.ok) {
+          setUploadStatus({ stage: 'error', message: 'File upload failed' });
+          return;
+        }
+
+        setUploadStatus({ stage: 'uploading', message: 'Uploading to server...', progress: 50 });
+
+        const uploadResult = await uploadResponse.json();
+        if (uploadResult.original && uploadResult.result) {
+          setUploadStats({
+            originalSize: uploadResult.original.sizeMB + ' MB',
+            finalSize: uploadResult.result.sizeMB + ' MB',
+            sizeReduction: uploadResult.result.reduction,
+            method: uploadResult.result.method,
+          });
+        }
+
+        videoPath = uploadResult.path;
+        thumbnailPath = uploadResult.thumbnailPath;
+      } else if (uploadMode === "link") {
+        setUploadStatus({ stage: 'uploading', message: 'Preparing link import...', progress: 30 });
+        videoPath = videoMetadata.videoUrl || "";
+        thumbnailPath = videoMetadata.thumbnailUrl || "";
       }
 
-      // Get video path and thumbnail path from API response
-      const videoPath = uploadResult.path || `/exampleVideos/${preview.name}`;
-      const thumbnailPath = uploadResult.thumbnailPath || `/exampleThumbnails/placeholder.png`;
+      setUploadStatus({ stage: 'saving', message: 'Saving metadata...', progress: 80 });
 
-      // Strip File objects from data before sending to Server Action
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { video, thumbnail, ...metadata } = data;
-      const videoData = {
-        ...metadata,
-        id: 0, // Will be auto-generated
-      };
+      const videoData = { ...metadata, id: "" };
 
-      // Import createVideo dynamically to avoid issues
       const { createVideo } = await import('@/src/app/(content)/videos/(detail)/upload/actions');
       await createVideo(videoData, videoPath, thumbnailPath);
+
+      setUploadStatus({ stage: 'done', message: 'Upload complete!', progress: 100 });
     } catch (error: unknown) {
-      // NEXT_REDIRECT is expected behavior from redirect() in Server Actions
-      if (error && typeof error === 'object' && 'digest' in error &&
-        typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-        // This is normal - redirect() throws this error
+      if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         return;
       }
-      console.error('Error uploading video:', error);
+      setUploadStatus({ stage: 'error', message: 'Error uploading video' });
     }
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <Breadcrumbs>
-        <BreadcrumbItem href="/">Home</BreadcrumbItem>
-        <BreadcrumbItem href="/videos">Videos</BreadcrumbItem>
-        <BreadcrumbItem href="">Upload</BreadcrumbItem>
-      </Breadcrumbs>
+    <div className="w-full h-full px-4 md:px-12">
 
-      <div className="flex items-center gap-3">
-        <FontAwesomeIcon icon={faFileVideo} className="text-2xl text-primary" />
-        <h1 className="text-3xl font-bold">Upload Video</h1>
-      </div>
+      <Modal isOpen={errorModalOpen} onOpenChange={setErrorModalOpen} backdrop="blur">
+        <ModalContent className="glass-panel border border-white/10 text-white bg-black/80">
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Import Error</ModalHeader>
+              <ModalBody>
+                <p>{errorMessage}</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Close
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
-      {/* Enhanced Video Preview */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Video Preview</h2>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-[1600px] bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+      >
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-        {!preview ? (
-          <div className="flex justify-center">
-            <Card className="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 p-8">
-              <div className="text-center space-y-4">
-                <FontAwesomeIcon icon={faFileVideo} className="text-4xl text-gray-400" />
-                <p className="text-gray-500">Select a video file to preview</p>
-              </div>
-            </Card>
-          </div>
-        ) : (
-          <div className="space-y-4 flex flex-col items-center">
-            <Card className="w-full overflow-hidden shadow-lg">
-              <video
-                className="w-full h-auto rounded-t-lg"
-                controls
-                key={preview.name}
-                poster={URL.createObjectURL(preview)}
+        <div className="flex flex-col lg:flex-row h-full">
+          {/* Left Column: Upload Zone */}
+          <div className="lg:w-[60%] bg-black/40 rounded-[2rem] m-2 relative group overflow-hidden border border-white/5 flex flex-col min-h-[500px]">
+
+            <div className="absolute top-6 inset-x-6 z-30 flex justify-center">
+              <Tabs
+                aria-label="Upload Method"
+                radius="full"
+                variant="bordered"
+                selectedKey={uploadMode}
+                onSelectionChange={(k) => {
+                  setUploadMode(k as "file" | "link");
+                  if (k === 'file') {
+                    setVideoMetadata(prev => ({ ...prev, videoUrl: undefined, thumbnailUrl: undefined }));
+                  } else {
+                    setPreview(null);
+                  }
+                }}
+                classNames={{ tabList: "bg-black/80 border border-white/10 backdrop-blur-md", cursor: "bg-white/20", tabContent: "text-white/70 group-data-[selected=true]:text-white" }}
               >
-                <source src={URL.createObjectURL(preview)} type="video/mp4" />
-              </video>
+                <Tab key="file" title={<div className="flex items-center gap-2"><FontAwesomeIcon icon={faCloudArrowUp} /><span>File Upload</span></div>} />
+                <Tab key="link" title={<div className="flex items-center gap-2"><FontAwesomeIcon icon={faLink} /><span>Medal.tv Link</span></div>} />
+              </Tabs>
+            </div>
 
-              {/* Video Metadata */}
-              <div className="p-6 bg-gray-50 dark:bg-gray-800">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                  <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                    <FontAwesomeIcon icon={faClock} className="text-blue-500 text-lg" />
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100">{videoMetadata.duration ? formatDuration(videoMetadata.duration) : 'Loading...'}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Duration</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                    <FontAwesomeIcon icon={faFileVideo} className="text-green-500 text-lg" />
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100">{videoMetadata.size}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">File Size</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                    <FontAwesomeIcon icon={faFileVideo} className="text-purple-500 text-lg" />
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100">{videoMetadata.resolution || 'Loading...'}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Resolution</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                    <FontAwesomeIcon icon={faClock} className="text-orange-500 text-lg" />
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100">
-                        {creationDate ? creationDate.toLocaleDateString() : 'Not detected'}
+            <div className="flex-1 flex items-center justify-center p-8 relative pt-24">
+              <AnimatePresence mode="wait">
+                {uploadMode === "file" ? (
+                  <motion.div
+                    key="file-upload"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="w-full h-full"
+                  >
+                    {preview ? (
+                      <div className="z-20 w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-300">
+                        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group/preview flex items-center justify-center">
+                          <video src={URL.createObjectURL(preview)} controls className="max-w-full max-h-full object-contain" />
+                          <button
+                            onClick={() => setPreview(null)}
+                            className="absolute top-4 right-4 w-8 h-8 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10 opacity-0 group-hover/preview:opacity-100"
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                          </button>
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-30">
+                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.size}</Chip>
+                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.resolution}</Chip>
+                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.duration ? formatDuration(videoMetadata.duration) : '...'}</Chip>
+                          </div>
+                        </div>
+                        <div className="mt-6 text-center">
+                          <h2 className="text-xl font-bold text-white mb-1 truncate max-w-md">{preview.name}</h2>
+                          <p className="text-white/40 text-sm">Click the preview to change file</p>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Created</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
+                    ) : (
+                      <motion.div
+                        className="w-full h-full"
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                      >
+                        <GlassDropZone onFileSelect={handleFileChange} className="w-full h-full border-none bg-transparent hover:bg-white/5" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="link-import"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="w-full max-w-md space-y-6 text-center"
+                  >
+                    {videoMetadata.videoUrl ? (
+                      <div className="space-y-6">
+                        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group/preview flex items-center justify-center">
+                          <video src={videoMetadata.videoUrl} poster={videoMetadata.thumbnailUrl} controls className="max-w-full max-h-full object-contain" />
+                          <button
+                            onClick={() => setVideoMetadata(prev => ({ ...prev, videoUrl: undefined }))}
+                            className="absolute top-4 right-4 w-8 h-8 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10"
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                          </button>
+                        </div>
+                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 flex items-center justify-center gap-2">
+                          <span className="text-sm font-medium">✓ Medal clip imported successfully</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-24 h-24 rounded-full bg-[#FFB000]/10 flex items-center justify-center mx-auto mb-2">
+                          <FontAwesomeIcon icon={faLink} className="text-4xl text-[#FFB000]" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-white">Import from Medal.tv</h3>
+                        <p className="text-white/40 text-sm">Paste your clip link below to auto-fill details.</p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://medal.tv/clip/..."
+                            value={linkUrl}
+                            onValueChange={setLinkUrl}
+                            classNames={{ inputWrapper: "bg-white/5 border-white/10 h-14", input: "text-white" }}
+                          />
+                          <Button color="primary" size="lg" onPress={handleImportLink} isLoading={isScraping} className="h-14 px-8 font-bold">
+                            Import
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        )}
-      </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* File Upload */}
-          <div className="md:col-span-2">
-            <Input
-              type="file"
-              variant="bordered"
-              label="Upload Video File"
-              isRequired
-              isInvalid={!!errors.video}
-              aria-invalid={!!errors.video}
-              errorMessage={"Please submit a Video!"}
-              accept="video/*"
-              {...register("video", { required: true, onChange: (e) => handleFileChange(e) })}
-            />
-          </div>
+          {/* Right Column: Metadata form */}
+          <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col">
+            <div className="flex-1 space-y-4">
+              <h2 className="text-2xl font-bold text-white mb-2">Video Details</h2>
 
-          {/* Title */}
-          <div className="md:col-span-2">
-            <Input
-              type="text"
-              tabIndex={1}
-              aria-invalid={!!errors.title}
-              isRequired
-              isClearable
-              label="Title"
-              variant="bordered"
-              labelPlacement="inside"
-              isInvalid={!!errors.title}
-              errorMessage="Please enter a valid Title!"
-              placeholder="Enter your Title"
-              {...register("title", { required: true })}
-            />
-          </div>
-
-          {/* Description */}
-          <div className="md:col-span-2">
-            <Textarea
-              {...register("description")}
-              label="Description"
-              placeholder="Enter your description"
-              variant="bordered"
-              maxLength={255}
-              maxRows={4}
-              minRows={3}
-            />
-          </div>
-
-          {/* Uploaded By */}
-          <div>
-            <Select
-              isRequired
-              {...register("uploadedBy", {
-                required: "Please select a User",
-              })}
-              isInvalid={!!errors.uploadedBy}
-              errorMessage={"Please select a User!"}
-              aria-invalid={!!errors.uploadedBy}
-              items={users}
-              label="Uploaded By"
-              placeholder="Select a user"
-              labelPlacement="inside"
-              variant="bordered"
-              classNames={{
-                base: "w-full",
-                trigger: "h-14",
-              }}
-              renderValue={(items: SelectedItems<User>) => {
-                return items.map((item) => (
-                  item.data ? (
-                    <div key={item.key} className="flex items-center gap-2">
-                      <Avatar
-                        alt={item.data?.username}
-                        className="flex-shrink-0"
-                        size="sm"
-                        src={item.data?.profilepicture}
+              <form className="space-y-4">
+                  <Controller
+                    name="title"
+                    control={control}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        label="Title"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        placeholder="Give your video a title"
+                        isRequired
+                        isInvalid={!!errors.title}
+                        errorMessage="Title is required"
+                        classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", input: "text-white font-medium", label: "text-white/50" }}
                       />
-                      <span className="text-sm">{item.data?.username}</span>
+                    )}
+                  />
+
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <Textarea
+                        {...field}
+                        label="Description"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        placeholder="Describe what's happening..."
+                        minRows={3}
+                        classNames={{ inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors", input: "text-white", label: "text-white/50" }}
+                      />
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white/50">Uploaded By</label>
+                      <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12">
+                        {isSessionPending ? (
+                          <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        ) : session?.user ? (
+                          <>
+                            <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6" />
+                            <span className="text-sm text-white">{session.user.name}</span>
+                          </>
+                        ) : (
+                          <span className="text-sm text-white/40 italic">Not logged in</span>
+                        )}
+                      </div>
                     </div>
-                  ) : null
-                ));
-              }}
-            >
-              {(user) => (
-                <SelectItem key={user.id} textValue={user.username}>
-                  <div className="flex gap-2 items-center">
-                    <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                    <span className="text-small">{user.username}</span>
+
+                    <Controller
+                      name="uploadedAt"
+                      control={control}
+                      render={({ field }) => (
+                        <DateInput
+                          {...field}
+                          label="Uploaded At"
+                          variant="bordered"
+                          labelPlacement="outside"
+                          isRequired
+                          isReadOnly
+                          classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 opacity-50", label: "text-white/50" }}
+                          value={field.value ? fromDate(field.value, getLocalTimeZone()) as any : null}
+                          onChange={(date) => field.onChange(date ? (date as any).toDate(getLocalTimeZone()) : new Date())}
+                        />
+                      )}
+                    />
                   </div>
-                </SelectItem>
-              )}
-            </Select>
-          </div>
 
-          {/* Participants */}
-          <div>
-            <Select
-              {...register("participants", {
-                required: "Participants are required",
-              })}
-              isRequired
-              isInvalid={!!errors.participants}
-              errorMessage={"Please select atleast one Participant!"}
-              aria-invalid={!!errors.participants}
-              items={users}
-              label="Participants"
-              variant="bordered"
-              isMultiline={true}
-              labelPlacement="inside"
-              selectionMode="multiple"
-              placeholder="Select occurring users"
-              classNames={{
-                base: "w-full",
-                trigger: "min-h-12 py-2",
-              }}
-              renderValue={(items: SelectedItems<User>) => {
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    {items.map((item) => (
-                      item.data ? <Chip key={item.key} size="sm">{item.data?.username}</Chip> : null
-                    ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      label="Category"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      placeholder="Select Category"
+                      isRequired
+                      classNames={{ trigger: "bg-white/5 border-white/10 h-12", label: "text-white/50", value: "text-white" }}
+                      {...register("categoryId", { required: true })}
+                      items={categories}
+                    >
+                      {(category) => (
+                        <SelectItem key={category.id} textValue={category.name}>
+                          {category.name}
+                        </SelectItem>
+                      )}
+                    </Select>
+
+                    <div className="space-y-2">
+                      <Controller
+                        name="createdAt"
+                        control={control}
+                        rules={{ required: true }}
+                        render={({ field }) => (
+                          <DateInput
+                            {...field}
+                            label="Recorded At"
+                            variant="bordered"
+                            labelPlacement="outside"
+                            isRequired
+                            isReadOnly={!manualDateOverride}
+                            isInvalid={!!errors.createdAt}
+                            classNames={{
+                              inputWrapper: `bg-white/5 border-white/10 h-12 ${!manualDateOverride ? 'opacity-50' : ''}`,
+                              label: "text-white/50"
+                            }}
+                            value={field.value ? fromDate(field.value, getLocalTimeZone()) as any : null}
+                            onChange={(date) => field.onChange(date ? (date as any).toDate(getLocalTimeZone()) : new Date())}
+                          />
+                        )}
+                      />
+                      <Button
+                        size="sm"
+                        variant="light"
+                        className="text-[10px] text-white/40 h-auto p-0 min-w-0"
+                        onPress={() => setManualDateOverride(!manualDateOverride)}
+                      >
+                        {manualDateOverride ? "Cancel manual override" : "I know the original Date and wanna change it"}
+                      </Button>
+                    </div>
                   </div>
-                );
-              }}
-            >
-              {(user) => (
-                <SelectItem key={user.id} textValue={user.username}>
-                  <div className="flex gap-2 items-center">
-                    <Avatar alt={user.username} className="flex-shrink-0" size="sm" src={user.profilepicture} />
-                    <span className="text-small">{user.username}</span>
-                  </div>
-                </SelectItem>
-              )}
-            </Select>
-          </div>
 
-          {/* Uploaded At */}
-          <div>
-            <Controller
-              name="uploadedAt"
-              control={control}
-              rules={{
-                required: true,
-              }}
-              render={({ field }) => (
-                <DateInput
-                  isRequired
-                  isReadOnly
-                  isInvalid={!!errors.uploadedAt}
-                  errorMessage={"Please select the current Date"}
-                  aria-invalid={!!errors.uploadedAt}
-                  label="Uploaded At"
-                  variant="bordered"
-                  className="w-full"
-                  defaultValue={fromDate(field.value, getLocalTimeZone())}
-                />
-              )}
-            />
-          </div>
-
-          {/* Created At */}
-          <div className="space-y-2">
-            <Controller
-              name="createdAt"
-              control={control}
-              rules={{
-                required: true,
-              }}
-              defaultValue={creationDate ? creationDate : undefined}
-              render={({ field }) => (
-                <DateInput
-                  isRequired
-                  isReadOnly={!manualDateOverride}
-                  isInvalid={!!errors.createdAt}
-                  errorMessage={"Please insert the Creation Date of that File!"}
-                  aria-invalid={!!errors.createdAt}
-                  label="Created At"
-                  variant="bordered"
-                  value={creationDate ? fromDate(creationDate, getLocalTimeZone()) : null}
-                  onChange={field.onChange}
-                  className="w-full"
-                />
-              )}
-            />
-
-            {/* Manual Date Override Checkbox */}
-            <Checkbox
-              isSelected={manualDateOverride}
-              onValueChange={setManualDateOverride}
-              size="sm"
-            >
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                I know the original date and want to set it manually
-              </span>
-            </Checkbox>
-          </div>
-        </div>
-
-        {/* Video Compression Options */}
-        {preview && (
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
-            {/* Adaptive Compression Info */}
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 rounded bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs">✓</span>
+                  <Select
+                    label="Participants"
+                    variant="bordered"
+                    labelPlacement="outside"
+                    placeholder="Who is in this video?"
+                    selectionMode="multiple"
+                    isRequired
+                    isInvalid={!!errors.participants}
+                    classNames={{ trigger: "bg-white/5 border-white/10 min-h-12", label: "text-white/50", value: "text-white" }}
+                    {...register("participants", { required: true })}
+                    items={participants}
+                    isMultiline
+                  >
+                    {(participant) => (
+                      <SelectItem key={participant.data.id} textValue={participant.data.username}>
+                        <div className="flex items-center gap-2">
+                          <Avatar src={participant.data.profilePicture || undefined} size="sm" className={participant.data.status === 'INVITED' ? 'bg-warning/20' : ''} />
+                          <span>{participant.data.username}</span>
+                          {participant.data.status === 'INVITED' && (
+                            <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[10px]">Pending</Chip>
+                          )}
+                        </div>
+                      </SelectItem>
+                    )}
+                  </Select>
+                </form>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Adaptive Compression (CRF 24)
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Smart compression that balances quality and file size. Falls back to CRF 26 if needed.
-                </p>
-              </div>
-            </div>
 
-            {/* Quality Mode Toggle */}
-            <Checkbox
-              isSelected={qualityMode}
-              onValueChange={setQualityMode}
-              size="md"
-              classNames={{
-                label: "text-sm font-medium text-gray-900 dark:text-gray-100"
-              }}
-            >
-              <div className="flex flex-col gap-1">
-                <span>Quality Mode (CRF 20)</span>
-                <span className="text-xs text-gray-600 dark:text-gray-400 font-normal">
-                  Higher quality for cinematic clips, shaders, or important content. Larger file size.
-                </span>
-              </div>
-            </Checkbox>
-
-            {/* File Size Info */}
-            <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
-              Original file size: {formatFileSize(preview.size)}
-            </div>
-
-            {/* Compression Results */}
-            {uploadStats.originalSize && uploadStats.finalSize && (
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                <p className="text-sm font-semibold text-green-800 dark:text-green-200 mb-1">
-                  Compression Results:
-                </p>
-                <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
-                  <p>Original: {uploadStats.originalSize}</p>
-                  <p>Compressed: {uploadStats.finalSize}</p>
-                  <p className="font-semibold">Reduction: {uploadStats.sizeReduction}</p>
-                  {uploadStats.method && (
-                    <p className="text-gray-600 dark:text-gray-400">Method: {uploadStats.method}</p>
+              {/* Action area fixed at bottom */}
+              <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                {/* Compression Info Panel */}
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                  {uploadMode === 'file' ? (
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-white/60">
+                        <FontAwesomeIcon icon={faInfoCircle} className="text-primary-400" />
+                        <span>Videos are automatically compressed for optimal streaming</span>
+                      </div>
+                      <Checkbox
+                        isSelected={qualityMode}
+                        onValueChange={setQualityMode}
+                        size="sm"
+                        classNames={{ label: "text-white/70 text-xs" }}
+                      >
+                        High Quality Mode (larger file, better detail)
+                      </Checkbox>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-green-400" />
+                      <span>Medal clips are already optimized - no additional compression needed</span>
+                    </div>
                   )}
                 </div>
+
+                {/* Progress Bar */}
+                {uploadStatus.stage !== 'idle' && (
+                  <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/70">{uploadStatus.message}</span>
+                      {uploadStatus.progress !== undefined && (
+                        <span className="text-white/50">{uploadStatus.progress}%</span>
+                      )}
+                    </div>
+                    <Progress
+                      aria-label="Upload progress"
+                      value={uploadStatus.progress}
+                      isIndeterminate={uploadStatus.progress === undefined}
+                      color={uploadStatus.stage === 'error' ? 'danger' : uploadStatus.stage === 'done' ? 'success' : 'primary'}
+                      size="sm"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-4">
+                  <Button
+                    color="primary"
+                    size="lg"
+                    className="flex-1 font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
+                    startContent={<FontAwesomeIcon icon={faFilm} />}
+                    onPress={() => handleSubmit(onSubmit)()}
+                    isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
+                  >
+                    Publish Video
+                  </Button>
+                  <Button
+                    as={Link}
+                    href="/videos"
+                    variant="bordered"
+                    size="lg"
+                    className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        )}
-
-        {/* Submit Button */}
-        <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            type="submit"
-            color="primary"
-            size="lg"
-            startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
-            onClick={() => { trigger() }}
-            className="px-8"
-          >
-            Upload Video
-          </Button>
-        </div>
-      </form>
-
-      {/* Debug Info - Keep for now */}
-      <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <h3 className="text-sm font-semibold mb-2">Debug Info:</h3>
-        <div className="text-xs space-y-1">
-          <p>Created at value: {JSON.stringify(watch("createdAt"))}</p>
-          <pre className="whitespace-pre-wrap">
-            {JSON.stringify(errors, (key, value) => {
-              if (key === "ref") return undefined;
-              return value;
-            }, 2)}
-          </pre>
-        </div>
-      </div>
+        </motion.div>
     </div>
   );
 }
-
-
