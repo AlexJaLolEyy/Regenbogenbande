@@ -4,9 +4,9 @@ import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Button, 
 import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import cn from "classnames";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut } from "@/src/lib/auth-client";
 import { LogIn, Settings, LogOut, Shield } from "lucide-react";
 
 const navItems = [
@@ -18,11 +18,17 @@ const navItems = [
 export default function Navigation() {
   const currentPath = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
-  const isLoading = status === "loading";
+  const { data: session, isPending } = useSession();
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/login" });
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/login");
+          router.refresh();
+        }
+      }
+    });
   };
 
   return (
@@ -66,9 +72,9 @@ export default function Navigation() {
 
       {/* User Actions */}
       <div className="min-w-[40px] flex justify-end">
-        {isLoading ? (
+        {isPending ? (
           <Skeleton className="rounded-full w-8 h-8" />
-        ) : session ? (
+        ) : session?.user ? (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <Avatar
@@ -77,25 +83,23 @@ export default function Navigation() {
                 className="transition-transform hover:scale-105 focus:outline-none"
                 color="secondary"
                 size="sm"
-                src={session.user?.image || undefined}
-                name={session.user?.name?.[0] || "U"}
+                src={session.user.image || undefined}
+                name={session.user.name?.[0] || "U"}
                 radius="full"
               />
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
               <DropdownItem key="profile" className="h-14 gap-2 text-opacity-100">
                 <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold text-primary">{session.user?.name}</p>
-                {/* @ts-expect-error - Dynamic property */}
-                {session.user?.role === "admin" && (
+                <p className="font-semibold text-primary">{session.user.name}</p>
+                {session.user.role === "admin" && (
                   <span className="text-xs bg-purple-500/20 text-purple-600 px-2 py-0.5 rounded-full mt-1 inline-block">Admin</span>
                 )}
               </DropdownItem>
 
               <DropdownItem key="settings" startContent={<Settings size={16} />} href="/profile">My Settings</DropdownItem>
 
-              {/* @ts-expect-error - Dynamic property */}
-              {session.user?.role === "admin" ? (
+              {session.user.role === "admin" ? (
                 <DropdownItem
                   key="admin_users"
                   startContent={<Shield size={16} />}
