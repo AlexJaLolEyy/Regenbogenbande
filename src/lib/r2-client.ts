@@ -1,6 +1,5 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 // R2 Client configuration
 // Trim whitespace from env vars to handle quotes/spaces
@@ -102,13 +101,11 @@ export async function getSignedR2Url(
 export function getPublicR2Url(key: string): string {
   const publicUrl = process.env.R2_PUBLIC_URL;
 
-  if (publicUrl) {
-    // Custom domain or public R2 URL
-    return `${publicUrl.replace(/\/$/, '')}/${key}`;
+  if (!publicUrl) {
+    throw new Error('R2_PUBLIC_URL environment variable is required for public bucket access');
   }
 
-  // Default R2 public URL format (if bucket is public)
-  return `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${process.env.R2_BUCKET_NAME}/${key}`;
+  return `${publicUrl.replace(/\/$/, '')}/${key}`;
 }
 
 
