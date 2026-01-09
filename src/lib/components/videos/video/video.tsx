@@ -1,89 +1,59 @@
-'use client'
+"use client";
 
-import { faEye, faStar, faClock } from '@fortawesome/free-regular-svg-icons';
+import { faEye, faPlay, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, CardBody, CardFooter, CardHeader, Image, User } from "@heroui/react";
-import { useRouter } from "next/navigation";
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 import type { Video } from "../../../types/types";
-
 export default function VideoComponent({ video }: { video: Video }) {
-  const router = useRouter();
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const uploadDate = new Date(date);
-    const diffInDays = Math.floor((now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'Today';
-    if (diffInDays === 1) return 'Yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-    return `${Math.floor(diffInDays / 30)} months ago`;
-  };
-
-  const calculateAverageRating = (ratings: { value: number }[]) => {
-    if (!ratings || ratings.length === 0) return 0;
-    const sum = ratings.reduce((acc, rating) => acc + rating.value, 0);
-    return (sum / ratings.length).toFixed(1);
-  };
-
   return (
-    <div className="w-[280px]">
-      <Card 
-        className="p-4 hover:scale-[1.02] transition-transform duration-200" 
-        isPressable 
-        onPress={() => {
-          router.push('/videos/' + video.id);
-        }}
+    <Link href={`/videos/${video.id}`}>
+      <motion.div
+        whileHover={{ y: -5 }}
+        className="group relative bg-[#0a0a0a]/40 border border-white/5 rounded-2xl overflow-hidden shadow-lg hover:shadow-purple-900/20 transition-all duration-300"
       >
-        <CardBody className="p-0">
-          <div className="relative aspect-video rounded-lg overflow-hidden">
-            <Image
-              isZoomed
-              alt={video.title}
-              className="object-cover w-full h-full"
-              src={video.thumbnail ?? "/placeholder-thumbnail.jpg"}
-            />
-          </div>
-        </CardBody>
-        <CardHeader className="px-0 pt-4 pb-2">
-          <div className="flex justify-between items-start gap-3 w-full">
-            <h4 className="font-bold text-lg truncate max-w-[160px]" title={video.title}>
-              {video.title}
-            </h4>
-            <div className="flex items-center gap-1 text-yellow-500 shrink-0">
-              <FontAwesomeIcon icon={faStar} />
-              <span className="text-sm">{calculateAverageRating(video.metadata.rating)}</span>
+        {/* Thumbnail Container */}
+        <div className="aspect-video bg-black relative overflow-hidden">
+          <img
+            src={video.thumbnailUrl || "/bg-1.jpg"}
+            alt={video.title}
+            className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition duration-500 scale-100"
+          />
+          {/* Play Button Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
+              <FontAwesomeIcon icon={faPlay} className="ml-1" />
             </div>
           </div>
-        </CardHeader>
-        <CardFooter className="px-0 pt-2 pb-0">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2 min-w-0 max-w-[200px]">
-              <User
-                name={video.uploadedBy.username}
-                avatarProps={{
-                  src: video.uploadedBy.profilepicture,
-                  size: "sm"
-                }}
-                classNames={{
-                  name: "truncate"
-                }}
-              />
-            </div>
-            <div className="flex items-center gap-4 text-default-500 text-sm shrink-0">
-              <div className="flex items-center gap-1">
-                <FontAwesomeIcon icon={faEye} />
-                <span>{video.metadata.views}</span>
+        </div>
+        {/* Footer */}
+        <div className="p-3 bg-black/40 backdrop-blur-md border-t border-white/5 flex items-center justify-between gap-3">
+          {/* Left: Title & User/Date */}
+          <div className="flex flex-col min-w-0 flex-1 gap-1">
+            <h3 className="text-white font-bold text-sm leading-tight line-clamp-1" title={video.title}>{video.title}</h3>
+            <div className="flex items-center gap-2 text-white/50 text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <img src={video.uploadedBy?.profilePicture || undefined} className="w-5 h-5 shrink-0 rounded-full object-cover" alt={video.uploadedBy?.username} />
+                <span className="truncate max-w-24">{video.uploadedBy?.username}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <FontAwesomeIcon icon={faClock} />
-                <span>{formatTimeAgo(video.uploadedAt)}</span>
-              </div>
+              <span>•</span>
+              <span>{new Date(video.uploadedAt).toLocaleDateString()}</span>
             </div>
           </div>
-        </CardFooter>
-      </Card>
-    </div>
-  );
+          {/* Right: Rating & Views */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
+              <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
+              <span>{video.averageRating ? video.averageRating.toFixed(1) : "N/A"}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-white/40">
+              <FontAwesomeIcon icon={faEye} className="w-3 h-3" />
+              <span>{video.views || 0}</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </Link >
+  ); 
 }
+
