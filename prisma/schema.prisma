@@ -22,6 +22,15 @@ enum Role {
 }
 
 // ============================================
+// USER STATUS ENUM
+// ============================================
+enum UserStatus {
+  INVITED   // Created via invite, hasn't logged in
+  ACTIVE    // Has logged in at least once
+  DISABLED  // Soft-deleted, content preserved
+}
+
+// ============================================
 // CATEGORY MODEL
 // ============================================
 model Category {
@@ -49,6 +58,7 @@ model User {
   emailVerified Boolean  @default(false)        // Required for better-auth
   image         String?                         // Profile picture URL
   role          Role     @default(member)       // Role-based access control (only invited users get DB records)
+  status        UserStatus @default(INVITED)
   isAnonymous   Boolean  @default(false)        // Required for better-auth anonymous plugin
 
   // Discord-specific fields
@@ -66,6 +76,10 @@ model User {
 
   // Ratings given by this user
   ratings Rating[]
+
+  // Comments and votes
+  comments     Comment[]
+  commentVotes CommentVote[]
 
   // Quote messages written by this user
   quoteMessages QuoteMessage[]
@@ -113,6 +127,7 @@ model Video {
   participants VideoParticipant[]
   ratings      Rating[]
   userViews    UserVideoView[]
+  comments     Comment[]
 
   // Metadata (stored directly, not in separate table for simplicity)
   views Int @default(0)
@@ -153,6 +168,7 @@ model Picture {
   participants PictureParticipant[]
   ratings      Rating[]
   userViews    UserPictureView[]
+  comments     Comment[]
 
   views Int @default(0)
 
@@ -184,6 +200,7 @@ model Quote {
   participants QuoteParticipant[]
   ratings      Rating[]
   messages     QuoteMessage[]
+  comments     Comment[]
 
   views Int @default(0)
 
@@ -252,6 +269,64 @@ model Rating {
   @@index([pictureId])
   @@index([quoteId])
   @@map("ratings")
+}
+
+// ============================================
+// COMMENT MODEL
+// ============================================
+model Comment {
+  id      String @id @default(cuid())
+  content String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Polymorphic: belongs to Video OR Picture (XOR at app level)
+  videoId String?
+  video   Video?  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  pictureId String?
+  picture   Picture? @relation(fields: [pictureId], references: [id], onDelete: Cascade)
+
+  quoteId String?
+  quote   Quote?  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Self-reference for replies
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  votes CommentVote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([pictureId])
+  @@index([quoteId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+// ============================================
+// COMMENT VOTE MODEL
+// ============================================
+model CommentVote {
+  id    String @id @default(cuid())
+  value Int // +1 for upvote, -1 for downvote
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@map("comment_votes")
 }
 
 // ============================================

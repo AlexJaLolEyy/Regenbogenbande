@@ -6,11 +6,24 @@ export interface User {
   id: string;
   username: string;
   profilePicture: string | null;
+  status?: 'INVITED' | 'ACTIVE' | 'DISABLED';
 }
 
 export interface Rating {
   userId: string;
   value: number;
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  user: User;
+  parentId: string | null;
+  replies?: Comment[];
+  upvotes: number;
+  downvotes: number;
+  userVote?: number; // Current user's vote: 1, -1, or undefined
+  createdAt: Date;
 }
 
 export interface ParticipantPlaceholder {
@@ -196,7 +209,7 @@ export interface UploadVideo {
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
-  participants: User[];
+  participants: Participant[];
   categoryId: string;
   duration?: number;
 }
@@ -209,16 +222,15 @@ export interface UploadPicture {
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
-  participants: User[];
+  participants: Participant[];
   categoryId: string;
 }
 
 export interface UploadQuote {
   id?: string;
-  title?: string;
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
   messages: { userId: string; message: string }[];
-  participants: User[];
+  participants: Participant[];
 }
