@@ -1,8 +1,9 @@
 "use client";
 
 import { createQuote } from "@/src/app/(content)/quotes/(detail)/upload/actions";
-import { getAllSelectableParticipants } from "@/src/app/current-storage/storage";
+import { getAllSelectableParticipants } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
+import { queryKeys } from "@/src/lib/queries/query-keys";
 import {
   faCommentDots,
   faGripLines,
@@ -24,41 +25,30 @@ import {
   Textarea
 } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, Reorder } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import type { Participant, User } from "../../../types/types";
+import { Controller, SubmitHandler, useForm, useWatch } from "react-hook-form";
+import type { QuoteUploadForm, User } from "../../../types/types";
 
-interface Message {
-  id: string;
-  userId: string;
-  message: string;
-  isContext?: boolean;
-}
+type Message = QuoteUploadForm['messages'][number];
 
-interface QuoteFormData {
-  uploadedBy: User | string;
-  uploadedAt: Date;
-  createdAt: Date;
-  messages: Message[];
-  participants: Participant[];
-}
 
 export default function QuoteUpload() {
   const { data: session, isPending: isSessionPending } = useSession();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<User[]>([]);
 
   const {
     handleSubmit,
     control,
     setValue,
-    watch,
     formState: { errors },
-  } = useForm<QuoteFormData>({
+  } = useForm<QuoteUploadForm>({
     defaultValues: {
       uploadedAt: new Date(),
       createdAt: new Date(),
@@ -67,7 +57,11 @@ export default function QuoteUpload() {
     }
   });
 
-  const messages = watch("messages");
+  const messages = useWatch({
+    control,
+    name: "messages",
+    defaultValue: [{ id: '1', userId: "", message: "", isContext: false }]
+  });
 
   // Progress tracking
   const [uploadStatus, setUploadStatus] = useState<{
@@ -90,6 +84,7 @@ export default function QuoteUpload() {
         id: session.user.id,
         username: session.user.name,
         profilePicture: session.user.image || null,
+        status: 'ACTIVE',
       };
       setValue('uploadedBy', currentUser);
 
@@ -100,7 +95,7 @@ export default function QuoteUpload() {
         setValue('messages', updatedMsgs);
       }
     }
-  }, [session, setValue]);
+  }, [session, setValue, messages]);
 
   useEffect(() => {
     getAllSelectableParticipants().then((p) => {
@@ -138,11 +133,11 @@ export default function QuoteUpload() {
     setValue("messages", updated);
   };
 
-  const handleReorder = (newOrder: Message[]) => {
+  const handleReorder = (newOrder: QuoteUploadForm['messages']) => {
     setValue("messages", newOrder);
   };
 
-  const onSubmit: SubmitHandler<QuoteFormData> = async (data) => {
+  const onSubmit: SubmitHandler<QuoteUploadForm> = async (data) => {
     const validMessages = data.messages.filter(msg => msg.userId && msg.message.trim());
 
     if (validMessages.length === 0) {
@@ -154,18 +149,22 @@ export default function QuoteUpload() {
 
       // Automatically determine participants from message authors
       const uniqueAuthorIds = Array.from(new Set(data.messages.map(m => m.userId)));
-      const selectedParticipants = participants.filter(p => uniqueAuthorIds.includes(p.data.id));
+      const selectedParticipants = participants.filter(p => uniqueAuthorIds.includes(p.id));
 
-      const quoteData = {
+      const quoteData: QuoteUploadForm = {
         ...data,
         messages: validMessages.map(m => ({
+          id: m.id,
           userId: m.userId,
-          message: m.message
+          message: m.message,
+          isContext: m.isContext
         })),
         participants: selectedParticipants,
       };
 
       await createQuote(quoteData);
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all });
       setUploadStatus({ stage: 'done', message: 'Quote saved!', progress: 100 });
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'digest' in error &&
@@ -176,7 +175,7 @@ export default function QuoteUpload() {
     }
   };
 
-  const getParticipant = (id: string) => participants.find(p => p.data.id === id);
+  const getParticipant = (id: string) => participants.find(p => p.id === id);
 
   return (
     <div className="w-full h-full px-4 md:px-12 pt-6">
@@ -184,21 +183,21 @@ export default function QuoteUpload() {
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-[1600px] bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+        className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
       >
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
-        <div className="flex flex-col lg:flex-row h-full min-h-[750px]">
+        <div className="flex flex-col lg:flex-row h-full min-h-187.5">
 
           {/* Left Column: Live Preview */}
-          <div className="lg:w-[45%] bg-black/40 rounded-[2rem] m-2 border border-white/5 flex flex-col overflow-hidden relative">
-            <div className="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-10 rounded-t-[2rem]">
+          <div className="lg:w-[45%] bg-black/40 rounded-4xl m-2 border border-white/5 flex flex-col overflow-hidden relative">
+            <div className="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-10 rounded-t-4xl">
               <h2 className="text-white font-bold flex items-center gap-2">
                 <FontAwesomeIcon icon={faQuoteRight} className="text-primary-500" /> Preview
               </h2>
             </div>
 
-            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-[500px] bg-[url('/noise.png')] bg-opacity-5 relative">
+            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-125 bg-[url('/noise.png')] bg-opacity-5 relative">
               <AnimatePresence initial={false}>
                 {messages.map((msg, idx) => {
                   const participant = getParticipant(msg.userId);
@@ -220,8 +219,8 @@ export default function QuoteUpload() {
                     );
                   }
 
-                  const displayName = participant ? participant.data.username : "Selecting...";
-                  const profilePicture = participant?.data.profilePicture;
+                  const displayName = participant ? participant.username : "Selecting...";
+                  const profilePicture = participant?.profilePicture;
 
                   return (
                     <motion.div
@@ -233,19 +232,19 @@ export default function QuoteUpload() {
                     >
                       <Avatar
                         src={profilePicture || undefined}
-                        className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${participant?.data.status === 'INVITED' ? 'bg-warning/20' : ''}`}
+                        className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${participant?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
                         showFallback
                       />
                       <div className={`flex flex-col ${!isLeft ? 'items-end' : 'items-start'} max-w-[80%]`}>
                         <div className="text-[10px] font-bold text-white/40 mb-1 px-1 flex items-center gap-1">
                           {displayName}
-                          {participant?.data.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
+                          {participant?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
                         </div>
                         <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${!isLeft
                           ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
                           : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
                           }`}>
-                          <p className="whitespace-pre-wrap break-words">
+                          <p className="whitespace-pre-wrap wrap-break-word">
                             {msg.message || <span className="italic opacity-30">Type content...</span>}
                           </p>
                         </div>
@@ -312,7 +311,7 @@ export default function QuoteUpload() {
             </div>
 
             {/* Message Manager List with Reorder */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6 space-y-3 min-h-0 max-h-[350px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6 space-y-3 min-h-0 max-h-87.5">
               <div className="flex justify-between items-center sticky top-0 bg-[#070707]/80 backdrop-blur-md py-3 z-20">
                 <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest">
                   Conversation Flow
@@ -375,27 +374,27 @@ export default function QuoteUpload() {
                               onChange={(e) => updateMessage(msg.id, 'userId', e.target.value)}
                               items={participants}
                               renderValue={() => {
-                                const participant = participants.find(p => p.data.id === msg.userId);
+                                const participant = participants.find(p => p.id === msg.userId);
                                 if (!participant) return null;
                                 return (
                                   <div className="flex items-center gap-2">
-                                    <Avatar src={participant.data.profilePicture || undefined} size="sm" className={`w-5 h-5 ${participant.data.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
-                                    <span>{participant.data.username}</span>
+                                    <Avatar src={participant.profilePicture || undefined} size="sm" className={`w-5 h-5 ${participant.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
+                                    <span>{participant.username}</span>
                                   </div>
                                 );
                               }}
                             >
                               {(p) => (
                                 <SelectItem
-                                  key={p.data.id}
-                                  textValue={p.data.username}
+                                  key={p.id}
+                                  textValue={p.username}
                                   startContent={
-                                    <Avatar src={p.data.profilePicture || undefined} size="sm" className={`w-5 h-5 ${p.data.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
+                                    <Avatar src={p.profilePicture || undefined} size="sm" className={`w-5 h-5 ${p.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
                                   }
                                 >
                                   <div className="flex items-center gap-2">
-                                    <span>{p.data.username}</span>
-                                    {p.data.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-4 text-[8px]">Pending</Chip>}
+                                    <span>{p.username}</span>
+                                    {p.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-4 text-[8px]">Pending</Chip>}
                                   </div>
                                 </SelectItem>
                               )}

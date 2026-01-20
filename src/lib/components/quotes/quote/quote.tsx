@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Avatar } from '@heroui/react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Quote } from '../../../types/types';
+import { QuoteListItem } from '../../../types/types';
 
-export default function QuoteComponent({ quote }: { quote: Quote }) {
+export default function QuoteComponent({ quote }: { quote: QuoteListItem }) {
   const displayMessages = quote.messages.slice(0, 4);
   const remaining = quote.messages.length - 4;
   const uploaderName = quote.uploadedBy?.username || 'Unknown';
-  const rating = quote.averageRating ? quote.averageRating.toFixed(1) : 'N/A';
+  const rating = quote.averageRating ? quote.averageRating.toFixed(1) : '0.0';
   const views = quote.views || 0;
 
   return (
@@ -32,7 +32,7 @@ export default function QuoteComponent({ quote }: { quote: Quote }) {
           {displayMessages.map((msg, idx) => (
             <div key={msg.id} className={`flex gap-3 ${idx % 2 !== 0 ? 'flex-row-reverse' : ''}`}>
               <Avatar src={msg.user.profilePicture || undefined} size="sm" className="shrink-0 w-6 h-6 mt-1" />
-              <div className={`p-3 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap max-w-[85%] shadow-sm border border-white/5 \
+              <div className={`p-3 rounded-2xl text-sm leading-relaxed wrap-break-word whitespace-pre-wrap max-w-[85%] shadow-sm border border-white/5 \
                 ${idx % 2 !== 0
                   ? 'bg-purple-500/10 border-purple-500/10 text-white rounded-tr-none'
                   : 'bg-white/5 border-white/5 text-white/90 rounded-tl-none'
@@ -53,7 +53,7 @@ export default function QuoteComponent({ quote }: { quote: Quote }) {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 opacity-70 hover:opacity-100 transition">
               <Avatar src={quote.uploadedBy?.profilePicture || undefined} className="w-4 h-4" />
-              <span className="truncate max-w-[60px]">{uploaderName}</span>
+              <span className="truncate max-w-15">{uploaderName}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">

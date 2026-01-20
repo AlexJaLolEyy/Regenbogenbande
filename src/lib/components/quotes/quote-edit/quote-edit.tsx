@@ -1,10 +1,12 @@
 "use client";
 
-import { updateQuote } from "@/src/app/(content)/quotes/(detail)/[id]/edit/actions";
-import { getAllUsers } from "@/src/app/current-storage/storage";
+import { updateQuoteElement } from "@/src/app/(content)/quotes/(detail)/[id]/edit/actions";
+import { getAllUsers } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
 import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
+import { queryKeys } from "@/src/lib/queries/query-keys";
+import { QuoteActionInput } from "@/src/lib/utils/quote-utils";
 import {
     faCommentDots,
     faGripLines,
@@ -28,11 +30,12 @@ import {
     Textarea
 } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { Controller, SubmitHandler, useForm, useWatch } from "react-hook-form";
 import type { Quote, User } from "../../../types/types";
 
 interface Message {
@@ -53,6 +56,7 @@ interface QuoteFormData {
 export default function QuoteEdit({ quote }: { quote: Quote }) {
     const { data: session, isPending: isSessionPending } = useSession();
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const [users, setUsers] = useState<User[]>([]);
 
@@ -65,17 +69,14 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
     }));
 
     // Transform participants
-    const initialParticipants = quote.participants
-        .map(p => p.type === 'user' ? p.data : null)
-        .filter(Boolean) as User[];
+    const initialParticipants = quote.participants;
 
     const {
         handleSubmit,
         control,
         setValue,
-        watch,
         formState: { errors },
-    } = useForm<QuoteFormData>({
+    } = useForm<QuoteActionInput>({
         defaultValues: {
             uploadedBy: quote.uploadedBy,
             uploadedAt: new Date(quote.uploadedAt),
@@ -85,10 +86,14 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
         }
     });
 
-    const messages = watch("messages");
+    const messages = useWatch({
+        control,
+        name: "messages",
+        defaultValue: initialMessages
+    });
 
     // Permission checks
-    const role = getEffectiveRole(session as any);
+    const role = getEffectiveRole(session);
     const isOwner = session?.user?.id === quote.uploadedBy.id;
     const canEdit = role === 'owner' || role === 'admin' || isOwner;
 
@@ -112,7 +117,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
     const addMessage = (isContext = false) => {
         const currentMsgs = [...messages];
         const newId = Math.random().toString(36).substr(2, 9);
-        
+
         setValue("messages", [
             ...currentMsgs,
             { id: newId, userId: "", message: "", isContext }
@@ -125,7 +130,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
         }
     };
 
-    const updateMessage = (id: string, field: keyof Message, value: any) => {
+    const updateMessage = (id: string, field: keyof Message, value: string | boolean) => {
         const updated = messages.map(m => m.id === id ? { ...m, [field]: value } : m);
         setValue("messages", updated);
     };
@@ -134,7 +139,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
         setValue("messages", newOrder);
     };
 
-    const onSubmit: SubmitHandler<QuoteFormData> = async (data) => {
+    const onSubmit: SubmitHandler<QuoteActionInput> = async (data) => {
         const validMessages = data.messages.filter(msg => msg.userId && msg.message.trim());
 
         if (validMessages.length === 0) {
@@ -144,16 +149,19 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
 
         try {
             setStatus({ stage: 'saving', message: 'Updating quote...', progress: 40 });
-            
+
             const quoteData = {
                 ...data,
                 messages: validMessages.map(m => ({
+                    id: m.id,
                     userId: m.userId,
-                    message: m.message
+                    message: m.message,
+                    isContext: m.isContext
                 })),
             };
 
-            await updateQuote(quote.id, quoteData as any);
+            await updateQuoteElement(quote.id, quoteData);
+            queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all });
             setStatus({ stage: 'done', message: 'Quote updated!', progress: 100 });
         } catch (error: unknown) {
             if (error && typeof error === 'object' && 'digest' in error &&
@@ -168,10 +176,10 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
     const getUser = (id: string) => users.find(u => u.id === id);
 
     return (
-        <AuroraBackground className="fixed inset-0 !h-screen z-0">
+        <AuroraBackground className="fixed inset-0 h-screen! z-0">
             <div className="relative z-10 w-full h-full overflow-y-auto pt-24 pb-32 px-4 md:px-12">
 
-                <div className="max-w-[1600px] mx-auto mb-6">
+                <div className="max-w-400 mx-auto mb-6">
                     <Breadcrumbs variant="bordered" classNames={{ list: "bg-black/40 border-white/10 backdrop-blur-md" }}>
                         <BreadcrumbItem href="/">Home</BreadcrumbItem>
                         <BreadcrumbItem href="/quotes">Quotes</BreadcrumbItem>
@@ -183,21 +191,21 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="w-full max-w-[1600px] bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+                    className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
                 >
-                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
-                    <div className="flex flex-col lg:flex-row h-full min-h-[750px]">
+                    <div className="flex flex-col lg:flex-row h-full min-h-187.5">
 
                         {/* Left Column: Live Preview Panel */}
-                        <div className="lg:w-[45%] bg-black/40 rounded-[2rem] m-2 border border-white/5 flex flex-col overflow-hidden relative">
+                        <div className="lg:w-[45%] bg-black/40 rounded-4xl m-2 border border-white/5 flex flex-col overflow-hidden relative">
                             <div className="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-10">
                                 <h2 className="text-white font-bold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faQuoteRight} className="text-primary-500" /> Preview
                                 </h2>
                             </div>
 
-                            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar bg-[url('/noise.png')] bg-opacity-5 relative max-h-[600px]">
+                            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar bg-[url('/noise.png')] bg-opacity-5 relative max-h-150">
                                 <AnimatePresence initial={false}>
                                     {messages.map((msg, idx) => {
                                         const user = getUser(msg.userId);
@@ -241,7 +249,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                         ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
                                                         : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
                                                         }`}>
-                                                        <p className="whitespace-pre-wrap break-words">
+                                                        <p className="whitespace-pre-wrap wrap-break-word">
                                                             {msg.message || <span className="italic opacity-30">Type content...</span>}
                                                         </p>
                                                     </div>
@@ -260,7 +268,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                         </div>
 
                         {/* Right Column: Builder Panel */}
-                        <div className="lg:w-[55%] p-8 lg:p-10 flex flex-col h-[750px]">
+                        <div className="lg:w-[55%] p-8 lg:p-10 flex flex-col h-187.5">
                             <div className="flex justify-between items-center mb-8">
                                 <h1 className="text-2xl font-bold text-white">Edit Quote #{quote.id}</h1>
                                 <div className="flex gap-2">
@@ -299,12 +307,12 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             labelPlacement="outside"
                                             isRequired
                                             isInvalid={!!errors.createdAt}
-                                            classNames={{ 
-                                                inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", 
-                                                label: "text-white/50" 
+                                            classNames={{
+                                                inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors",
+                                                label: "text-white/50"
                                             }}
-                                            value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) as any : null}
-                                            onChange={(date) => field.onChange(date ? date.toDate(getLocalTimeZone()) : new Date())}
+                                            value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) : null}
+                                            onChange={(date) => field.onChange(date ? date.toDate() : new Date())}
                                         />
                                     )}
                                 />
@@ -325,10 +333,10 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             isRequired
                                             isInvalid={!!errors.participants}
                                             errorMessage="At least one participant is required"
-                                            classNames={{ 
-                                                trigger: "bg-white/5 border-white/10 min-h-12", 
-                                                label: "text-white/50", 
-                                                value: "text-white" 
+                                            classNames={{
+                                                trigger: "bg-white/5 border-white/10 min-h-12",
+                                                label: "text-white/50",
+                                                value: "text-white"
                                             }}
                                             items={users}
                                             isMultiline
@@ -368,7 +376,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                     className="space-y-3"
                                 >
                                     <AnimatePresence initial={false}>
-                                        {messages.map((msg, index) => (
+                                        {messages.map((msg) => (
                                             <Reorder.Item
                                                 key={msg.id}
                                                 value={msg}
@@ -394,7 +402,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                                 aria-label="Speaker"
                                                                 classNames={{ trigger: "bg-black/40 text-white h-10 border-white/10", value: "text-white" }}
                                                                 selectedKeys={msg.userId ? [msg.userId] : []}
-                                                                onSelectionChange={(keys) => updateMessage(msg.id, 'userId', Array.from(keys)[0])}
+                                                                onSelectionChange={(keys) => updateMessage(msg.id, 'userId', String(Array.from(keys)[0]))}
                                                                 items={users}
                                                             >
                                                                 {(u) => (

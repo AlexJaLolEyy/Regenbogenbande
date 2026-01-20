@@ -28,15 +28,15 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
     };
 
     return (
-        <div className="relative z-10 w-full max-w-[1920px] mx-auto p-6 pt-4 pb-20">
-            
+        <div className="relative z-10 w-full max-w-480 mx-auto p-6 pt-4 pb-20">
+
             {/* Back Button */}
             <Link href="/quotes" className="fixed top-24 right-8 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition z-50 border border-white/10">
                 <FontAwesomeIcon icon={faTimes} />
             </Link>
 
             <div className="flex flex-col lg:flex-row gap-8 justify-center">
-                
+
                 {/* LEFT: Main Chat Content */}
                 <div className="flex-1 max-w-4xl space-y-8">
                     <Breadcrumbs className="mb-6" color="foreground">
@@ -67,7 +67,7 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-gradient-to-b from-transparent to-black/20">
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-linear-to-b from-transparent to-black/20">
                             {quote.messages.map((msg, idx) => {
                                 const isOdd = idx % 2 !== 0;
                                 return (
@@ -85,8 +85,8 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                                                 <span className="font-bold text-white/70">{msg.user.username}</span>
                                             </div>
                                             <div className={`p-4 rounded-2xl text-white/90 leading-relaxed shadow-sm backdrop-blur-md border border-white/5 ${isOdd
-                                                    ? 'bg-blue-600/20 border-blue-500/30 rounded-tr-sm'
-                                                    : 'bg-white/10 rounded-tl-sm'
+                                                ? 'bg-blue-600/20 border-blue-500/30 rounded-tr-sm'
+                                                : 'bg-white/10 rounded-tl-sm'
                                                 }`}>
                                                 {msg.message}
                                             </div>
@@ -101,8 +101,8 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
 
                     {/* Comments Section */}
                     <div className="mt-12">
-                        <CommentsSection 
-                            contentType="quote" 
+                        <CommentsSection
+                            contentType="quote"
                             contentId={quote.id}
                             initialComments={initialComments}
                         />
@@ -113,15 +113,15 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                 <div className="w-full lg:w-80 shrink-0 space-y-6 pt-14">
                     {/* Actions Card */}
                     <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col gap-3">
-                        <Button 
+                        <Button
                             className="w-full bg-white/5 text-white border border-white/5 font-bold"
                             startContent={<FontAwesomeIcon icon={faStar} className="text-yellow-400" />}
                             onPress={() => setIsRatingModalOpen(true)}
                         >
                             Rate
                         </Button>
-                        <Button 
-                            className="w-full bg-white/5 text-white border border-white/5 font-bold" 
+                        <Button
+                            className="w-full bg-white/5 text-white border border-white/5 font-bold"
                             startContent={<FontAwesomeIcon icon={faShare} />}
                             onPress={handleShare}
                         >
@@ -162,8 +162,8 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                         <h3 className="text-white/40 text-xs font-bold uppercase mb-4">Participants</h3>
                         <div className="flex flex-col gap-3">
                             {quote.participants.map((participant, idx) => {
-                                const name = participant.type === 'user' ? participant.data.username : participant.data.displayName;
-                                const src = participant.type === 'user' ? participant.data.profilePicture : undefined;
+                                const name = participant.username;
+                                const src = participant.profilePicture;
                                 return (
                                     <div key={idx} className="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
                                         <Avatar src={src || undefined} size="sm" name={name} />
@@ -176,11 +176,11 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                 </div>
             </div>
 
-            <RatingModal 
-                contentType="quote" 
-                contentId={quote.id} 
-                isOpen={isRatingModalOpen} 
-                onOpenChange={setIsRatingModalOpen} 
+            <RatingModal
+                contentType="quote"
+                contentId={quote.id}
+                isOpen={isRatingModalOpen}
+                onOpenChange={setIsRatingModalOpen}
             />
         </div>
     );
