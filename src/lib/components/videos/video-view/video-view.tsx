@@ -1,29 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Video, Comment } from '@/src/lib/types/types';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faShare, faStar, faEye, faPlay } from '@fortawesome/free-solid-svg-icons';
-import Link from 'next/link';
-import { Avatar, Button, Tooltip, AvatarGroup } from "@heroui/react";
-import { CommentsSection } from '../../shared/comments-section';
-import { RecommendationsSection } from '../../shared/recommendations-section';
-import { RatingModal } from '../../shared/rating-modal';
-import { DeleteButton } from '../../ui/delete-button';
 import { incrementView } from '@/src/lib/actions/views';
+import { Comment, Video } from '@/src/lib/types/types';
+import { faEye, faPlay, faShare, faStar, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Avatar, AvatarGroup, Button, Tooltip } from "@heroui/react";
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
+import { CommentsSection } from '../../shared/comments-section';
+import { RatingModal } from '../../shared/rating-modal';
+import { RecommendationsSection } from '../../shared/recommendations-section';
+import { DeleteButton } from '../../ui/delete-button';
 
 export default function VideoView({ video, initialComments = [] }: { video: Video, initialComments?: Comment[] }) {
     const [hasWindow, setHasWindow] = useState(false);
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const viewIncrementedRef = useRef(false);
 
     useEffect(() => {
-        // Use setTimeout to avoid cascading renders warning
+        // Using setTimeout(..., 0) avoids "cascading renders" warning from React.
         const timer = setTimeout(() => {
             setHasWindow(true);
-            incrementView('video', video.id);
         }, 0);
         return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        // Increment view count once per mount.
+        // Use a ref to prevent double-counting in React Strict Mode (development).
+        if (!viewIncrementedRef.current) {
+            viewIncrementedRef.current = true;
+            incrementView('video', video.id);
+        }
     }, [video.id]);
 
     const rating = video.averageRating ? video.averageRating.toFixed(1) : "0.0";
@@ -42,7 +51,7 @@ export default function VideoView({ video, initialComments = [] }: { video: Vide
                 <FontAwesomeIcon icon={faTimes} />
             </Link>
 
-            <div className="max-w-[1700px] mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
+            <div className="max-w-425 mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
 
                 {/* LEFT COLUMN: Main Player Area */}
                 <div className="xl:col-span-3 space-y-6">
@@ -90,15 +99,15 @@ export default function VideoView({ video, initialComments = [] }: { video: Vide
                             </div>
 
                             <div className="flex gap-2">
-                                <Button 
+                                <Button
                                     className="rounded-full bg-white/5 text-white border border-white/5 font-bold"
                                     startContent={<FontAwesomeIcon icon={faStar} className="text-yellow-400" />}
                                     onPress={() => setIsRatingModalOpen(true)}
                                 >
                                     Rate
                                 </Button>
-                                <Button 
-                                    className="rounded-full bg-white/5 text-white border border-white/5 font-bold" 
+                                <Button
+                                    className="rounded-full bg-white/5 text-white border border-white/5 font-bold"
                                     startContent={<FontAwesomeIcon icon={faShare} />}
                                     onPress={handleShare}
                                 >
@@ -122,13 +131,13 @@ export default function VideoView({ video, initialComments = [] }: { video: Vide
                                 <h3 className="text-sm font-bold text-white/40 uppercase mb-4">Description</h3>
                                 <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{video.description || "No description provided."}</p>
                             </div>
-                            
+
                             <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-3xl p-6 border border-white/5 hover:bg-[#0a0a0a]/60 transition">
                                 <h3 className="text-sm font-bold text-white/40 uppercase mb-4">Participants</h3>
                                 <AvatarGroup max={5} size="sm" isGrid>
                                     {video.participants.map((participant, idx) => {
-                                        const name = participant.type === 'user' ? participant.data.username : participant.data.displayName;
-                                        const src = participant.type === 'user' ? participant.data.profilePicture : undefined;
+                                        const name = participant.username;
+                                        const src = participant.profilePicture;
                                         return (
                                             <Tooltip key={idx} content={name}>
                                                 <Avatar src={src || undefined} name={name} />
@@ -140,29 +149,29 @@ export default function VideoView({ video, initialComments = [] }: { video: Vide
                         </div>
 
                         {/* Comments Section */}
-                        <CommentsSection 
-                            contentType="video" 
-                            contentId={video.id} 
-                            initialComments={initialComments} 
+                        <CommentsSection
+                            contentType="video"
+                            contentId={video.id}
+                            initialComments={initialComments}
                         />
                     </div>
                 </div>
 
                 {/* RIGHT COLUMN: Recommendations */}
                 <div className="w-full xl:col-span-1">
-                    <RecommendationsSection 
-                        contentType="video" 
-                        currentId={video.id} 
-                        categoryId={video.category.id} 
+                    <RecommendationsSection
+                        contentType="video"
+                        currentId={video.id}
+                        categoryId={video.category.id}
                     />
                 </div>
             </div>
 
-            <RatingModal 
-                contentType="video" 
-                contentId={video.id} 
-                isOpen={isRatingModalOpen} 
-                onOpenChange={setIsRatingModalOpen} 
+            <RatingModal
+                contentType="video"
+                contentId={video.id}
+                isOpen={isRatingModalOpen}
+                onOpenChange={setIsRatingModalOpen}
             />
         </div>
     );

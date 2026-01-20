@@ -1,45 +1,50 @@
 "use client";
 
-import { updateVideo } from "@/src/app/(content)/videos/(detail)/[id]/edit/actions";
-import { getAllCategories, getAllUsers } from "@/src/app/current-storage/storage";
+import { updateVideoElement } from "@/src/app/(content)/videos/(detail)/[id]/edit/actions";
+import { getAllCategories, getAllUsers } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
 import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
-import { 
-    faArrowUpFromBracket, 
-    faInfoCircle, 
+import { queryKeys } from "@/src/lib/queries/query-keys";
+import { VideoActionInput } from "@/src/lib/utils/video-utils";
+import {
+    faArrowUpFromBracket,
+    faInfoCircle,
     faPenToSquare
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { 
-    Avatar, 
-    BreadcrumbItem, 
-    Breadcrumbs, 
-    Button, 
-    Chip, 
-    DateInput, 
-    Input, 
-    Select, 
-    SelectItem, 
-    Textarea 
+import {
+    Avatar,
+    BreadcrumbItem,
+    Breadcrumbs,
+    Button,
+    Chip,
+    DateInput,
+    Input,
+    Progress,
+    Select,
+    SelectItem,
+    Textarea
 } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import { Category, UploadVideo, User, Video } from "../../../types/types";
+import { Category, User, Video } from "../../../types/types";
 
 export default function VideoEdit({ video }: { video: Video }) {
     const { data: session, isPending: isSessionPending } = useSession();
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const {
         handleSubmit,
         control,
         formState: { errors },
-    } = useForm<UploadVideo>({
+    } = useForm<VideoActionInput>({
         defaultValues: {
             title: video.title,
             description: video.description || "",
@@ -47,18 +52,22 @@ export default function VideoEdit({ video }: { video: Video }) {
             createdAt: video.createdAt,
             uploadedAt: video.uploadedAt,
             uploadedBy: video.uploadedBy,
-            participants: video.participants.map(p => p.type === 'user' ? p.data : null).filter(Boolean) as User[],
+            participants: video.participants,
             categoryId: video.category.id,
-            video: undefined
         }
     });
 
     const [users, setUsers] = useState<User[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [manualDateOverride, setManualDateOverride] = useState(false);
+    const [status, setStatus] = useState<{
+        stage: 'idle' | 'saving' | 'done' | 'error';
+        progress?: number;
+        message: string;
+    }>({ stage: 'idle', message: '' });
 
     // Permission checks
-    const role = getEffectiveRole(session as any);
+    const role = getEffectiveRole(session);
     const isOwner = session?.user?.id === video.uploadedBy.id;
     const canEdit = role === 'owner' || role === 'admin' || isOwner;
 
@@ -73,24 +82,26 @@ export default function VideoEdit({ video }: { video: Video }) {
         getAllCategories().then(setCategories);
     }, []);
 
-    const onSubmit: SubmitHandler<UploadVideo> = async (data) => {
-        // Strip the video file property since we are not updating it
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { video: _, ...rest } = data;
-
-        // Re-inject the video property using the original string path if needed 
-        // or just let the backend handle it since we're only updating metadata
-        const submitData = { ...rest, video: video.videoUrl };
-
-        console.log("Submitting edit data: ", submitData);
-        await updateVideo(submitData as any);
+    const onSubmit: SubmitHandler<VideoActionInput> = async (data) => {
+        try {
+            setStatus({ stage: 'saving', message: 'Saving changes...', progress: 40 });
+            await updateVideoElement(data);
+            queryClient.invalidateQueries({ queryKey: queryKeys.videos.all });
+            setStatus({ stage: 'done', message: 'Changes saved!', progress: 100 });
+        } catch (error) {
+            if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                return;
+            }
+            console.error('Error saving video:', error);
+            setStatus({ stage: 'error', message: 'Error saving changes' });
+        }
     };
 
     return (
-        <AuroraBackground className="fixed inset-0 !h-screen z-0">
+        <AuroraBackground className="fixed inset-0 h-screen! z-0">
             <div className="relative z-10 w-full h-full overflow-y-auto pt-24 pb-32 px-4 md:px-12">
-                
-                <div className="max-w-[1600px] mx-auto mb-6">
+
+                <div className="max-w-400 mx-auto mb-6">
                     <Breadcrumbs variant="bordered" classNames={{ list: "bg-black/40 border-white/10 backdrop-blur-md" }}>
                         <BreadcrumbItem href="/">Home</BreadcrumbItem>
                         <BreadcrumbItem href="/videos">Videos</BreadcrumbItem>
@@ -101,14 +112,14 @@ export default function VideoEdit({ video }: { video: Video }) {
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="w-full max-w-[1600px] bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+                    className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
                 >
-                    <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
                     <div className="flex flex-col lg:flex-row h-full">
                         {/* Left Column: Visuals */}
-                        <div className="lg:w-[60%] bg-black/40 rounded-[2rem] m-2 relative group overflow-hidden border border-white/5 flex flex-col h-[700px]">
-                            
+                        <div className="lg:w-[60%] bg-black/40 rounded-4xl m-2 relative group overflow-hidden border border-white/5 flex flex-col h-175">
+
                             <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30">
                                 <div className="flex gap-2">
                                     <Chip size="sm" variant="shadow" classNames={{ base: "bg-black/60 backdrop-blur-md border border-white/10", content: "text-white/80 font-mono text-[10px]" }}>MP4</Chip>
@@ -131,7 +142,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                         </div>
 
                         {/* Right Column: Form */}
-                        <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col h-[700px]">
+                        <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col h-175">
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
                                 <div className="flex items-center gap-3 mb-2">
                                     <FontAwesomeIcon icon={faPenToSquare} className="text-2xl text-secondary" />
@@ -160,10 +171,10 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                 isRequired
                                                 isInvalid={!!errors.title}
                                                 errorMessage="Title is required"
-                                                classNames={{ 
-                                                    inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", 
-                                                    input: "text-white font-medium", 
-                                                    label: "text-white/50" 
+                                                classNames={{
+                                                    inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors",
+                                                    input: "text-white font-medium",
+                                                    label: "text-white/50"
                                                 }}
                                             />
                                         )}
@@ -184,10 +195,10 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                 isRequired
                                                 isInvalid={!!errors.description}
                                                 errorMessage="Description is required"
-                                                classNames={{ 
-                                                    inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors", 
-                                                    input: "text-white", 
-                                                    label: "text-white/50" 
+                                                classNames={{
+                                                    inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors",
+                                                    input: "text-white",
+                                                    label: "text-white/50"
                                                 }}
                                             />
                                         )}
@@ -213,11 +224,11 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     labelPlacement="outside"
                                                     isRequired
                                                     isReadOnly
-                                                    classNames={{ 
-                                                        inputWrapper: "bg-white/5 border-white/10 h-12 opacity-50", 
-                                                        label: "text-white/50" 
+                                                    classNames={{
+                                                        inputWrapper: "bg-white/5 border-white/10 h-12 opacity-50",
+                                                        label: "text-white/50"
                                                     }}
-                                                    value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) as any : null}
+                                                    value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) : null}
                                                 />
                                             )}
                                         />
@@ -238,10 +249,10 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     isRequired
                                                     isInvalid={!!errors.categoryId}
                                                     errorMessage="Category is required"
-                                                    classNames={{ 
-                                                        trigger: "bg-white/5 border-white/10 h-12", 
-                                                        label: "text-white/50", 
-                                                        value: "text-white" 
+                                                    classNames={{
+                                                        trigger: "bg-white/5 border-white/10 h-12",
+                                                        label: "text-white/50",
+                                                        value: "text-white"
                                                     }}
                                                     items={categories}
                                                     selectedKeys={field.value ? [field.value] : []}
@@ -275,8 +286,8 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                             inputWrapper: `bg-white/5 border-white/10 h-12 ${!manualDateOverride ? 'opacity-50' : ''}`,
                                                             label: "text-white/50"
                                                         }}
-                                                        value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) as any : null}
-                                                        onChange={(date) => field.onChange(date ? date.toDate(getLocalTimeZone()) : new Date())}
+                                                        value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) : null}
+                                                        onChange={(date) => field.onChange(date ? date.toDate() : new Date())}
                                                     />
                                                 )}
                                             />
@@ -305,10 +316,10 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                 isRequired
                                                 isInvalid={!!errors.participants}
                                                 errorMessage="At least one participant is required"
-                                                classNames={{ 
-                                                    trigger: "bg-white/5 border-white/10 min-h-12", 
-                                                    label: "text-white/50", 
-                                                    value: "text-white" 
+                                                classNames={{
+                                                    trigger: "bg-white/5 border-white/10 min-h-12",
+                                                    label: "text-white/50",
+                                                    value: "text-white"
                                                 }}
                                                 items={users}
                                                 isMultiline
@@ -334,26 +345,46 @@ export default function VideoEdit({ video }: { video: Video }) {
                             </div>
 
                             {/* Action area fixed at bottom */}
-                            <div className="mt-6 pt-6 border-t border-white/10 flex gap-4">
-                                <Button
-                                    color="primary"
-                                    size="lg"
-                                    className="flex-1 font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
-                                    startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
-                                    onPress={() => handleSubmit(onSubmit)()}
-                                    isDisabled={!canEdit || isSessionPending}
-                                >
-                                    Save Changes
-                                </Button>
-                                <Button
-                                    as={Link}
-                                    href={`/videos/${video.id}`}
-                                    variant="bordered"
-                                    size="lg"
-                                    className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5"
-                                >
-                                    Cancel
-                                </Button>
+                            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                                {status.stage !== 'idle' && (
+                                    <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-white/70">{status.message}</span>
+                                            {status.progress !== undefined && (
+                                                <span className="text-white/50">{status.progress}%</span>
+                                            )}
+                                        </div>
+                                        <Progress
+                                            aria-label="Action progress"
+                                            value={status.progress}
+                                            isIndeterminate={status.progress === undefined}
+                                            color={status.stage === 'error' ? 'danger' : status.stage === 'done' ? 'success' : 'primary'}
+                                            size="sm"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex gap-4">
+                                    <Button
+                                        color="primary"
+                                        size="lg"
+                                        className="flex-1 font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
+                                        startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                                        onPress={() => handleSubmit(onSubmit)()}
+                                        isDisabled={!canEdit || isSessionPending}
+                                        isLoading={status.stage === 'saving'}
+                                    >
+                                        Save Changes
+                                    </Button>
+                                    <Button
+                                        as={Link}
+                                        href={`/videos/${video.id}`}
+                                        variant="bordered"
+                                        size="lg"
+                                        className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>

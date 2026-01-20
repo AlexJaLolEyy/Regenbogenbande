@@ -3,9 +3,12 @@
 import { faEye, faPlay, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
-import type { Video } from "../../../types/types";
-export default function VideoComponent({ video }: { video: Video }) {
+import type { VideoListItem } from "../../../types/types";
+
+
+export default function VideoComponent({ video }: { video: VideoListItem }) {
   return (
     <Link href={`/videos/${video.id}`}>
       <motion.div
@@ -14,7 +17,9 @@ export default function VideoComponent({ video }: { video: Video }) {
       >
         {/* Thumbnail Container */}
         <div className="aspect-video bg-black relative overflow-hidden">
-          <img
+          <Image
+            width={500}
+            height={500}
             src={video.thumbnailUrl || "/bg-1.jpg"}
             alt={video.title}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition duration-500 scale-100"
@@ -33,7 +38,7 @@ export default function VideoComponent({ video }: { video: Video }) {
             <h3 className="text-white font-bold text-sm leading-tight line-clamp-1" title={video.title}>{video.title}</h3>
             <div className="flex items-center gap-2 text-white/50 text-xs">
               <div className="flex items-center gap-1.5 min-w-0">
-                <img src={video.uploadedBy?.profilePicture || undefined} className="w-5 h-5 shrink-0 rounded-full object-cover" alt={video.uploadedBy?.username} />
+                <Image width={100} height={100} src={video.uploadedBy?.profilePicture || ""} className="w-5 h-5 shrink-0 rounded-full object-cover" alt={video.uploadedBy?.username || "User avatar"} />
                 <span className="truncate max-w-24">{video.uploadedBy?.username}</span>
               </div>
               <span>•</span>
@@ -44,7 +49,7 @@ export default function VideoComponent({ video }: { video: Video }) {
           <div className="flex flex-col items-end gap-1 shrink-0">
             <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
               <FontAwesomeIcon icon={faStar} className="w-3 h-3" />
-              <span>{video.averageRating ? video.averageRating.toFixed(1) : "N/A"}</span>
+              <span>{video.averageRating ? video.averageRating.toFixed(1) : "0.0"}</span>
             </div>
             <div className="flex items-center gap-1 text-xs text-white/40">
               <FontAwesomeIcon icon={faEye} className="w-3 h-3" />
@@ -54,6 +59,6 @@ export default function VideoComponent({ video }: { video: Video }) {
         </div>
       </motion.div>
     </Link >
-  ); 
+  );
 }
 
