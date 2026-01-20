@@ -1,6 +1,6 @@
 
-import { getQuoteById } from "@/src/app/current-storage/storage";
 import QuoteEdit from "@/src/lib/components/quotes/quote-edit/quote-edit";
+import { getQuoteById } from "@/src/lib/db/selects/quotes";
 import { Quote } from "@/src/lib/types/types";
 
 
@@ -10,8 +10,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const selectedQuote = await getQuoteById(id);
 
   return (
-    <div>
       <QuoteEdit quote={selectedQuote as Quote}></QuoteEdit>
-    </div>
   )
 }

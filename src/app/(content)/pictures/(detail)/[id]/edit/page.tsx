@@ -1,5 +1,5 @@
-import { getPictureById } from "@/src/app/current-storage/storage";
 import PictureEdit from "@/src/lib/components/pictures/picture-edit/picture-edit";
+import { getPictureById } from "@/src/lib/db/selects/pictures";
 import { Picture } from "@/src/lib/types/types";
 
 
@@ -9,8 +9,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const selectedPicture = await getPictureById(id);
 
   return (
-    <div>
       <PictureEdit picture={selectedPicture as Picture}></PictureEdit>
-    </div>
   )
 }

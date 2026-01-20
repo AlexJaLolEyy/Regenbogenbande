@@ -1,6 +1,6 @@
-import { getPictureById } from "@/src/app/current-storage/storage";
 import { getComments } from "@/src/lib/actions/comments";
 import PictureView from "@/src/lib/components/pictures/picture-view/picture-view";
+import { getPictureById } from "@/src/lib/db/selects/pictures";
 import { Picture } from "@/src/lib/types/types";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -12,8 +12,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const initialComments = await getComments('picture', id);
 
   return (
-    <div>
       <PictureView picture={selectedPicture as Picture} initialComments={initialComments}></PictureView>
-    </div>
   )
 }
