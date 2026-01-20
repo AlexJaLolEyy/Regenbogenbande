@@ -3,7 +3,7 @@
 import { prisma } from "@/src/lib/prisma";
 
 export async function getVideoRecommendations(videoId: string, categoryId: string, limit: number = 5) {
-  console.log(`[Recommendations] Fetching videos for videoId: ${videoId}, categoryId: ${categoryId}`);
+
 
   // 1. Try to get videos from the same category
   let videos = await prisma.video.findMany({
@@ -28,7 +28,7 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
     },
   });
 
-  console.log(`[Recommendations] Found ${videos.length} videos in same category`);
+
 
   // 2. If we don't have enough, fill with other public videos
   if (videos.length < limit) {
@@ -56,7 +56,7 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
       },
     });
 
-    console.log(`[Recommendations] Found ${additionalVideos.length} additional videos`);
+
     videos = [...videos, ...additionalVideos];
   }
 
@@ -75,7 +75,7 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
 }
 
 export async function getPictureRecommendations(pictureId: string, categoryId: string, limit: number = 5) {
-  console.log(`[Recommendations] Fetching pictures for pictureId: ${pictureId}, categoryId: ${categoryId}`);
+
 
   // 1. Try to get pictures from the same category
   let pictures = await prisma.picture.findMany({
@@ -100,7 +100,7 @@ export async function getPictureRecommendations(pictureId: string, categoryId: s
     },
   });
 
-  console.log(`[Recommendations] Found ${pictures.length} pictures in same category`);
+
 
   // 2. If we don't have enough, fill with other public pictures
   if (pictures.length < limit) {
@@ -128,7 +128,7 @@ export async function getPictureRecommendations(pictureId: string, categoryId: s
       },
     });
 
-    console.log(`[Recommendations] Found ${additionalPictures.length} additional pictures`);
+
     pictures = [...pictures, ...additionalPictures];
   }
 

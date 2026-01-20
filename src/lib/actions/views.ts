@@ -4,10 +4,7 @@ import { requireAuth } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { headers } from "next/headers";
 
-// In-memory cache for rate limiting anonymous views by IP
-// Note: This only works if the server doesn't restart frequently (like in serverless)
-// but for a small friend group app it's a good start.
-const anonymousViewCache = new Map<string, number>();
+import { buildViewCacheKey, checkViewRateLimit } from "@/src/lib/services/rate-limiter";
 
 export async function incrementView(
   contentType: 'video' | 'picture' | 'quote',
@@ -15,18 +12,17 @@ export async function incrementView(
 ) {
   const session = await requireAuth().catch(() => null);
   const userId = session?.user.id;
-  const now = Date.now();
   const cooldown = 60 * 1000; // 60 seconds
 
   let shouldIncrement = false;
 
   if (userId) {
-    // Check for logged in user view tracking
+    // Check for logged in user view tracking (database-backed for persistence)
     if (contentType === 'video') {
       const lastView = await prisma.userVideoView.findUnique({
         where: { userId_videoId: { userId, videoId: contentId } }
       });
-      if (!lastView || now - lastView.viewedAt.getTime() > cooldown) {
+      if (!lastView || Date.now() - lastView.viewedAt.getTime() > cooldown) {
         await prisma.userVideoView.upsert({
           where: { userId_videoId: { userId, videoId: contentId } },
           update: { viewedAt: new Date() },
@@ -38,7 +34,7 @@ export async function incrementView(
       const lastView = await prisma.userPictureView.findUnique({
         where: { userId_pictureId: { userId, pictureId: contentId } }
       });
-      if (!lastView || now - lastView.viewedAt.getTime() > cooldown) {
+      if (!lastView || Date.now() - lastView.viewedAt.getTime() > cooldown) {
         await prisma.userPictureView.upsert({
           where: { userId_pictureId: { userId, pictureId: contentId } },
           update: { viewedAt: new Date() },
@@ -47,25 +43,18 @@ export async function incrementView(
         shouldIncrement = true;
       }
     } else if (contentType === 'quote') {
-      // Quotes don't have a view tracking table, use session storage/cache pattern
-      const cacheKey = `quote_${userId}_${contentId}`;
-      const lastView = anonymousViewCache.get(cacheKey);
-      if (!lastView || now - lastView > cooldown) {
-        anonymousViewCache.set(cacheKey, now);
-        shouldIncrement = true;
-      }
+      // Quotes don't have a view tracking table, use in-memory best-effort rate limiting
+      const cacheKey = buildViewCacheKey('quote', contentId, userId);
+      const result = checkViewRateLimit(cacheKey, cooldown);
+      shouldIncrement = result.allowed;
     }
   } else {
-    // Anonymous view tracking by IP
+    // Anonymous view tracking by IP (in-memory best-effort rate limiting)
     const headerList = await headers();
     const ip = headerList.get("x-forwarded-for") || "unknown";
-    const cacheKey = `${contentType}_${ip}_${contentId}`;
-    const lastView = anonymousViewCache.get(cacheKey);
-
-    if (!lastView || now - lastView > cooldown) {
-      anonymousViewCache.set(cacheKey, now);
-      shouldIncrement = true;
-    }
+    const cacheKey = buildViewCacheKey(contentType, contentId, ip);
+    const result = checkViewRateLimit(cacheKey, cooldown);
+    shouldIncrement = result.allowed;
   }
 
   if (shouldIncrement) {

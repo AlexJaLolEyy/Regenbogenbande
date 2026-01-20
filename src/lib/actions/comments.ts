@@ -2,6 +2,7 @@
 
 import { requireAdmin, requireAuth } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
+import { Comment } from '@/src/lib/types/types';
 import { revalidatePath } from "next/cache";
 
 export async function getComments(contentType: 'video' | 'picture' | 'quote', contentId: string) {
@@ -23,6 +24,7 @@ export async function getComments(contentType: 'video' | 'picture' | 'quote', co
           id: true,
           name: true,
           image: true,
+          status: true,
         },
       },
       replies: {
@@ -32,6 +34,7 @@ export async function getComments(contentType: 'video' | 'picture' | 'quote', co
               id: true,
               name: true,
               image: true,
+              status: true,
             },
           },
           votes: true,
@@ -47,11 +50,30 @@ export async function getComments(contentType: 'video' | 'picture' | 'quote', co
   return comments.map(comment => formatComment(comment, userId));
 }
 
-function formatComment(comment: any, currentUserId?: string) {
-  const upvotes = comment.votes.filter((v: any) => v.value === 1).length;
-  const downvotes = comment.votes.filter((v: any) => v.value === -1).length;
-  const userVote = currentUserId 
-    ? comment.votes.find((v: any) => v.userId === currentUserId)?.value 
+// Type for comment with relations from Prisma query
+interface CommentWithRelations {
+  id: string;
+  content: string;
+  parentId: string | null;
+  createdAt: Date;
+  user: {
+    id: string;
+    name: string;
+    image: string | null;
+    status: 'INVITED' | 'ACTIVE' | 'DISABLED';
+  };
+  replies?: CommentWithRelations[];
+  votes: {
+    userId: string;
+    value: number;
+  }[];
+}
+
+function formatComment(comment: CommentWithRelations, currentUserId?: string): Comment {
+  const upvotes = comment.votes.filter((v) => v.value === 1).length;
+  const downvotes = comment.votes.filter((v) => v.value === -1).length;
+  const userVote = currentUserId
+    ? comment.votes.find((v) => v.userId === currentUserId)?.value
     : undefined;
 
   return {
@@ -61,9 +83,10 @@ function formatComment(comment: any, currentUserId?: string) {
       id: comment.user.id,
       username: comment.user.name,
       profilePicture: comment.user.image,
+      status: comment.user.status,
     },
     parentId: comment.parentId,
-    replies: comment.replies?.map((reply: any) => formatComment(reply, currentUserId)),
+    replies: comment.replies?.map((reply) => formatComment(reply, currentUserId)),
     upvotes,
     downvotes,
     userVote,
@@ -78,7 +101,7 @@ export async function addComment(
   parentId?: string
 ) {
   const session = await requireAuth();
-  
+
   const comment = await prisma.comment.create({
     data: {
       content,
@@ -97,7 +120,7 @@ export async function addComment(
 
 export async function deleteComment(commentId: string, contentType: 'video' | 'picture' | 'quote', contentId: string) {
   const session = await requireAuth();
-  
+
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
     select: { userId: true },
@@ -140,7 +163,7 @@ export async function voteComment(
           commentId,
         },
       },
-    }).catch(() => {});
+    }).catch(() => { });
   } else {
     // Upsert vote
     await prisma.commentVote.upsert({
