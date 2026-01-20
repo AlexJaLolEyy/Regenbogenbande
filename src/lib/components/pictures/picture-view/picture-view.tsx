@@ -38,7 +38,7 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                 <FontAwesomeIcon icon={faTimes} />
             </Link>
 
-            <div className="max-w-[1800px] mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
+            <div className="max-w-450 mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
 
                 {/* LEFT COLUMN: Main Content */}
                 <div className="xl:col-span-3 space-y-6">
@@ -47,11 +47,11 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                     <div className="bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative group w-full h-[65vh] flex items-center justify-center p-0">
                         {/* Blurry Background */}
                         <div className="absolute inset-0">
-                            <Image 
+                            <Image
                                 as={NextImage}
-                                src={picture.imageUrl} 
-                                className="w-full h-full object-cover opacity-30 blur-3xl scale-110" 
-                                alt="background" 
+                                src={picture.imageUrl}
+                                className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
+                                alt="background"
                                 removeWrapper
                                 width={1920}
                                 height={1080}
@@ -60,10 +60,10 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                         </div>
 
                         {/* Main Image */}
-                        <Image 
+                        <Image
                             as={NextImage}
-                            src={picture.imageUrl} 
-                            className="relative z-10 w-full h-full object-contain cursor-zoom-in" 
+                            src={picture.imageUrl}
+                            className="relative z-10 w-full h-full object-contain cursor-zoom-in"
                             alt={picture.title}
                             removeWrapper
                             width={1920}
@@ -73,9 +73,9 @@ export default function PictureView({ picture, initialComments = [] }: { picture
 
                         {/* Overlay Controls */}
                         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition flex gap-2 z-20">
-                            <Button 
-                                isIconOnly 
-                                variant="flat" 
+                            <Button
+                                isIconOnly
+                                variant="flat"
                                 className="bg-black/60 text-white rounded-full backdrop-blur-md"
                                 onClick={() => setIsLightboxOpen(true)}
                             >
@@ -108,15 +108,15 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                             </div>
 
                             <div className="flex gap-2">
-                                <Button 
+                                <Button
                                     className="rounded-full bg-white/5 text-white border border-white/5 font-bold"
                                     startContent={<FontAwesomeIcon icon={faStar} className="text-yellow-400" />}
                                     onPress={() => setIsRatingModalOpen(true)}
                                 >
                                     Rate
                                 </Button>
-                                <Button 
-                                    className="rounded-full bg-white/5 text-white border border-white/5 font-bold" 
+                                <Button
+                                    className="rounded-full bg-white/5 text-white border border-white/5 font-bold"
                                     startContent={<FontAwesomeIcon icon={faShare} />}
                                     onPress={handleShare}
                                 >
@@ -136,17 +136,17 @@ export default function PictureView({ picture, initialComments = [] }: { picture
 
                         {/* Description & Participants */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                            <div className="md:col-span-2 bg-[#0a0a0a]/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 hover:bg-[#0a0a0a]/60 transition">
+                            <div className="md:col-span-2 bg-[#0a0a0a]/40 backdrop-blur-md rounded-3xl p-6 border border-white/5 hover:bg-[#0a0a0a]/60 transition">
                                 <h3 className="text-sm font-bold text-white/40 uppercase mb-4">Description</h3>
                                 <p className="text-white/80 leading-relaxed whitespace-pre-wrap">{picture.description || "No description provided."}</p>
                             </div>
 
-                            <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 hover:bg-[#0a0a0a]/60 transition">
+                            <div className="bg-[#0a0a0a]/40 backdrop-blur-md rounded-3xl p-6 border border-white/5 hover:bg-[#0a0a0a]/60 transition">
                                 <h3 className="text-sm font-bold text-white/40 uppercase mb-4">Participants</h3>
                                 <AvatarGroup max={5} size="sm" isGrid>
                                     {picture.participants.map((participant, idx) => {
-                                        const name = participant.type === 'user' ? participant.data.username : participant.data.displayName;
-                                        const src = participant.type === 'user' ? participant.data.profilePicture : undefined;
+                                        const name = participant.username;
+                                        const src = participant.profilePicture;
                                         return (
                                             <Tooltip key={idx} content={name}>
                                                 <Avatar src={src || undefined} name={name} />
@@ -158,32 +158,32 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                         </div>
 
                         {/* Comments Section */}
-                        <CommentsSection 
-                            contentType="picture" 
-                            contentId={picture.id} 
-                            initialComments={initialComments} 
+                        <CommentsSection
+                            contentType="picture"
+                            contentId={picture.id}
+                            initialComments={initialComments}
                         />
                     </div>
                 </div>
 
                 {/* RIGHT COLUMN: Recommendations */}
                 <div className="w-full xl:col-span-1">
-                    <RecommendationsSection 
-                        contentType="picture" 
-                        currentId={picture.id} 
-                        categoryId={picture.category.id} 
+                    <RecommendationsSection
+                        contentType="picture"
+                        currentId={picture.id}
+                        categoryId={picture.category.id}
                     />
                 </div>
             </div>
 
-            <RatingModal 
-                contentType="picture" 
-                contentId={picture.id} 
-                isOpen={isRatingModalOpen} 
-                onOpenChange={setIsRatingModalOpen} 
+            <RatingModal
+                contentType="picture"
+                contentId={picture.id}
+                isOpen={isRatingModalOpen}
+                onOpenChange={setIsRatingModalOpen}
             />
 
-            <ImageLightbox 
+            <ImageLightbox
                 imageUrl={picture.imageUrl}
                 title={picture.title}
                 isOpen={isLightboxOpen}

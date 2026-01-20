@@ -1,72 +1,31 @@
 "use client"
 
 import { useSession } from "@/src/lib/auth-client";
+import { usePictures } from "@/src/lib/queries/use-pictures";
 import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
 import { faGrip, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Link, Spinner } from "@heroui/react";
-import { useCallback, useEffect, useState } from "react";
-import { Picture } from "../../../types/types";
+import { Button, Link, Skeleton } from "@heroui/react";
+import { useState } from "react";
+import { PictureListItem } from "../../../types/types";
 import { AppSidebar } from "../../navigation/app-sidebar";
 import PictureComponent from "../picture/picture";
 
-const PICTURES_PER_PAGE = 20;
-
-export default function PictureList({ initialPictures, categories }: { initialPictures: Picture[], categories: { id: string; name: string }[] }) {
-  const [pictures, setPictures] = useState<Picture[]>(initialPictures);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+export default function PictureList({ initialPictures, categories }: { initialPictures: PictureListItem[], categories: { id: string; name: string }[] }) {
   const [viewMode, setViewMode] = useState<'masonry' | 'grid'>('masonry');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
-  const filtersToParams = useCallback((currentFilters: FilterState) => {
-    const params: Record<string, string> = {};
-    if (currentFilters.search) params.search = currentFilters.search;
-    if (currentFilters.sort) params.sort = currentFilters.sort;
-    if (currentFilters.categoryId) params.categoryId = currentFilters.categoryId;
-    if (currentFilters.dateRange) params.dateRange = currentFilters.dateRange;
-    return params;
-  }, []);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isLoading: isInitialLoading,
+  } = usePictures(filters, initialPictures);
 
-  const fetchPictures = useCallback(async (currentPage: number, currentFilters: FilterState) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        limit: String(PICTURES_PER_PAGE),
-        ...filtersToParams(currentFilters),
-      });
-      const response = await fetch(`/api/pictures?${params.toString()}`);
-      const newPictures = await response.json();
-      return newPictures;
-    } catch (error) {
-      console.error('Failed to fetch pictures:', error);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [filtersToParams]);
-
-  useEffect(() => {
-    const loadFilteredPictures = async () => {
-      const newPictures = await fetchPictures(1, filters);
-      setPictures(newPictures);
-      setPage(1);
-      setHasMore(newPictures.length === PICTURES_PER_PAGE);
-    };
-    loadFilteredPictures();
-  }, [filters, fetchPictures]);
-
-  const loadMore = async () => {
-    if (loading || !hasMore) return;
-    const newPictures = await fetchPictures(page + 1, filters);
-    if (newPictures.length < PICTURES_PER_PAGE) {
-      setHasMore(false);
-    }
-    setPictures(prev => [...prev, ...newPictures]);
-    setPage(prev => prev + 1);
-  };
+  const pictures = data?.pages.flat() ?? [];
+  const loading = isInitialLoading || (isFetching && !isFetchingNextPage);
 
   const { data: session } = useSession();
   const canUploadContent = session?.user && !session.user.isAnonymous;
@@ -99,7 +58,7 @@ export default function PictureList({ initialPictures, categories }: { initialPi
                 className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'masonry'
                   ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 <FontAwesomeIcon icon={faLayerGroup} /> Masonry
               </button>
@@ -108,7 +67,7 @@ export default function PictureList({ initialPictures, categories }: { initialPi
                 className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'grid'
                   ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
-                }`}
+                  }`}
               >
                 <FontAwesomeIcon icon={faGrip} /> Grid
               </button>
@@ -116,40 +75,60 @@ export default function PictureList({ initialPictures, categories }: { initialPi
           </div>
         </div>
 
-        {viewMode === 'masonry' ? (
-          <div key="masonry" className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6 animate-in fade-in duration-500">
-            {pictures.map((picture) => (
-              <div key={picture.id} className="break-inside-avoid">
-                <PictureComponent picture={picture} />
+        {loading && pictures.length === 0 ? (
+          <div className={viewMode === 'masonry'
+            ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6"
+            : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          }>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className={`bg-[#0a0a0a]/40 border border-white/5 rounded-2xl overflow-hidden ${viewMode === 'masonry' ? 'break-inside-avoid' : 'h-full'}`}
+              >
+                <Skeleton
+                  className={`w-full rounded-none ${viewMode === 'masonry' ? (i % 3 === 0 ? 'aspect-3/4' : i % 3 === 1 ? 'aspect-square' : 'aspect-video') : 'aspect-4/3'}`}
+                />
+                <div className="p-4 space-y-3 bg-black/40">
+                  <Skeleton className="h-4 w-3/4 rounded" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-5 h-5 rounded-full" />
+                    <Skeleton className="h-3 w-1/4 rounded" />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div key="grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
-            {pictures.map((picture) => (
-              <div key={picture.id} className="aspect-[4/3]">
-                <PictureComponent picture={picture} />
+          <>
+            {viewMode === 'masonry' ? (
+              <div key="masonry" className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6 animate-in fade-in duration-500">
+                {pictures.map((picture) => (
+                  <div key={picture.id} className="break-inside-avoid">
+                    <PictureComponent picture={picture} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : (
+              <div key="grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
+                {pictures.map((picture) => (
+                  <div key={picture.id} className="aspect-4/3">
+                    <PictureComponent picture={picture} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {hasMore && (
+        {hasNextPage && (
           <div className="flex justify-center mt-8">
             <Button
-              onClick={loadMore}
-              disabled={loading}
+              onClick={() => fetchNextPage()}
+              isLoading={isFetchingNextPage}
               variant="flat"
-              className="min-w-[120px] flex items-center gap-2"
+              className="min-w-30 font-bold"
             >
-              {loading ? (
-                <>
-                  <Spinner size="sm" />
-                  <span>Loading...</span>
-                </>
-              ) : (
-                'Load More'
-              )}
+              Load More
             </Button>
           </div>
         )}

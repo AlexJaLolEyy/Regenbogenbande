@@ -2,10 +2,11 @@ import { faEye, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
-import type { Picture } from "../../../types/types";
+import type { PictureListItem } from "../../../types/types";
 
-export default function PictureComponent({ picture }: { picture: Picture }) {
+export default function PictureComponent({ picture }: { picture: PictureListItem }) {
   return (
     <Link href={`/pictures/${picture.id}`}>
       <motion.div
@@ -17,14 +18,16 @@ export default function PictureComponent({ picture }: { picture: Picture }) {
       >
         {/* Image */}
         <div className="relative w-full">
-          <img
-            src={picture.thumbnailUrl || picture.imageUrl}
+          <Image
+            width={500}
+            height={500}
+            src={picture.thumbnailUrl}
             alt={picture.title || 'Picture'}
             className="w-full h-auto object-cover block"
             loading="lazy"
           />
           {/* Hover overlay for title */}
-          <div className="absolute inset-x-0 top-0 p-4 bg-gradient-to-b from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pr-16 bg-blend-multiply">
+          <div className="absolute inset-x-0 top-0 p-4 bg-linear-to-b from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pr-16 bg-blend-multiply">
             <h3 className="text-white font-bold text-shadow line-clamp-2 text-sm">{picture.title || 'Untitled'}</h3>
           </div>
           {/* Hover overlay for rating badge */}
@@ -41,7 +44,7 @@ export default function PictureComponent({ picture }: { picture: Picture }) {
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 shrink-0 rounded-full overflow-hidden bg-neutral-800 border border-white/10">
               {picture.uploadedBy?.profilePicture ? (
-                <img src={picture.uploadedBy.profilePicture} alt={picture.uploadedBy.username} className="w-full h-full object-cover" />
+                <Image width={500} height={500} src={picture.uploadedBy.profilePicture} alt={picture.uploadedBy.username} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[10px] text-white/50">?</div>
               )}
