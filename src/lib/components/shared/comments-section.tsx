@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Avatar, Button, Input } from "@heroui/react";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faReply, faTrash, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
-import { Comment } from '@/src/lib/types/types';
 import { addComment, deleteComment, voteComment } from '@/src/lib/actions/comments';
 import { useSession } from '@/src/lib/auth-client';
+import { Comment } from '@/src/lib/types/types';
+import { faChevronDown, faChevronUp, faReply, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Avatar, Button, Input } from "@heroui/react";
 import { formatDistanceToNow } from 'date-fns';
+import React, { useState } from 'react';
 
 interface CommentItemProps {
   comment: Comment;
@@ -18,14 +18,14 @@ interface CommentItemProps {
   mounted: boolean;
   onDelete: (id: string) => Promise<void>;
   onVote: (id: string, value: number, currentVote?: number) => Promise<void>;
-  onReply: (contentId: string, parentId: string, content: string) => Promise<void>;
+  onReply: (parentId: string, content: string) => Promise<void>;
 }
 
-const CommentItem = ({ 
-  comment, 
-  contentType, 
-  contentId, 
-  isReply = false, 
+const CommentItem = ({
+  comment,
+  contentType,
+  contentId,
+  isReply = false,
   session,
   mounted,
   onDelete,
@@ -40,7 +40,7 @@ const CommentItem = ({
     if (!replyContent.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await onReply(contentId, comment.id, replyContent);
+      await onReply(comment.id, replyContent);
       setReplyContent('');
       setReplyingTo(null);
     } catch (error) {
@@ -60,7 +60,7 @@ const CommentItem = ({
             <span className="text-xs text-white/30">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
           </div>
           {mounted && (session?.user.id === comment.user.id || session?.user.role === 'admin') && (
-            <button 
+            <button
               onClick={() => onDelete(comment.id)}
               className="opacity-0 group-hover:opacity-100 transition text-white/30 hover:text-danger"
             >
@@ -69,19 +69,19 @@ const CommentItem = ({
           )}
         </div>
         <p className="text-sm text-white/70">{comment.content}</p>
-        
+
         <div className="flex gap-4 pt-2 items-center">
           <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-1">
-            <button 
+            <button
               onClick={() => onVote(comment.id, 1, comment.userVote)}
               className={`text-xs transition hover:scale-110 ${comment.userVote === 1 ? 'text-primary' : 'text-white/40 hover:text-white'}`}
             >
               <FontAwesomeIcon icon={faChevronUp} />
             </button>
-            <span className="text-xs font-bold text-white/60 min-w-[12px] text-center">
+            <span className="text-xs font-bold text-white/60 min-w-3 text-center">
               {comment.upvotes - comment.downvotes}
             </span>
-            <button 
+            <button
               onClick={() => onVote(comment.id, -1, comment.userVote)}
               className={`text-xs transition hover:scale-110 ${comment.userVote === -1 ? 'text-danger' : 'text-white/40 hover:text-white'}`}
             >
@@ -90,7 +90,7 @@ const CommentItem = ({
           </div>
 
           {!isReply && mounted && session && (
-            <button 
+            <button
               onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
               className="text-xs text-white/40 hover:text-white font-bold flex items-center gap-1"
             >
@@ -113,8 +113,8 @@ const CommentItem = ({
               />
               <div className="flex justify-end mt-2 gap-2">
                 <Button size="sm" variant="light" onClick={() => setReplyingTo(null)}>Cancel</Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="bg-white/10 text-white rounded-full font-bold"
                   isLoading={isSubmitting}
                   onClick={handleReplySubmit}
@@ -129,10 +129,10 @@ const CommentItem = ({
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-4 space-y-4">
             {comment.replies.map(reply => (
-              <CommentItem 
-                key={reply.id} 
-                comment={reply} 
-                isReply 
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                isReply
                 contentType={contentType}
                 contentId={contentId}
                 session={session}
@@ -165,7 +165,7 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
     setMounted(true);
   }, []);
 
-  const handleAddComment = async (id: string, parentId?: string, content?: string) => {
+  const handleAddComment = async (parentId?: string, content?: string) => {
     const finalContent = content || newComment;
     if (!finalContent.trim() || isSubmitting) return;
 
@@ -221,11 +221,11 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
               classNames={{ input: "text-white", inputWrapper: "border-white/20" }}
             />
             <div className="flex justify-end mt-2">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="bg-white/10 text-white rounded-full font-bold hover:bg-white hover:text-black transition"
                 isLoading={isSubmitting}
-                onClick={() => handleAddComment(contentId)}
+                onClick={() => handleAddComment()}
               >
                 Comment
               </Button>
@@ -250,18 +250,18 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
 
       {renderCommentInput()}
 
-      <div className="space-y-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+      <div className="space-y-6 max-h-150 overflow-y-auto custom-scrollbar pr-2">
         {initialComments.map((comment) => (
-          <CommentItem 
-            key={comment.id} 
-            comment={comment} 
+          <CommentItem
+            key={comment.id}
+            comment={comment}
             contentType={contentType}
             contentId={contentId}
             session={session}
             mounted={mounted}
             onDelete={handleDelete}
             onVote={handleVote}
-            onReply={(cid, pid, cont) => handleAddComment(cid, pid, cont)}
+            onReply={(pid, cont) => handleAddComment(pid, cont)}
           />
         ))}
         {initialComments.length === 0 && (

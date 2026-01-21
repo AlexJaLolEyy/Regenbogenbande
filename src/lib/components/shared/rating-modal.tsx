@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure } from "@heroui/react";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
+import { getUserRating, rateMedia } from '@/src/lib/actions/ratings';
 import { faStar as faStarRegular } from '@fortawesome/free-regular-svg-icons';
-import { rateMedia, getUserRating } from '@/src/lib/actions/ratings';
+import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { useEffect, useState } from 'react';
 
 interface RatingModalProps {
   contentType: 'video' | 'picture' | 'quote';

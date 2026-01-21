@@ -1,24 +1,27 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { deletePicture, deleteQuote, deleteVideo } from '@/src/lib/actions/delete-actions';
+import { useSession } from '@/src/lib/auth-client';
 import {
-    Modal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
     Button,
+    Modal,
+    ModalBody,
+    ModalContent,
+    ModalFooter,
+    ModalHeader,
     useDisclosure
 } from "@heroui/react";
-import { deleteVideo, deletePicture, deleteQuote } from '@/src/app/current-storage/storage';
+import { useQueryClient } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { getEffectiveRole } from '../../auth-utils-shared';
+import { queryKeys } from '../../queries/query-keys';
 
 interface DeleteButtonProps {
-    id: number;
+    id: string;
     type: 'video' | 'picture' | 'quote';
-    ownerId: number;
+    ownerId: string;
     redirectUrl: string;
 }
 
@@ -27,10 +30,21 @@ export function DeleteButton({ id, type, ownerId, redirectUrl }: DeleteButtonPro
     const router = useRouter();
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    const role = getEffectiveRole(session);
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Check permissions: Admin or Owner
-    const isAdmin = (session?.user as any)?.role === 'admin';
-    const isOwner = session?.user?.id === String(ownerId);
+    const isAdmin = role === 'admin';
+    const isOwner = session?.user?.id === ownerId;
+
+    if (!mounted) {
+        return null;
+    }
 
     if (!isAdmin && !isOwner) {
         return null;
@@ -39,16 +53,24 @@ export function DeleteButton({ id, type, ownerId, redirectUrl }: DeleteButtonPro
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            if (type === 'video') await deleteVideo(id);
-            if (type === 'picture') await deletePicture(id);
-            if (type === 'quote') await deleteQuote(id);
+            if (type === 'video') {
+                await deleteVideo(id);
+                queryClient.invalidateQueries({ queryKey: queryKeys.videos.all });
+            }
+            if (type === 'picture') {
+                await deletePicture(id);
+                queryClient.invalidateQueries({ queryKey: queryKeys.pictures.all });
+            }
+            if (type === 'quote') {
+                await deleteQuote(id);
+                queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all });
+            }
 
             router.push(redirectUrl);
             router.refresh();
-            // Modal closes automatically or can be closed here
         } catch (error) {
             console.error('Delete failed:', error);
-            alert('Failed to delete item. Please try again.'); // Keep alert for error fallback
+            alert('Failed to delete item. Please try again.');
         } finally {
             setIsDeleting(false);
         }

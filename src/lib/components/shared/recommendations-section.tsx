@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { getPictureRecommendations, getVideoRecommendations } from '@/src/lib/actions/recommendations';
 import { Button } from "@heroui/react";
-import Link from 'next/link';
-import { getVideoRecommendations, getPictureRecommendations } from '@/src/lib/actions/recommendations';
 import NextImage from 'next/image';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface RecommendationsSectionProps {
   contentType: 'video' | 'picture';
@@ -30,10 +30,9 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
   useEffect(() => {
     const fetchRecs = async () => {
       if (!currentId) return;
-      
+
       setIsLoading(true);
       try {
-        console.log(`[RecommendationsSection] Fetching for ${contentType}, id: ${currentId}`);
         if (contentType === 'video') {
           const recs = await getVideoRecommendations(currentId, categoryId);
           setRecommendations(recs);
@@ -65,11 +64,11 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
   }
 
   return (
-    <div className="bg-[#121212]/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sticky top-24 min-h-[200px]">
+    <div className="bg-[#121212]/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sticky top-24 min-h-50">
       <h3 className="font-bold text-white mb-6 text-lg">
         {contentType === 'video' ? 'Up Next' : 'Recommended'}
       </h3>
-      
+
       <div className="space-y-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -83,8 +82,8 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
           ))
         ) : (
           recommendations.map((item) => (
-            <Link 
-              key={item.id} 
+            <Link
+              key={item.id}
               href={`/${contentType === 'video' ? 'videos' : 'pictures'}/${item.id}`}
               className="flex gap-3 group cursor-pointer hover:bg-white/5 p-2 rounded-xl transition border border-transparent hover:border-white/5"
             >
@@ -118,12 +117,12 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
           ))
         )}
       </div>
-      
+
       {!isLoading && recommendations.length >= 5 && (
-        <Button 
+        <Button
           as={Link}
           href={`/${contentType === 'video' ? 'videos' : 'pictures'}`}
-          className="w-full mt-6 bg-white/5 text-white font-bold hover:bg-white/10 rounded-xl" 
+          className="w-full mt-6 bg-white/5 text-white font-bold hover:bg-white/10 rounded-xl"
           size="sm"
         >
           View More
