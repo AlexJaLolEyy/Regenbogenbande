@@ -1,5 +1,5 @@
-import { getAllQuotes } from "@/src/app/current-storage/storage";
 import { getSession } from "@/src/lib/auth-utils";
+import { getQuotesForList } from "@/src/lib/db/selects/quotes";
 import { DateRange, SortOption } from '@/src/lib/types/filters';
 import { NextRequest, NextResponse } from "next/server";
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const dateRange = (searchParams.get('dateRange') as DateRange) || undefined;
 
   try {
-    const quotes = await getAllQuotes(session, {
+    const quotes = await getQuotesForList(session, {
       page,
       limit,
       search,

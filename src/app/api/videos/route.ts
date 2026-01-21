@@ -1,5 +1,5 @@
-import { getAllVideos } from "@/src/app/current-storage/storage";
 import { getSession } from "@/src/lib/auth-utils";
+import { getVideosForList } from "@/src/lib/db/selects/videos";
 import { DateRange, SortOption } from '@/src/lib/types/filters';
 import { NextRequest, NextResponse } from "next/server";
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const dateRange = (searchParams.get('dateRange') as DateRange) || undefined;
 
   try {
-    const videos = await getAllVideos(session, {
+    const videos = await getVideosForList(session, {
       page,
       limit,
       search,

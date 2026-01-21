@@ -1,5 +1,5 @@
-import { getAllPictures } from "@/src/app/current-storage/storage";
 import { getSession } from "@/src/lib/auth-utils";
+import { getPicturesForList } from "@/src/lib/db/selects/pictures";
 import { DateRange, SortOption } from '@/src/lib/types/filters';
 import { NextRequest, NextResponse } from "next/server";
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const dateRange = (searchParams.get('dateRange') as DateRange) || undefined;
 
   try {
-    const pictures = await getAllPictures(session, {
+    const pictures = await getPicturesForList(session, {
       page,
       limit,
       search,
