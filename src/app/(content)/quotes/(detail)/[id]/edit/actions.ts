@@ -1,56 +1,37 @@
-'use server'
+"use server"
 
-import { checkOwnerOrAdmin } from "@/src/lib/auth-utils";
-import { prisma } from "@/src/lib/prisma";
-import { UploadQuote } from "@/src/lib/types/types";
+import { requireContentOwnerOrAdmin } from "@/src/lib/auth-utils";
+import { updateQuote } from "@/src/lib/db/mutations/quotes";
+import { getQuoteById } from "@/src/lib/db/selects/quotes";
+import { parseQuoteActionToBackend, QuoteActionInput } from "@/src/lib/utils/quote-utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function updateQuote(id: string, data: UploadQuote) {
+export async function updateQuoteElement(id: string, data: QuoteActionInput) {
     try {
-        const existingQuote = await prisma.quote.findUnique({
-            where: { id: id },
-            include: { uploadedBy: true }
-        });
+        const existingQuote = await getQuoteById(id);
 
         if (!existingQuote) {
             throw new Error("Quote not found");
         }
 
         // Check permissions
-        await checkOwnerOrAdmin(existingQuote.uploadedBy.id);
+        await requireContentOwnerOrAdmin(existingQuote.uploadedBy.id);
 
-        // Delete existing messages and create new ones (simplest update strategy for this schema)
-        // Transactional update would be better but simple replace works for now
-        await prisma.$transaction(async (tx) => {
-            // Delete old messages
-            await tx.quoteMessage.deleteMany({
-                where: { quoteId: id }
-            });
+        const backendQuote = await parseQuoteActionToBackend(data);
+        backendQuote.id = id;
 
-            // Update Quote Details
-            await tx.quote.update({
-                where: { id: id },
-                data: {
-                    // If uploadedBy changed, update it
-                    uploadedBy: {
-                        connect: { id: data.uploadedBy.id }
-                    },
-                    createdAt: data.createdAt, // Original creation date
-                    // uploadedAt usually stays same or updates if desired
+        // Preserve metadata
+        backendQuote.views = existingQuote.views;
+        backendQuote.isPublic = existingQuote.isPublic;
+        backendQuote.publishedAt = existingQuote.publishedAt;
 
-                    // Create new messages
-                    messages: {
-                        create: data.messages.map((msg) => ({
-                            message: msg.message,
-                            user: { connect: { id: msg.userId } }
-                        }))
-                    }
-                }
-            });
-        });
+        await updateQuote(backendQuote);
 
     } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            throw error;
+        }
         console.error("Error updating quote:", error);
         throw error;
     }

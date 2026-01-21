@@ -1,44 +1,12 @@
 "use server"
 
-import { editVideo, getUserById, getVideoById } from '@/src/app/current-storage/storage';
 import { requireContentOwnerOrAdmin } from '@/src/lib/auth-utils';
-import { UploadVideo, Video } from '@/src/lib/types/types';
+import { updateVideo } from '@/src/lib/db/mutations/videos';
+import { getVideoById } from '@/src/lib/db/selects/videos';
+import { parseVideoActionToBackend, VideoActionInput } from '@/src/lib/utils/video-utils';
 import { redirect } from 'next/navigation';
 
-
-export async function parseUploadVideoToBackend(video: UploadVideo): Promise<Video> {
-
-    // can happen since the form returns id's instead of full users if they get changed
-    // TODO: maybe think about changing the UploadVideo participants + uploaded by to string?
-
-    let participants: User[] = [];
-    if (Array.isArray(video.participants)) {
-        participants = video.participants;
-    } else if (typeof video.participants === "string") {
-        const userIds = (video.participants as string).split(",");
-        const mappedUser = userIds.map((userid: string) => getUserById(userid));
-        participants = (await Promise.all(mappedUser)).filter(Boolean) as User[];
-    }
-
-    let uploadedBy: User = video.uploadedBy;
-    if (typeof video.uploadedBy === "string") {
-        uploadedBy = (await getUserById(video.uploadedBy)) as User;
-    }
-
-    // Transform categoryId to category object for the Video type
-    const category = { id: video.categoryId, name: '', iconUrl: null };
-
-    return {
-        ...video,
-        participants: participants.map(u => ({ type: 'user', data: u })),
-        uploadedBy,
-        category,
-        videoUrl: (video as any).videoUrl || "", // Use existing URL if not changed
-        thumbnailUrl: (video as any).thumbnailUrl || "",
-    } as unknown as Video;
-}
-
-export async function updateVideo(video: UploadVideo) {
+export async function updateVideoElement(video: VideoActionInput) {
     if (!video.id) throw new Error("Video ID is required");
 
     // Fetch existing video to check ownership
@@ -48,12 +16,18 @@ export async function updateVideo(video: UploadVideo) {
     await requireContentOwnerOrAdmin(existingVideo.uploadedBy.id);
 
     try {
-        const backendVideo = await parseUploadVideoToBackend(video);
-        // Ensure we keep the original URLs
-        backendVideo.videoUrl = existingVideo.videoUrl;
-        backendVideo.thumbnailUrl = existingVideo.thumbnailUrl;
-        
-        await editVideo(backendVideo);
+        // Use existing URLs and metadata that aren't being edited
+        const videoData = await parseVideoActionToBackend(
+            video,
+            existingVideo.videoUrl,
+            existingVideo.thumbnailUrl
+        );
+
+        videoData.views = existingVideo.views;
+        videoData.isPublic = existingVideo.isPublic;
+        videoData.publishedAt = existingVideo.publishedAt;
+
+        await updateVideo(videoData);
         redirect(`/videos/${video.id}/`);
     }
     catch (error) {

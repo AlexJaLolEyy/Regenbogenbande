@@ -1,9 +1,9 @@
 "use server"
 
-import { prisma } from "@/src/lib/prisma"
-import { requireAdmin } from "@/src/lib/auth-utils"
-import { revalidatePath } from "next/cache"
 import { Role } from "@/src/generated/prisma"
+import { requireAdmin } from "@/src/lib/auth-utils"
+import { prisma } from "@/src/lib/prisma"
+import { revalidatePath } from "next/cache"
 
 export async function getUsers() {
     await requireAdmin()
@@ -24,7 +24,7 @@ export async function getUsers() {
 
 export async function getInvites() {
     await requireAdmin()
-    
+
     const invites = await prisma.invite.findMany({
         orderBy: { createdAt: "desc" },
     })
@@ -71,25 +71,6 @@ export async function createInvite(discordId: string, discordName: string, role:
                     discordId,
                     role: role as Role,
                     status: "INVITED",
-                }
-            });
-
-            // 3. Create the Account record to link Discord login to this User
-            // This ensures better-auth uses this User record when they log in
-            await tx.account.upsert({
-                where: {
-                    providerId_accountId: {
-                        providerId: "discord",
-                        accountId: discordId,
-                    }
-                },
-                update: {
-                    userId: user.id,
-                },
-                create: {
-                    userId: user.id,
-                    providerId: "discord",
-                    accountId: discordId,
                 }
             });
 
