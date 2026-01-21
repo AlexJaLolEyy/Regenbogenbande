@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@heroui/react"
-import { LogIn, AlertCircle } from "lucide-react"
-import { motion } from "motion/react"
-import { FireworksBackground } from "@/src/lib/components/home/fireworks-background"
 import { signIn } from "@/src/lib/auth-client"
+import { FireworksBackground } from "@/src/lib/components/home/fireworks-background"
+import { Button } from "@heroui/react"
+import { AlertCircle, LogIn } from "lucide-react"
+import { motion } from "motion/react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useState } from "react"
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const callbackUrl = searchParams.get("callbackUrl") || "/"
@@ -60,13 +60,13 @@ export default function LoginPage() {
                         transition={{ duration: 0.8, ease: "easeOut" }}
                         className="relative z-10 w-full max-w-md px-6"
                     >
-                        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-[32px] p-8 shadow-2xl relative overflow-hidden group">
+                        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-4xl p-8 shadow-2xl relative overflow-hidden group">
                             {/* Subtle glow on hover */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <div className="absolute inset-0 bg-linear-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                             {/* Decorative gradients */}
-                            <div className="absolute -top-[100px] -right-[100px] w-[200px] h-[200px] bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
-                            <div className="absolute -bottom-[100px] -left-[100px] w-[200px] h-[200px] bg-blue-600/20 rounded-full blur-[80px] pointer-events-none" />
+                            <div className="absolute -top-25 -right-25 w-50 h-50 bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
+                            <div className="absolute -bottom-25 -left-25 w-50 h-50 bg-blue-600/20 rounded-full blur-[80px] pointer-events-none" />
 
                             {/* Header */}
                             <div className="text-center mb-8 relative z-10">
@@ -74,7 +74,7 @@ export default function LoginPage() {
                                     initial={{ scale: 0.8, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
                                     transition={{ delay: 0.2 }}
-                                    className="w-16 h-16 bg-gradient-to-tr from-pink-500 to-violet-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg rotate-3"
+                                    className="w-16 h-16 bg-linear-to-tr from-pink-500 to-violet-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg rotate-3"
                                 >
                                     <LogIn className="text-white w-8 h-8" />
                                 </motion.div>
@@ -151,3 +151,12 @@ export default function LoginPage() {
         </div>
     )
 }
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginContent />
+        </Suspense>
+    )
+}
+

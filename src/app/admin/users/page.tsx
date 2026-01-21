@@ -34,6 +34,7 @@ type User = {
     role: string | null
     image: string | null
     discordId: string | null
+    status: string
     createdAt: Date
 }
 
@@ -156,7 +157,7 @@ export default function AdminUsersPage() {
         <div className="container mx-auto p-6 pt-24 max-w-5xl">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">User Management</h1>
+                    <h1 className="text-3xl font-bold bg-linear-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">User Management</h1>
                     <p className="text-gray-500">Manage access and invites for the Regenbogenbande</p>
                 </div>
                 <Button
@@ -177,6 +178,7 @@ export default function AdminUsersPage() {
                                 <TableColumn>USER</TableColumn>
                                 <TableColumn>DISCORD ID</TableColumn>
                                 <TableColumn>ROLE</TableColumn>
+                                <TableColumn>STATUS</TableColumn>
                                 <TableColumn>JOINED</TableColumn>
                                 <TableColumn align="end">ACTIONS</TableColumn>
                             </TableHeader>
@@ -207,7 +209,7 @@ export default function AdminUsersPage() {
                                                 variant="bordered"
                                                 selectedKeys={[user.role || "guest"]}
                                                 onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                                className="max-w-[120px]"
+                                                className="max-w-30"
                                                 aria-label="Change Role"
                                                 classNames={{
                                                     trigger: "border-small"
@@ -221,9 +223,19 @@ export default function AdminUsersPage() {
                                             </Select>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-xs text-gray-500">
+                                            <Chip
+                                                size="sm"
+                                                variant="flat"
+                                                color={user.status === "ACTIVE" ? "success" : user.status === "INVITED" ? "warning" : "danger"}
+                                                className="capitalize"
+                                            >
+                                                {user.status.toLowerCase()}
+                                            </Chip>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs text-gray-500">
                                                 {new Date(user.createdAt).toLocaleDateString()}
-                                            </div>
+                                            </span>
                                         </TableCell>
                                         <TableCell>
                                             <div className="relative flex items-center justify-end gap-2">
@@ -282,8 +294,8 @@ export default function AdminUsersPage() {
                                         <TableCell>
                                             <div className="relative flex items-center justify-end gap-2">
                                                 <Tooltip color="danger" content="Delete Invite">
-                                                    <span 
-                                                        className="text-lg text-danger cursor-pointer active:opacity-50" 
+                                                    <span
+                                                        className="text-lg text-danger cursor-pointer active:opacity-50"
                                                         onClick={() => handleDeleteInvite(invite.id)}
                                                     >
                                                         <Trash2 size={18} />
