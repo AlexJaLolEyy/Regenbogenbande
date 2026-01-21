@@ -1,13 +1,14 @@
 "use client"
 
-import { Avatar, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Button, Skeleton } from "@heroui/react";
+import { signOut, useSession } from "@/src/lib/auth-client";
+import { Avatar, Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Skeleton } from "@heroui/react";
+import cn from "classnames";
+import { LogIn, LogOut, Settings, Shield } from "lucide-react";
+import { motion } from "motion/react";
 import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import cn from "classnames";
-import { useSession, signOut } from "@/src/lib/auth-client";
-import { LogIn, Settings, LogOut, Shield } from "lucide-react";
+import { getEffectiveRole } from "../../auth-utils-shared";
 
 const navItems = [
   { label: "Videos", href: "/videos" },
@@ -19,6 +20,8 @@ export default function Navigation() {
   const currentPath = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const role = getEffectiveRole(session);
+
 
   const handleLogout = async () => {
     await signOut({
@@ -41,7 +44,7 @@ export default function Navigation() {
 
       {/* Navigation Island */}
       <div className="relative flex-1 flex justify-center">
-        <div className="flex bg-white/40 dark:bg-black/30 backdrop-blur-md rounded-full px-6 py-1 gap-8 shadow-inner border border-white/20 dark:border-black/30 min-w-[280px] max-w-[420px] w-full justify-center">
+        <div className="flex bg-white/40 dark:bg-black/30 backdrop-blur-md rounded-full px-6 py-1 gap-8 shadow-inner border border-white/20 dark:border-black/30 min-w-70 max-w-105 w-full justify-center">
           {navItems.map((item) => {
             const isActive = currentPath === item.href;
             return (
@@ -71,7 +74,7 @@ export default function Navigation() {
       </div>
 
       {/* User Actions */}
-      <div className="min-w-[40px] flex justify-end">
+      <div className="min-w-10 flex justify-end">
         {isPending ? (
           <Skeleton className="rounded-full w-8 h-8" />
         ) : session?.user ? (
@@ -92,14 +95,16 @@ export default function Navigation() {
               <DropdownItem key="profile" className="h-14 gap-2 text-opacity-100">
                 <p className="font-semibold">Signed in as</p>
                 <p className="font-semibold text-primary">{session.user.name}</p>
-                {session.user.role === "admin" && (
-                  <span className="text-xs bg-purple-500/20 text-purple-600 px-2 py-0.5 rounded-full mt-1 inline-block">Admin</span>
+                {(role === "admin" || role === "owner") && (
+                  <span className="text-xs bg-purple-500/20 text-purple-600 px-2 py-0.5 rounded-full mt-1 inline-block">
+                    {role === "owner" ? "Owner" : "Admin"}
+                  </span>
                 )}
               </DropdownItem>
 
               <DropdownItem key="settings" startContent={<Settings size={16} />} href="/profile">My Settings</DropdownItem>
 
-              {session.user.role === "admin" ? (
+              {(role === "admin" || role === "owner") ? (
                 <DropdownItem
                   key="admin_users"
                   startContent={<Shield size={16} />}

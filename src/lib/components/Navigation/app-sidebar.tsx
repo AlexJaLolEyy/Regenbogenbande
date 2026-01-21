@@ -1,62 +1,64 @@
 "use client";
-import { useState, useMemo, useEffect } from 'react';
-import { debounce } from '@/src/lib/utils/debounce';
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFilter, faSortAmountDown, faSearch, faCalendar, faClock, faPlus, faVideo, faQuoteRight, faImage } from "@fortawesome/free-solid-svg-icons";
+import { DateRange, FilterState, SortOption } from '@/src/lib/types/filters';
 import { cn } from "@/src/lib/utils";
-import Link from 'next/link';
+import { faCalendar, faClock, faFilter, faImage, faPlus, faQuoteRight, faSearch, faSortAmountDown, faVideo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Select, SelectItem } from "@heroui/react";
-import { FilterState, SortOption, DateRange } from '@/src/lib/types/filters';
-// Chip unused but kept if needed for future, or remove. Lint said unused. Removing. 
-// Actually line 6 was "import { Chip } from "@heroui/react";". Removing it.
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export const AppSidebar = ({
-  className,
-  contentType,
-  filters,
-  onFiltersChange,
-  categories,
+    className,
+    contentType,
+    filters,
+    onFiltersChange,
+    categories,
 }: {
-  className?: string;
-  contentType: 'video' | 'picture' | 'quote';
-  filters: FilterState;
-  onFiltersChange: (filters: FilterState) => void;
-  categories: { id: string; name: string }[];
+    className?: string;
+    contentType: 'video' | 'picture' | 'quote';
+    filters: FilterState;
+    onFiltersChange: (filters: FilterState) => void;
+    categories: { id: string; name: string }[];
 }) => {
-  const [localSearch, setLocalSearch] = useState(filters.search);
+    const [localSearch, setLocalSearch] = useState(filters.search);
+    const [prevSearch, setPrevSearch] = useState(filters.search);
 
-  const debouncedUpdateFilters = useMemo(
-    () => debounce((value: string) => {
-      onFiltersChange({ ...filters, search: value });
-    }, 300),
-    [onFiltersChange, filters] // Keep filters here to ensure the update has latest filter state except search
-  );
+    // Synchronize local search if filters.search changes from outside (e.g. reset)
+    if (filters.search !== prevSearch) {
+        setLocalSearch(filters.search);
+        setPrevSearch(filters.search);
+    }
 
-  // Update local search if filters.search changes from outside (e.g. reset)
-  useEffect(() => {
-    setLocalSearch(filters.search);
-  }, [filters.search]);
+    // Debounce search updates using useEffect
+    useEffect(() => {
+        if (localSearch === filters.search) return;
 
-  return (
-    <aside className={cn(
-      "hidden xl:flex flex-col w-80 shrink-0 sticky top-28 h-[calc(100vh-8rem)]",
-      "rounded-3xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden",
-      className
-    )}>
-      {/* Header / Search */}
-      <div className="p-6 border-b border-white/5 space-y-4">
-        <h2 className="text-xl font-bold text-white tracking-tight">Library</h2>
-        <div className="relative group">
-          <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-purple-400 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all placeholder:text-white/20"
-            value={localSearch}
-            onChange={(e) => {
-              setLocalSearch(e.target.value);
-              debouncedUpdateFilters(e.target.value);
-            }}
+        const timer = setTimeout(() => {
+            onFiltersChange({ ...filters, search: localSearch });
+        }, 750);
+
+        return () => clearTimeout(timer);
+    }, [localSearch, onFiltersChange, filters]);
+
+    return (
+        <aside className={cn(
+            "hidden xl:flex flex-col w-80 shrink-0 sticky top-28 h-[calc(100vh-8rem)]",
+            "rounded-3xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden",
+            className
+        )}>
+            {/* Header / Search */}
+            <div className="p-6 border-b border-white/5 space-y-4">
+                <h2 className="text-xl font-bold text-white tracking-tight">Library</h2>
+                <div className="relative group">
+                    <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-purple-400 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Search..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all placeholder:text-white/20"
+                        value={localSearch}
+                        onChange={(e) => {
+                            setLocalSearch(e.target.value);
+                        }}
                     />
                 </div>
             </div>
@@ -69,29 +71,29 @@ export const AppSidebar = ({
                     <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <FontAwesomeIcon icon={faPlus} className="text-white/20" /> Create
                     </h3>
-          <div className="grid gap-2 grid-cols-1">
+                    <div className="grid gap-2 grid-cols-1">
 
-            {contentType === 'video' && (
-                <Link href="/videos/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/20 hover:border-red-500/50 hover:from-red-500/30 transition-all group flex-row justify-center">
-                    <FontAwesomeIcon icon={faVideo} className="text-red-400 group-hover:text-red-300 text-lg" />
-                    <span className="font-bold text-red-200 uppercase tracking-wider text-xs">Clip</span>
-                </Link>
-            )}
+                        {contentType === 'video' && (
+                            <Link href="/videos/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-linear-to-br from-red-500/20 to-red-600/10 border border-red-500/20 hover:border-red-500/50 hover:from-red-500/30 transition-all group flex-row justify-center">
+                                <FontAwesomeIcon icon={faVideo} className="text-red-400 group-hover:text-red-300 text-lg" />
+                                <span className="font-bold text-red-200 uppercase tracking-wider text-xs">Clip</span>
+                            </Link>
+                        )}
 
-            {contentType === 'quote' && (
-                <Link href="/quotes/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 hover:border-amber-500/50 hover:from-amber-500/30 transition-all group flex-row justify-center">
-                    <FontAwesomeIcon icon={faQuoteRight} className="text-amber-400 group-hover:text-amber-300 text-lg" />
-                    <span className="font-bold text-amber-200 uppercase tracking-wider text-xs">Quote</span>
-                </Link>
-            )}
+                        {contentType === 'quote' && (
+                            <Link href="/quotes/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-linear-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/20 hover:border-amber-500/50 hover:from-amber-500/30 transition-all group flex-row justify-center">
+                                <FontAwesomeIcon icon={faQuoteRight} className="text-amber-400 group-hover:text-amber-300 text-lg" />
+                                <span className="font-bold text-amber-200 uppercase tracking-wider text-xs">Quote</span>
+                            </Link>
+                        )}
 
-            {contentType === 'picture' && (
-                <Link href="/pictures/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20 hover:border-blue-500/50 hover:from-blue-500/30 transition-all group flex-row justify-center">
-                    <FontAwesomeIcon icon={faImage} className="text-blue-400 group-hover:text-blue-300 text-lg" />
-                    <span className="font-bold text-blue-200 uppercase tracking-wider text-xs">Pic</span>
-                </Link>
-            )}
-          </div>
+                        {contentType === 'picture' && (
+                            <Link href="/pictures/upload" className="flex items-center gap-1.5 p-3 rounded-xl bg-linear-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20 hover:border-blue-500/50 hover:from-blue-500/30 transition-all group flex-row justify-center">
+                                <FontAwesomeIcon icon={faImage} className="text-blue-400 group-hover:text-blue-300 text-lg" />
+                                <span className="font-bold text-blue-200 uppercase tracking-wider text-xs">Pic</span>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {/* Section: Sort */}
@@ -121,8 +123,8 @@ export const AppSidebar = ({
                                 />
                             </button>
                         ))}
+                    </div>
                 </div>
-            </div>
 
                 {/* Section: Categories */}
                 <div>
