@@ -7,8 +7,8 @@ export default function ContentLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuroraBackground className="!h-auto min-h-screen">
-      <div className="relative z-10 w-full max-w-[1920px] mx-auto min-h-screen p-6 pt-32">
+    <AuroraBackground className="h-auto! min-h-screen">
+      <div className="relative z-10 w-full max-w-480 mx-auto min-h-screen p-6 pt-32">
         {children}
       </div>
     </AuroraBackground>
