@@ -25,6 +25,7 @@ export const quoteListSelect = {
         select: {
             id: true,
             message: true,
+            isContext: true,
             user: { select: userSelect },
             createdAt: true,
         },
@@ -40,6 +41,7 @@ export const quoteDetailSelect = {
         select: {
             id: true,
             message: true,
+            isContext: true,
             user: { select: userSelect },
             createdAt: true,
         },
@@ -50,10 +52,11 @@ export const quoteDetailSelect = {
 export type PrismaQuoteList = Prisma.QuoteGetPayload<{ select: typeof quoteListSelect }>;
 export type PrismaQuoteDetail = Prisma.QuoteGetPayload<{ select: typeof quoteDetailSelect }>;
 
-export function transformQuoteMessage(prismaMessage: { id: string, message: string, user: PrismaUser }): QuoteMessage {
+export function transformQuoteMessage(prismaMessage: { id: string, message: string, isContext: boolean, user: PrismaUser }): QuoteMessage {
     return {
         id: prismaMessage.id,
         message: prismaMessage.message,
+        isContext: prismaMessage.isContext,
         user: transformUser(prismaMessage.user),
     };
 }
@@ -83,6 +86,8 @@ export function transformQuoteListItem(prismaQuote: PrismaQuoteList): QuoteListI
         createdAt: new Date(prismaQuote.createdAt),
         views: prismaQuote.views || 0,
         averageRating: calculateAvgRating(prismaQuote.ratings),
+        isPublic: prismaQuote.isPublic ?? false,
+        publishedAt: prismaQuote.publishedAt ? new Date(prismaQuote.publishedAt) : null,
     };
 }
 

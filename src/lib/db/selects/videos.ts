@@ -83,6 +83,8 @@ export function transformVideoListItem(prismaVideo: PrismaVideoList): VideoListI
             iconUrl: prismaVideo.category.iconUrl || null,
         } : { id: '', name: '', iconUrl: null },
         averageRating: calculateAvgRating(prismaVideo.ratings),
+        isPublic: prismaVideo.isPublic ?? false,
+        publishedAt: prismaVideo.publishedAt ? new Date(prismaVideo.publishedAt) : null,
     };
 }
 

@@ -75,6 +75,8 @@ export function transformPictureListItem(prismaPicture: PrismaPictureList): Pict
             iconUrl: prismaPicture.category.iconUrl || null,
         } : { id: '', name: '', iconUrl: null },
         averageRating: calculateAvgRating(prismaPicture.ratings),
+        isPublic: prismaPicture.isPublic ?? false,
+        publishedAt: prismaPicture.publishedAt ? new Date(prismaPicture.publishedAt) : null,
     };
 }
 

@@ -49,6 +49,7 @@ export async function addQuote(quote: Quote): Promise<Quote> {
                     quoteId: createdQuote.id,
                     message: msg.message,
                     userId: author.id,
+                    isContext: msg.isContext ?? false,
                 },
             });
         }
@@ -102,6 +103,7 @@ export async function updateQuote(quote: Quote): Promise<Quote> {
                     quoteId: quote.id,
                     message: msg.message,
                     userId: author.id,
+                    isContext: msg.isContext ?? false,
                 },
             });
         }
