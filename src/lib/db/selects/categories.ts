@@ -16,3 +16,19 @@ export async function getAllCategories(): Promise<Category[]> {
         return [];
     }
 }
+export async function getCategoryById(id: string): Promise<Category | null> {
+    try {
+        const category = await prisma.category.findUnique({
+            where: { id },
+        });
+        if (!category) return null;
+        return {
+            id: category.id,
+            name: category.name,
+            iconUrl: category.iconUrl,
+        };
+    } catch (error) {
+        console.error('Error fetching category by ID:', error);
+        return null;
+    }
+}
