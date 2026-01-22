@@ -22,6 +22,16 @@ const nextConfig = {
         hostname: '*.r2.dev',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*discordapp.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*medal.tv',
+        pathname: '/**',
+      },
     ],
   },
 };
