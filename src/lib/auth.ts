@@ -122,17 +122,6 @@ export const auth = betterAuth({
             })
           }
 
-          // Claim any placeholders with matching discordId
-          await prisma.participantPlaceholder.updateMany({
-            where: {
-              discordId: discordId,
-              claimedById: null,
-            },
-            data: {
-              claimedById: account.userId,
-            },
-          })
-
           return { data: account }
         },
       },

@@ -6,7 +6,7 @@ export interface User {
   id: string;
   username: string;
   profilePicture: string | null;
-  status?: 'INVITED' | 'ACTIVE' | 'DISABLED';
+  status: 'INVITED' | 'ACTIVE' | 'DISABLED';
 }
 
 export interface Rating {
@@ -26,25 +26,7 @@ export interface Comment {
   createdAt: Date;
 }
 
-export interface ParticipantPlaceholder {
-  id: string;
-  displayName: string;
-  discordId: string | null;
-  claimedById: string | null;
-}
 
-// Discriminated union for participants (User or Placeholder)
-export interface UserParticipant {
-  type: "user";
-  data: User;
-}
-
-export interface PlaceholderParticipant {
-  type: "placeholder";
-  data: ParticipantPlaceholder;
-}
-
-export type Participant = UserParticipant | PlaceholderParticipant;
 
 export interface Category {
   id: string;
@@ -58,7 +40,7 @@ export interface Video {
   description: string | null;
   videoUrl: string;
   thumbnailUrl: string;
-  participants: Participant[];
+  participants: User[];
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
@@ -75,7 +57,7 @@ export interface Picture {
   description: string | null;
   imageUrl: string;
   thumbnailUrl: string;
-  participants: Participant[];
+  participants: User[];
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
@@ -90,12 +72,13 @@ export interface QuoteMessage {
   id: string;
   message: string;
   user: User;
+  isContext: boolean;
 }
 
 export interface Quote {
   id: string;
   messages: QuoteMessage[];
-  participants: Participant[];
+  participants: User[];
   uploadedBy: User;
   uploadedAt: Date;
   createdAt: Date;
@@ -114,8 +97,15 @@ export interface VideoListItem {
   title: string;
   thumbnailUrl: string;
   createdAt: Date;
+  uploadedAt: Date;
   category: Category;
-  isSeen?: boolean; // Computed at query time for current user
+  uploadedBy: User;
+  participants: User[];
+  views: number;
+  averageRating?: number;
+  isSeen?: boolean;
+  isPublic?: boolean;
+  publishedAt?: Date | null;
 }
 
 export interface PictureListItem {
@@ -123,14 +113,28 @@ export interface PictureListItem {
   title: string;
   thumbnailUrl: string;
   createdAt: Date;
+  uploadedAt: Date;
   category: Category;
-  isSeen?: boolean; // Computed at query time for current user
+  uploadedBy: User;
+  participants: User[];
+  views: number;
+  averageRating?: number;
+  isSeen?: boolean;
+  isPublic?: boolean;
+  publishedAt?: Date | null;
 }
 
 export interface QuoteListItem {
   id: string;
   createdAt: Date;
-  participants: Participant[];
+  uploadedAt: Date;
+  uploadedBy: User;
+  participants: User[];
+  messages: QuoteMessage[];
+  views: number;
+  averageRating?: number;
+  isPublic?: boolean;
+  publishedAt?: Date | null;
 }
 
 // ============================================
@@ -200,37 +204,37 @@ export interface CategoryUpdateInput {
 // COMPATIBILITY TYPES (for existing components)
 // ============================================
 
-export interface UploadVideo {
+export interface VideoUploadForm {
   id?: string;
   title: string;
   description?: string;
   video: File;
   thumbnail: File;
-  uploadedBy: User;
+  uploadedBy: User | string;
   uploadedAt: Date;
   createdAt: Date;
-  participants: Participant[];
+  participants: User[];
   categoryId: string;
   duration?: number;
 }
 
-export interface UploadPicture {
+export interface PictureUploadForm {
   id?: string;
   title: string;
   description?: string;
   img: File;
-  uploadedBy: User;
+  uploadedBy: User | string;
   uploadedAt: Date;
   createdAt: Date;
-  participants: Participant[];
+  participants: User[];
   categoryId: string;
 }
 
-export interface UploadQuote {
+export interface QuoteUploadForm {
   id?: string;
-  uploadedBy: User;
+  uploadedBy: User | string;
   uploadedAt: Date;
   createdAt: Date;
-  messages: { userId: string; message: string }[];
-  participants: Participant[];
+  messages: { id: string; userId: string; message: string; isContext?: boolean }[];
+  participants: User[];
 }

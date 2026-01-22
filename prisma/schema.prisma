@@ -2,8 +2,8 @@
 // Learn more: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider   = "prisma-client-js"
+  output     = "../src/generated/prisma"
   engineType = "client"
 }
 
@@ -16,6 +16,7 @@ datasource db {
 // ============================================
 // Note: 'guest' is runtime-only (anonymous sessions, no DB user)
 // Note: 'owner' is application-level check via OWNER_USER_ID env var
+
 enum Role {
   admin
   member
@@ -24,15 +25,17 @@ enum Role {
 // ============================================
 // USER STATUS ENUM
 // ============================================
+
 enum UserStatus {
-  INVITED   // Created via invite, hasn't logged in
-  ACTIVE    // Has logged in at least once
-  DISABLED  // Soft-deleted, content preserved
+  INVITED // Created via invite, hasn't logged in
+  ACTIVE // Has logged in at least once
+  DISABLED // Soft-deleted, content preserved
 }
 
 // ============================================
 // CATEGORY MODEL
 // ============================================
+
 model Category {
   id      String  @id @default(cuid())
   name    String  @unique
@@ -51,15 +54,16 @@ model Category {
 // USER MODEL
 // ============================================
 // Integrated with better-auth
+
 model User {
-  id            String   @id @default(cuid())
-  name          String                          // Display name (from Discord)
-  email         String?  @unique
-  emailVerified Boolean  @default(false)        // Required for better-auth
-  image         String?                         // Profile picture URL
-  role          Role     @default(member)       // Role-based access control (only invited users get DB records)
+  id            String     @id @default(cuid())
+  name          String // Display name (from Discord)
+  email         String?    @unique
+  emailVerified Boolean    @default(false) // Required for better-auth
+  image         String? // Profile picture URL
+  role          Role       @default(member) // Role-based access control (only invited users get DB records)
   status        UserStatus @default(INVITED)
-  isAnonymous   Boolean  @default(false)        // Required for better-auth anonymous plugin
+  isAnonymous   Boolean    @default(false) // Required for better-auth anonymous plugin
 
   // Discord-specific fields
   discordId String? @unique // For invite verification
@@ -92,18 +96,17 @@ model User {
   accounts Account[]
   sessions Session[]
 
-  // Claimed participant placeholders (one user may claim multiple)
-  claimedPlaceholders ParticipantPlaceholder[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("users") // Maps to "users" table in database
+  // Maps to "users" table in database
+  @@map("users")
 }
 
 // ============================================
 // VIDEO MODEL
 // ============================================
+
 model Video {
   id           String  @id @default(cuid())
   title        String
@@ -134,20 +137,25 @@ model Video {
 
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
-  publishedAt DateTime?                 // When content was published (null = never)
+  publishedAt DateTime? // When content was published (null = never)
 
   updatedAt DateTime @updatedAt
 
-  @@index([uploadedById]) // Index for faster queries
-  @@index([createdAt]) // Index for sorting by date
-  @@index([categoryId]) // Index for category filtering
-  @@index([isPublic]) // Index for visibility filtering
+  // Index for faster queries
+  // Index for sorting by date
+  // Index for category filtering
+  // Index for visibility filtering
+  @@index([uploadedById])
+  @@index([createdAt])
+  @@index([categoryId])
+  @@index([isPublic])
   @@map("videos")
 }
 
 // ============================================
 // PICTURE MODEL
 // ============================================
+
 model Picture {
   id           String  @id @default(cuid())
   title        String
@@ -174,20 +182,23 @@ model Picture {
 
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
-  publishedAt DateTime?                 // When content was published (null = never)
+  publishedAt DateTime? // When content was published (null = never)
 
   updatedAt DateTime @updatedAt
 
+  // Index for category filtering
+  // Index for visibility filtering
   @@index([uploadedById])
   @@index([createdAt])
-  @@index([categoryId]) // Index for category filtering
-  @@index([isPublic]) // Index for visibility filtering
+  @@index([categoryId])
+  @@index([isPublic])
   @@map("pictures")
 }
 
 // ============================================
 // QUOTE MODEL
 // ============================================
+
 model Quote {
   id String @id @default(cuid())
 
@@ -206,13 +217,14 @@ model Quote {
 
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
-  publishedAt DateTime?                 // When content was published (null = never)
+  publishedAt DateTime? // When content was published (null = never)
 
   updatedAt DateTime @updatedAt
 
+  // Index for visibility filtering
   @@index([uploadedById])
   @@index([createdAt])
-  @@index([isPublic]) // Index for visibility filtering
+  @@index([isPublic])
   @@map("quotes")
 }
 
@@ -220,9 +232,11 @@ model Quote {
 // QUOTE MESSAGE MODEL
 // ============================================
 // Each quote has multiple messages (chat history)
+
 model QuoteMessage {
-  id      String @id @default(cuid())
-  message String
+  id        String  @id @default(cuid())
+  message   String
+  isContext Boolean @default(false)
 
   quoteId String
   quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
@@ -241,6 +255,7 @@ model QuoteMessage {
 // RATING MODEL
 // ============================================
 // Separate table for ratings (can rate videos, pictures, quotes)
+
 model Rating {
   id    String @id @default(cuid())
   value Float
@@ -274,6 +289,7 @@ model Rating {
 // ============================================
 // COMMENT MODEL
 // ============================================
+
 model Comment {
   id      String @id @default(cuid())
   content String
@@ -312,6 +328,7 @@ model Comment {
 // ============================================
 // COMMENT VOTE MODEL
 // ============================================
+
 model CommentVote {
   id    String @id @default(cuid())
   value Int // +1 for upvote, -1 for downvote
@@ -330,37 +347,10 @@ model CommentVote {
 }
 
 // ============================================
-// PARTICIPANT PLACEHOLDER MODEL
-// ============================================
-// Allows creating participants before user login via invite placeholders
-model ParticipantPlaceholder {
-  id          String   @id @default(cuid())
-  displayName String   // Name shown before user claims
-
-  discordId String? // Optional: link to future Discord login (NOT unique - multiple placeholders can share)
-
-  // User who claimed this placeholder (NOT unique: one user may claim multiple placeholders)
-  claimedById String?
-  claimedBy   User?  @relation(fields: [claimedById], references: [id])
-
-  // Reverse relations for junction tables
-  videoParticipants   VideoParticipant[]
-  pictureParticipants PictureParticipant[]
-  quoteParticipants   QuoteParticipant[]
-
-  createdAt DateTime @default(now())
-
-  @@index([claimedById])
-  @@index([discordId])
-  @@map("participant_placeholders")
-}
-
-// ============================================
 // MANY-TO-MANY JUNCTION TABLES
 // ============================================
 // These handle the "participants" relationship
 // (Many users can participate in many videos/pictures/quotes)
-// XOR: exactly one of userId or placeholderId must be set (validated at application level)
 
 model VideoParticipant {
   id String @id @default(cuid())
@@ -368,21 +358,14 @@ model VideoParticipant {
   videoId String
   video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
-  // XOR: exactly one must be set (validated at application level)
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  placeholderId String?
-  placeholder   ParticipantPlaceholder? @relation(fields: [placeholderId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  // Unique per video-user OR video-placeholder (nulls handled by app)
   @@unique([videoId, userId])
-  @@unique([videoId, placeholderId])
   @@index([videoId])
   @@index([userId])
-  @@index([placeholderId])
   @@map("video_participants")
 }
 
@@ -392,21 +375,14 @@ model PictureParticipant {
   pictureId String
   picture   Picture @relation(fields: [pictureId], references: [id], onDelete: Cascade)
 
-  // XOR: exactly one must be set (validated at application level)
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  placeholderId String?
-  placeholder   ParticipantPlaceholder? @relation(fields: [placeholderId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  // Unique per picture-user OR picture-placeholder (nulls handled by app)
   @@unique([pictureId, userId])
-  @@unique([pictureId, placeholderId])
   @@index([pictureId])
   @@index([userId])
-  @@index([placeholderId])
   @@map("picture_participants")
 }
 
@@ -416,27 +392,21 @@ model QuoteParticipant {
   quoteId String
   quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
-  // XOR: exactly one must be set (validated at application level)
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  placeholderId String?
-  placeholder   ParticipantPlaceholder? @relation(fields: [placeholderId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  // Unique per quote-user OR quote-placeholder (nulls handled by app)
   @@unique([quoteId, userId])
-  @@unique([quoteId, placeholderId])
   @@index([quoteId])
   @@index([userId])
-  @@index([placeholderId])
   @@map("quote_participants")
 }
 
 // ============================================
 // USER VIDEO VIEW (seen/unseen tracking)
 // ============================================
+
 model UserVideoView {
   id String @id @default(cuid())
 
@@ -457,6 +427,7 @@ model UserVideoView {
 // ============================================
 // USER PICTURE VIEW (seen/unseen tracking)
 // ============================================
+
 model UserPictureView {
   id String @id @default(cuid())
 
@@ -482,8 +453,8 @@ model UserPictureView {
 model Account {
   id                    String    @id @default(cuid())
   userId                String
-  accountId             String    // Provider's user ID (Discord user ID)
-  providerId            String    // "discord"
+  accountId             String // Provider's user ID (Discord user ID)
+  providerId            String // "discord"
   accessToken           String?   @db.Text
   refreshToken          String?   @db.Text
   accessTokenExpiresAt  DateTime?
@@ -495,6 +466,8 @@ model Account {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  password String?
 
   @@unique([providerId, accountId])
   @@index([userId])
@@ -521,28 +494,31 @@ model Session {
 // ============================================
 // VERIFICATION MODEL (required by better-auth)
 // ============================================
+
 model Verification {
   id         String   @id @default(cuid())
-  identifier String   // Email or other identifier
-  value      String   // Verification token
+  identifier String // Email or other identifier
+  value      String // Verification token
   expiresAt  DateTime
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([identifier])
   @@map("verification")
 }
 
 // ============================================
 // INVITE MODEL (for invite-only access)
 // ============================================
+
 model Invite {
   id          String    @id @default(cuid())
   discordId   String    @unique // Discord user ID to allow
-  discordName String?            // Display name (for admin reference)
+  discordName String? // Display name (for admin reference)
   role        Role      @default(member) // Role to assign on first login
-  usedAt      DateTime?          // When they first logged in
-  createdById String?            // Admin who created invite
+  usedAt      DateTime? // When they first logged in
+  createdById String? // Admin who created invite
 
   createdAt DateTime @default(now())
 
