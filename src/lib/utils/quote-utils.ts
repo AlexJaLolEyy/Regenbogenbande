@@ -30,15 +30,18 @@ export async function parseQuoteActionToBackend(
     // 2. Convert messages to backend format
     const messages = await Promise.all(
         input.messages.map(async (msg, i) => {
-            const user = await getUserById(msg.userId);
+            // Fallback for context messages: use the uploader if no specific user is assigned
+            const targetUserId = (msg.isContext && !msg.userId) ? uploadedBy.id : msg.userId;
+            const user = await getUserById(targetUserId);
 
             if (!user) {
-                throw new Error(`Speaker with ID ${msg.userId} not found.`);
+                throw new Error(`Speaker with ID ${targetUserId} not found.`);
             }
             return {
                 id: String(i),
                 message: msg.message,
-                user
+                user,
+                isContext: msg.isContext || false
             };
         })
     );

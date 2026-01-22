@@ -138,7 +138,7 @@ export default function QuoteUpload() {
   };
 
   const onSubmit: SubmitHandler<QuoteUploadForm> = async (data) => {
-    const validMessages = data.messages.filter(msg => msg.userId && msg.message.trim());
+    const validMessages = data.messages.filter(msg => (msg.isContext || msg.userId) && msg.message.trim());
 
     if (validMessages.length === 0) {
       return;
@@ -199,59 +199,63 @@ export default function QuoteUpload() {
 
             <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-125 bg-[url('/noise.png')] bg-opacity-5 relative">
               <AnimatePresence initial={false}>
-                {messages.map((msg, idx) => {
-                  const participant = getParticipant(msg.userId);
-                  const isLeft = idx % 2 === 0;
+                {(() => {
+                  let actualMsgIdx = 0;
+                  return messages.map((msg, idx) => {
+                    const participant = getParticipant(msg.userId);
 
-                  if (msg.isContext) {
+                    if (msg.isContext) {
+                      return (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="flex justify-center"
+                        >
+                          <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-full px-6 py-2 text-xs text-white/50 italic text-center max-w-[80%] leading-relaxed shadow-sm">
+                            {msg.message || "Context description..."}
+                          </div>
+                        </motion.div>
+                      );
+                    }
+
+                    const isRight = actualMsgIdx % 2 !== 0;
+                    actualMsgIdx++;
+                    const displayName = participant ? participant.username : "Selecting...";
+                    const profilePicture = participant?.profilePicture;
+
                     return (
                       <motion.div
                         key={msg.id}
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        initial={{ opacity: 0, x: !isRight ? -20 : 20, y: 10 }}
+                        animate={{ opacity: 1, x: 0, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="flex justify-center"
+                        className={`flex gap-3 ${isRight ? 'flex-row-reverse' : ''}`}
                       >
-                        <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-full px-6 py-2 text-xs text-white/50 italic text-center max-w-[80%] leading-relaxed shadow-sm">
-                          {msg.message || "Context description..."}
+                        <Avatar
+                          src={profilePicture || undefined}
+                          className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${participant?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
+                          showFallback
+                        />
+                        <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[80%]`}>
+                          <div className="text-[10px] font-bold text-white/40 mb-1 px-1 flex items-center gap-1">
+                            {displayName}
+                            {participant?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
+                          </div>
+                          <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${isRight
+                            ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
+                            : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
+                            }`}>
+                            <p className="whitespace-pre-wrap wrap-break-word">
+                              {msg.message || <span className="italic opacity-30">Type content...</span>}
+                            </p>
+                          </div>
                         </div>
                       </motion.div>
                     );
-                  }
-
-                  const displayName = participant ? participant.username : "Selecting...";
-                  const profilePicture = participant?.profilePicture;
-
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, x: isLeft ? -20 : 20, y: 10 }}
-                      animate={{ opacity: 1, x: 0, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className={`flex gap-3 ${!isLeft ? 'flex-row-reverse' : ''}`}
-                    >
-                      <Avatar
-                        src={profilePicture || undefined}
-                        className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${participant?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
-                        showFallback
-                      />
-                      <div className={`flex flex-col ${!isLeft ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                        <div className="text-[10px] font-bold text-white/40 mb-1 px-1 flex items-center gap-1">
-                          {displayName}
-                          {participant?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
-                        </div>
-                        <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${!isLeft
-                          ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
-                          : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
-                          }`}>
-                          <p className="whitespace-pre-wrap wrap-break-word">
-                            {msg.message || <span className="italic opacity-30">Type content...</span>}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                  });
+                })()}
               </AnimatePresence>
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-white/20 italic space-y-4">

@@ -68,34 +68,54 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
 
                         {/* Messages Area */}
                         <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-linear-to-b from-transparent to-black/20">
-                            {quote.messages.map((msg, idx) => {
-                                const isOdd = idx % 2 !== 0;
-                                return (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className={`flex gap-4 ${isOdd ? 'justify-end' : ''}`}
-                                    >
-                                        {!isOdd && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
+                            {(() => {
+                                let actualMsgIdx = 0;
+                                return quote.messages.map((msg, idx) => {
+                                    if (msg.isContext) {
+                                        return (
+                                            <motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="flex justify-center w-full px-2"
+                                            >
+                                                <div className="bg-white/5 border border-white/5 text-white/40 text-[13px] italic px-6 py-2 rounded-full text-center max-w-[80%] shadow-lg">
+                                                    {msg.message}
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    }
 
-                                        <div className={`max-w-[70%] space-y-1 ${isOdd ? 'items-end flex flex-col' : ''}`}>
-                                            <div className="flex items-baseline gap-2 text-xs text-white/40">
-                                                <span className="font-bold text-white/70">{msg.user.username}</span>
-                                            </div>
-                                            <div className={`p-4 rounded-2xl text-white/90 leading-relaxed shadow-sm backdrop-blur-md border border-white/5 ${isOdd
-                                                ? 'bg-blue-600/20 border-blue-500/30 rounded-tr-sm'
-                                                : 'bg-white/10 rounded-tl-sm'
-                                                }`}>
-                                                {msg.message}
-                                            </div>
-                                        </div>
+                                    const isRight = actualMsgIdx % 2 !== 0;
+                                    actualMsgIdx++;
 
-                                        {isOdd && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
-                                    </motion.div>
-                                );
-                            })}
+                                    return (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className={`flex gap-4 ${isRight ? 'justify-end' : ''}`}
+                                        >
+                                            {!isRight && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
+
+                                            <div className={`max-w-[70%] space-y-1 ${isRight ? 'items-end flex flex-col' : ''}`}>
+                                                <div className="flex items-baseline gap-2 text-xs text-white/40">
+                                                    <span className="font-bold text-white/70">{msg.user.username}</span>
+                                                </div>
+                                                <div className={`p-4 rounded-2xl text-white/90 leading-relaxed shadow-sm backdrop-blur-md border border-white/5 ${isRight
+                                                    ? 'bg-blue-600/20 border-blue-500/30 rounded-tr-sm'
+                                                    : 'bg-white/10 rounded-tl-sm'
+                                                    }`}>
+                                                    {msg.message}
+                                                </div>
+                                            </div>
+
+                                            {isRight && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
+                                        </motion.div>
+                                    );
+                                });
+                            })()}
                         </div>
                     </motion.div>
 
