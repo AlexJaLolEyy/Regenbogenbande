@@ -1,8 +1,8 @@
 "use client"
 
 import { createVideo } from "@/src/app/(content)/videos/(detail)/upload/actions";
-import { scrapeMedalClip } from "@/src/app/current-storage/medal-upload/actions";
 import { getAllCategories, getAllSelectableParticipants } from "@/src/lib/actions/data-fetching";
+import { scrapeMedalClip } from "@/src/lib/actions/medal-upload";
 import { useSession } from "@/src/lib/auth-client";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { Category, User, VideoUploadForm } from "@/src/lib/types/types";

@@ -16,4 +16,15 @@ export const queryKeys = {
         lists: () => [...queryKeys.quotes.all, 'list'] as const,
         list: (filters: FilterState) => [...queryKeys.quotes.lists(), filters] as const,
     },
+    user: {
+        all: ['user'] as const,
+        stats: () => [...queryKeys.user.all, 'stats'] as const,
+    },
+    categories: {
+        all: ['categories'] as const,
+    },
+    admin: {
+        all: ['admin'] as const,
+        content: (type: string, page: number) => [...queryKeys.admin.all, 'content', type, page] as const,
+    }
 };
