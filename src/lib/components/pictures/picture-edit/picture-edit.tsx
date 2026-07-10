@@ -161,55 +161,88 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                     </div>
                                 )}
 
-                                <form className="space-y-6">
-                                    <Controller
-                                        name="title"
-                                        control={control}
-                                        rules={{ required: true }}
-                                        render={({ field }) => (
-                                            <Input
-                                                {...field}
-                                                label="Title"
-                                                variant="bordered"
-                                                labelPlacement="outside"
-                                                placeholder="Enter picture title"
-                                                isRequired
-                                                isInvalid={!!errors.title}
-                                                errorMessage="Title is required"
-                                                classNames={{
-                                                    inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors",
-                                                    input: "text-white font-medium",
-                                                    label: "text-white/50"
-                                                }}
-                                            />
-                                        )}
-                                    />
+                                <motion.form
+                                    variants={{
+                                        hidden: { opacity: 0 },
+                                        show: {
+                                            opacity: 1,
+                                            transition: {
+                                                staggerChildren: 0.1
+                                            }
+                                        }
+                                    }}
+                                    initial="hidden"
+                                    animate="show"
+                                    className="space-y-6"
+                                >
+                                    <motion.div
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            show: { opacity: 1, y: 0 }
+                                        }}
+                                    >
+                                        <Controller
+                                            name="title"
+                                            control={control}
+                                            rules={{ required: true }}
+                                            render={({ field }) => (
+                                                <Input
+                                                    {...field}
+                                                    label="Title"
+                                                    variant="bordered"
+                                                    labelPlacement="outside"
+                                                    placeholder="Enter picture title"
+                                                    isRequired
+                                                    isInvalid={!!errors.title}
+                                                    errorMessage="Title is required"
+                                                    classNames={{
+                                                        inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors",
+                                                        input: "text-white font-medium",
+                                                        label: "text-white/50"
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                    </motion.div>
 
-                                    <Controller
-                                        name="description"
-                                        control={control}
-                                        rules={{ required: true }}
-                                        render={({ field }) => (
-                                            <Textarea
-                                                {...field}
-                                                label="Description"
-                                                variant="bordered"
-                                                labelPlacement="outside"
-                                                placeholder="Tell the story..."
-                                                minRows={3}
-                                                isRequired
-                                                isInvalid={!!errors.description}
-                                                errorMessage="Description is required"
-                                                classNames={{
-                                                    inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors",
-                                                    input: "text-white",
-                                                    label: "text-white/50"
-                                                }}
-                                            />
-                                        )}
-                                    />
+                                    <motion.div
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            show: { opacity: 1, y: 0 }
+                                        }}
+                                    >
+                                        <Controller
+                                            name="description"
+                                            control={control}
+                                            rules={{ required: true }}
+                                            render={({ field }) => (
+                                                <Textarea
+                                                    {...field}
+                                                    label="Description"
+                                                    variant="bordered"
+                                                    labelPlacement="outside"
+                                                    placeholder="Tell the story..."
+                                                    minRows={3}
+                                                    isRequired
+                                                    isInvalid={!!errors.description}
+                                                    errorMessage="Description is required"
+                                                    classNames={{
+                                                        inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors",
+                                                        input: "text-white",
+                                                        label: "text-white/50"
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                    </motion.div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <motion.div
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            show: { opacity: 1, y: 0 }
+                                        }}
+                                        className="grid grid-cols-2 gap-4"
+                                    >
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-white/50">Uploaded By</label>
                                             <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12 opacity-50">
@@ -237,9 +270,15 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                                 />
                                             )}
                                         />
-                                    </div>
+                                    </motion.div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <motion.div
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            show: { opacity: 1, y: 0 }
+                                        }}
+                                        className="grid grid-cols-2 gap-4"
+                                    >
                                         <Controller
                                             name="categoryId"
                                             control={control}
@@ -305,48 +344,55 @@ export default function PictureEdit({ picture }: { picture: Picture }) {
                                                 {manualDateOverride ? "Cancel manual override" : "Change original date"}
                                             </Button>
                                         </div>
-                                    </div>
+                                    </motion.div>
 
-                                    <Controller
-                                        name="participants"
-                                        control={control}
-                                        rules={{ required: true }}
-                                        render={({ field }) => (
-                                            <Select
-                                                label="Participants"
-                                                variant="bordered"
-                                                labelPlacement="outside"
-                                                placeholder="Who is in this picture?"
-                                                selectionMode="multiple"
-                                                isRequired
-                                                isInvalid={!!errors.participants}
-                                                errorMessage="At least one participant is required"
-                                                classNames={{
-                                                    trigger: "bg-white/5 border-white/10 min-h-12",
-                                                    label: "text-white/50",
-                                                    value: "text-white"
-                                                }}
-                                                items={users}
-                                                isMultiline
-                                                selectedKeys={new Set(field.value?.map(u => u.id) || [])}
-                                                onSelectionChange={(keys) => {
-                                                    const selectedIds = Array.from(keys) as string[];
-                                                    const selectedUsers = users.filter(u => selectedIds.includes(u.id));
-                                                    field.onChange(selectedUsers);
-                                                }}
-                                            >
-                                                {(user) => (
-                                                    <SelectItem key={user.id} textValue={user.username}>
-                                                        <div className="flex items-center gap-2">
-                                                            <Avatar src={user.profilePicture || undefined} size="sm" />
-                                                            <span>{user.username}</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                )}
-                                            </Select>
-                                        )}
-                                    />
-                                </form>
+                                    <motion.div
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            show: { opacity: 1, y: 0 }
+                                        }}
+                                    >
+                                        <Controller
+                                            name="participants"
+                                            control={control}
+                                            rules={{ required: true }}
+                                            render={({ field }) => (
+                                                <Select
+                                                    label="Participants"
+                                                    variant="bordered"
+                                                    labelPlacement="outside"
+                                                    placeholder="Who is in this picture?"
+                                                    selectionMode="multiple"
+                                                    isRequired
+                                                    isInvalid={!!errors.participants}
+                                                    errorMessage="At least one participant is required"
+                                                    classNames={{
+                                                        trigger: "bg-white/5 border-white/10 min-h-12",
+                                                        label: "text-white/50",
+                                                        value: "text-white"
+                                                    }}
+                                                    items={users}
+                                                    isMultiline
+                                                    selectedKeys={new Set(field.value?.map(u => u.id) || [])}
+                                                    onSelectionChange={(keys) => {
+                                                        const selectedIds = Array.from(keys) as string[];
+                                                        const selectedUsers = users.filter(u => selectedIds.includes(u.id));
+                                                        field.onChange(selectedUsers);
+                                                    }}
+                                                >
+                                                    {(user) => (
+                                                        <SelectItem key={user.id} textValue={user.username}>
+                                                            <div className="flex items-center gap-2">
+                                                                <Avatar src={user.profilePicture || undefined} size="sm" />
+                                                                <span>{user.username}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    )}
+                                                </Select>
+                                            )}
+                                        />
+                                    </motion.div>
+                                </motion.form>
                             </div>
 
                             {/* Action area fixed at bottom */}
