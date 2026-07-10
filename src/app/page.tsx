@@ -25,7 +25,7 @@ const KEYWORDS = [
 
 // 1. Smart Search (AI/Indexing)
 const SearchHeader = () => (
-    <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-neutral-900 border border-white/10 p-6 relative overflow-hidden flex flex-col justify-center">
+    <div className="flex flex-1 w-full h-full min-h-24 rounded-xl bg-neutral-900 border border-white/10 p-6 relative overflow-hidden flex-col justify-center">
         {/* Background Elements */}
         <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
             <FontAwesomeIcon icon={faSearch} className="text-8xl text-white" />
@@ -50,7 +50,7 @@ const SearchHeader = () => (
 
 // 2. Discord Integration (Bot/Sync)
 const DiscordHeader = () => (
-    <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/20 p-4 relative overflow-hidden flex flex-col justify-center">
+    <div className="flex flex-1 w-full h-full min-h-24 rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/20 p-4 relative overflow-hidden flex-col justify-center">
         {/* Decor */}
         <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#5865F2] blur-[50px] opacity-20" />
 
@@ -62,7 +62,7 @@ const DiscordHeader = () => (
                 <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white">RegenbogenBot</span>
-                        <span className="px-1 py-[1px] bg-[#5865F2] text-white text-[8px] rounded uppercase">Bot</span>
+                        <span className="px-1 py-px bg-[#5865F2] text-white text-[8px] rounded uppercase">Bot</span>
                         <span className="text-[10px] text-white/30">Today at 4:20 PM</span>
                     </div>
                     <div className="text-[11px] text-white/70 leading-tight">
@@ -76,7 +76,7 @@ const DiscordHeader = () => (
 
 // 3. Mobile Ready (Devices)
 const MobileHeader = () => (
-    <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-neutral-900 border border-white/10 overflow-hidden relative group items-center justify-center">
+    <div className="flex flex-1 w-full h-full min-h-24 rounded-xl bg-neutral-900 border border-white/10 overflow-hidden relative group items-center justify-center">
         {/* Grid Background */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
 
@@ -94,8 +94,8 @@ const MobileHeader = () => (
 
 // 4. Secure Vault (Privacy/Storage)
 const VaultHeader = () => (
-    <div className="flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-neutral-900 border border-white/10 p-4 relative overflow-hidden flex items-center justify-center group">
-        <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/20 to-transparent" />
+    <div className="flex flex-1 w-full h-full min-h-24 rounded-xl bg-neutral-900 border border-white/10 p-4 relative overflow-hidden items-center justify-center group">
+        <div className="absolute inset-0 bg-linear-to-t from-emerald-900/20 to-transparent" />
 
         <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
             <FontAwesomeIcon icon={faShieldHalved} className="text-2xl text-emerald-400" />
@@ -139,7 +139,7 @@ export default function Home() {
         <div className="min-h-screen bg-black text-white selection:bg-purple-500/30">
 
             {/* WRAPPER: Fixed Aurora Background */}
-            <AuroraBackground className="h-auto min-h-screen !fixed inset-0 z-0">
+            <AuroraBackground className="h-auto min-h-screen fixed! inset-0 z-0">
                 <div />
             </AuroraBackground>
 
@@ -164,7 +164,7 @@ export default function Home() {
                         </div>
 
                         <h1 className="text-6xl md:text-8xl font-black tracking-tighter">
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-300 via-white to-purple-300 drop-shadow-[0_0_40px_rgba(139,92,246,0.4)]">
+                            <span className="bg-clip-text text-transparent bg-linear-to-r from-violet-300 via-white to-purple-300 drop-shadow-[0_0_40px_rgba(139,92,246,0.4)]">
                                 REGENBOGEN<br />BANDE.
                             </span>
                         </h1>
@@ -182,7 +182,7 @@ export default function Home() {
                     >
                         {/* Video Card */}
                         <Link href="/videos" className="group relative w-full md:w-80 h-36 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden hover:border-violet-500/50 hover:bg-white/10 transition-all shadow-2xl hover:shadow-violet-500/20">
-                            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-linear-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute inset-0 flex flex-row items-center justify-between px-8">
                                 <div className="flex flex-col text-left space-y-1">
                                     <span className="font-bold text-2xl tracking-tight">Clips</span>
@@ -198,7 +198,7 @@ export default function Home() {
 
                         {/* Picture Card */}
                         <Link href="/pictures" className="group relative w-full md:w-80 h-36 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden hover:border-blue-500/50 hover:bg-white/10 transition-all shadow-2xl hover:shadow-blue-500/20">
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-linear-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute inset-0 flex flex-row items-center justify-between px-8">
                                 <div className="flex flex-col text-left space-y-1">
                                     <span className="font-bold text-2xl tracking-tight">Bilder</span>
@@ -214,7 +214,7 @@ export default function Home() {
 
                         {/* Quote Card */}
                         <Link href="/quotes" className="group relative w-full md:w-80 h-36 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden hover:border-pink-500/50 hover:bg-white/10 transition-all shadow-2xl hover:shadow-pink-500/20">
-                            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-linear-to-br from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute inset-0 flex flex-row items-center justify-between px-8">
                                 <div className="flex flex-col text-left space-y-1">
                                     <span className="font-bold text-2xl tracking-tight">Zitate</span>
@@ -234,8 +234,8 @@ export default function Home() {
                 {/* KEYWORD MARQUEE */}
                 <section className="py-24 border-y border-white/5 bg-black/20 backdrop-blur-md relative overflow-hidden">
                     {/* Shadow Drapes */}
-                    <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black via-black/50 to-transparent z-10" />
-                    <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black via-black/50 to-transparent z-10" />
+                    <div className="absolute inset-y-0 left-0 w-32 bg-linear-to-r from-black via-black/50 to-transparent z-10" />
+                    <div className="absolute inset-y-0 right-0 w-32 bg-linear-to-l from-black via-black/50 to-transparent z-10" />
 
                     <Marquee pauseOnHover className="[--duration:20s] py-4">
                         {KEYWORDS.map((item, i) => (
@@ -284,7 +284,7 @@ export default function Home() {
                                 header={feature.header}
                                 icon={feature.icon}
                                 className={cn(
-                                    "!bg-black/40 !backdrop-blur-xl !border-white/10 hover:!border-white/20 transition-colors group",
+                                    "bg-black/40! backdrop-blur-xl! border-white/10! hover:border-white/20! transition-colors group",
                                     i === 3 || i === 0 ? "md:col-span-2" : ""
                                 )}
                             />

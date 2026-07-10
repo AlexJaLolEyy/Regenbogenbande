@@ -3,7 +3,7 @@
 import { signOut, useSession } from "@/src/lib/auth-client"
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared"
 import { queryKeys } from "@/src/lib/queries/query-keys"
-import { Avatar, Button, Card, CardBody, Input, Tab, Tabs } from "@heroui/react"
+import { Avatar, Button, Input, Tab, Tabs } from "@heroui/react"
 import { useQuery } from "@tanstack/react-query"
 import {
     ArcElement,
@@ -17,7 +17,8 @@ import {
     Title,
     Tooltip,
 } from 'chart.js'
-import { BarChart3, LogOut, Settings, User } from "lucide-react"
+import { Activity, Crown, LogOut, Settings, ShieldCheck, User as UserIcon } from "lucide-react"
+import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Doughnut, Line } from 'react-chartjs-2'
@@ -71,12 +72,10 @@ export default function ProfilePage() {
         setMessage(null)
         const res = await updateDisplayName(displayName)
         if (res.success) {
-            setMessage({ type: "success", text: "Display name updated successfully!" })
-            // We don't need to manually update local state here if session refreshes,
-            // but for immediate UI feedback we can. However, revalidatePath will handle it.
+            setMessage({ type: "success", text: "Display name synchronized with the orbital core." })
             setLocalDisplayName(null); // Reset to use session's updated name
         } else {
-            setMessage({ type: "error", text: res.error || "Failed to update display name" })
+            setMessage({ type: "error", text: res.error || "Transmission failure during update." })
         }
         setIsLoading(false)
     }
@@ -106,10 +105,11 @@ export default function ProfilePage() {
             y: {
                 beginAtZero: true,
                 grid: {
-                    color: 'rgba(255, 255, 255, 0.1)',
+                    color: 'rgba(255, 255, 255, 0.05)',
                 },
                 ticks: {
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: 'rgba(255, 255, 255, 0.3)',
+                    font: { size: 10, weight: 'bold' }
                 }
             },
             x: {
@@ -117,7 +117,8 @@ export default function ProfilePage() {
                     display: false,
                 },
                 ticks: {
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: 'rgba(255, 255, 255, 0.3)',
+                    font: { size: 10, weight: 'bold' }
                 }
             }
         }
@@ -128,10 +129,13 @@ export default function ProfilePage() {
         datasets: [{
             label: 'Uploads',
             data: stats?.monthlyActivity.map((a: any) => a.count) || [],
-            borderColor: 'rgb(20, 184, 166)',
-            backgroundColor: 'rgba(20, 184, 166, 0.5)',
+            borderColor: 'rgb(147, 51, 234)',
+            backgroundColor: 'rgba(147, 51, 234, 0.2)',
             tension: 0.4,
             fill: true,
+            pointBackgroundColor: 'rgb(147, 51, 234)',
+            pointBorderColor: '#fff',
+            pointHoverRadius: 6,
         }]
     };
 
@@ -140,189 +144,238 @@ export default function ProfilePage() {
         datasets: [{
             data: [stats?.counts.videos || 0, stats?.counts.pictures || 0, stats?.counts.quotes || 0],
             backgroundColor: [
-                'rgba(59, 130, 246, 0.6)',
-                'rgba(168, 85, 247, 0.6)',
-                'rgba(20, 184, 166, 0.6)',
+                'rgba(147, 51, 234, 0.4)',
+                'rgba(59, 130, 246, 0.4)',
+                'rgba(236, 72, 153, 0.4)',
             ],
             borderColor: [
+                'rgba(147, 51, 234, 1)',
                 'rgba(59, 130, 246, 1)',
-                'rgba(168, 85, 247, 1)',
-                'rgba(20, 184, 166, 1)',
+                'rgba(236, 72, 153, 1)',
             ],
-            borderWidth: 1,
+            borderWidth: 2,
+            hoverOffset: 10
         }]
     };
 
     return (
-        <div className="container mx-auto p-6 pt-24 max-w-6xl">
-            <h1 className="text-3xl font-bold mb-8 bg-linear-to-r from-blue-500 to-teal-500 bg-clip-text text-transparent">
-                My Profile
-            </h1>
+        <div className="min-h-screen w-full relative overflow-x-hidden bg-[#0a0a0b] text-white">
+            {/* Custom Prismatic Background */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/5 blur-[150px] rounded-full" />
+                <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-pink-900/5 blur-[100px] rounded-full animate-bounce [animation-duration:10s]" />
+                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
+            </div>
 
-            <Tabs
-                aria-label="Profile options"
-                variant="underlined"
-                classNames={{
-                    tabList: "gap-6 w-full relative rounded-none border-b border-divider",
-                    cursor: "w-full bg-primary",
-                    tab: "max-w-fit px-0 h-12",
-                    tabContent: "group-data-[selected=true]:text-primary"
-                }}
-            >
-                <Tab
-                    key="info"
-                    title={
-                        <div className="flex items-center space-x-2">
-                            <User size={18} />
-                            <span>Info</span>
-                        </div>
-                    }
+            <div className="container mx-auto p-6 pt-24 max-w-5xl relative z-10">
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-12"
                 >
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
-                        {/* Profile Card */}
-                        <div className="md:col-span-1">
-                            <Card className="bg-white/50 dark:bg-black/20 backdrop-blur-xl border border-white/20">
-                                <CardBody className="flex flex-col items-center gap-4 py-8">
-                                    <div className="relative group">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-1.5 bg-linear-to-tr from-purple-500/20 to-blue-500/20 rounded-xl border border-white/10">
+                            <UserIcon className="text-purple-400" size={20} />
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                            Identity <span className="text-purple-500">Node</span>
+                        </h1>
+                    </div>
+                    <p className="text-gray-400 font-medium text-sm">Synchronize your presence within the orbital collective</p>
+                </motion.div>
+
+                <Tabs
+                    aria-label="Profile options"
+                    variant="bordered"
+                    className="p-1 bg-white/5 backdrop-blur-md rounded-2xl border border-white/5 w-fit mb-8"
+                    classNames={{
+                        tabList: "gap-2 border-0 bg-transparent p-0",
+                        cursor: "bg-purple-600 rounded-xl shadow-lg shadow-purple-900/40",
+                        tab: "h-11 px-8 font-black transition-all",
+                        tabContent: "group-data-[selected=true]:text-white text-gray-500"
+                    }}
+                >
+                    <Tab
+                        key="info"
+                        title={
+                            <div className="flex items-center space-x-2">
+                                <Settings size={16} />
+                                <span>Core Settings</span>
+                            </div>
+                        }
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-4">
+                            {/* Profile Card */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="md:col-span-1"
+                            >
+                                <div className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 flex flex-col items-center gap-6 shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/5 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-600/10 transition-all" />
+
+                                    <div className="relative">
                                         <Avatar
                                             src={session?.user?.image || undefined}
-                                            className="w-32 h-32 text-4xl"
+                                            className="w-32 h-32 text-4xl ring-4 ring-purple-600/20"
                                             name={session?.user?.name?.[0]}
                                             isBordered
                                             color="secondary"
                                         />
-                                    </div>
-                                    <div className="text-center">
-                                        <h2 className="text-xl font-semibold">{session?.user?.name}</h2>
-                                        <p className="text-sm text-gray-500">{session?.user?.email || "No email"}</p>
-                                        <div className="mt-2 inline-flex px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
-                                            {role || "guest"}
+                                        <div className="absolute -bottom-2 -right-2 bg-purple-600 p-2 rounded-xl shadow-lg border-2 border-[#121214]">
+                                            {role === 'owner' ? <Crown size={16} /> : role === 'admin' ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
                                         </div>
                                     </div>
-                                </CardBody>
-                            </Card>
-                        </div>
 
-                        {/* Settings */}
-                        <div className="md:col-span-2">
-                            <Card className="bg-white/50 dark:bg-black/20 backdrop-blur-xl border border-white/20">
-                                <CardBody className="p-6">
-                                    <div className="flex flex-col gap-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-black tracking-tight text-white mb-1 uppercase">{session?.user?.name}</h2>
+                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{session?.user?.email || "No direct uplink"}</p>
+
+                                        <div className="mt-6 flex items-center justify-center">
+                                            <div className="px-4 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest">
+                                                Level: {role || "Entity"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            {/* Settings */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="md:col-span-2"
+                            >
+                                <div className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl">
+                                    <div className="flex flex-col gap-8">
                                         <div>
-                                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                                <Settings size={18} />
-                                                Account Settings
-                                            </h3>
-                                            <div className="flex flex-col gap-4">
+                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-6">Uplink Configuration</h3>
+                                            <div className="flex flex-col gap-6">
                                                 <Input
-                                                    label="Display Name"
-                                                    placeholder="Enter your display name"
+                                                    label="DISPLAY ALIAS"
+                                                    placeholder="Enter your collective name"
                                                     value={displayName}
                                                     onValueChange={setLocalDisplayName}
-                                                    variant="bordered"
+                                                    variant="flat"
+                                                    classNames={{
+                                                        inputWrapper: "bg-white/5 h-14 rounded-2xl border border-white/5 hover:border-white/10 transition-all",
+                                                        label: "text-gray-500 font-bold"
+                                                    }}
                                                 />
                                                 <Input
-                                                    label="Email"
+                                                    label="ACCESS EMAIL"
                                                     value={session?.user?.email || ""}
                                                     isReadOnly
                                                     variant="flat"
-                                                    description="Email is managed by Discord"
+                                                    description={<span className="text-[10px] uppercase font-bold text-gray-600">Locked to Discord authorization</span>}
+                                                    classNames={{
+                                                        inputWrapper: "bg-white/5 h-14 rounded-2xl border border-white/5 opacity-50",
+                                                        label: "text-gray-500 font-bold"
+                                                    }}
                                                 />
                                             </div>
                                         </div>
 
                                         {message && (
-                                            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-success-50 text-success-600' : 'bg-danger-50 text-danger-600'}`}>
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className={`p-4 rounded-2xl text-xs font-bold text-center border ${message.type === 'success'
+                                                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                                        : 'bg-danger/10 text-danger border-danger/20'
+                                                    }`}
+                                            >
                                                 {message.text}
-                                            </div>
+                                            </motion.div>
                                         )}
 
-                                        <div className="flex justify-between items-center pt-4 border-t border-white/10">
+                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-white/5">
                                             <Button
                                                 color="danger"
                                                 variant="flat"
-                                                startContent={<LogOut size={16} />}
+                                                className="h-12 w-full sm:w-auto px-8 rounded-2xl font-black bg-danger/10 text-danger hover:bg-danger/20 transition-all"
+                                                startContent={<LogOut size={18} />}
                                                 onPress={handleLogout}
                                             >
-                                                Sign Out
+                                                TERMINATE SESSION
                                             </Button>
                                             <Button
-                                                color="primary"
+                                                className="h-12 w-full sm:w-auto px-10 rounded-2xl font-black bg-purple-600 text-white shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all"
                                                 onPress={handleUpdateDisplayName}
                                                 isLoading={isLoading}
                                             >
-                                                Save Changes
+                                                SYNC IDENTITY
                                             </Button>
                                         </div>
                                     </div>
-                                </CardBody>
-                            </Card>
-                        </div>
-                    </div>
-                </Tab>
-
-                <Tab
-                    key="stats"
-                    title={
-                        <div className="flex items-center space-x-2">
-                            <BarChart3 size={18} />
-                            <span>Statistics</span>
-                        </div>
-                    }
-                >
-                    <div className="mt-6">
-                        {isStatsLoading ? (
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse">
-                                {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-white/5 rounded-2xl" />)}
-                            </div>
-                        ) : stats ? (
-                            <div className="flex flex-col gap-8">
-                                {/* Metric Cards */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <Card className="bg-blue-500/10 border-blue-500/20">
-                                        <CardBody className="p-4 flex flex-col items-center">
-                                            <p className="text-xs text-blue-400 uppercase font-bold tracking-wider">Total Uploads</p>
-                                            <p className="text-3xl font-bold mt-1">{stats.counts.total}</p>
-                                        </CardBody>
-                                    </Card>
-                                    <Card className="bg-teal-500/10 border-teal-500/20">
-                                        <CardBody className="p-4 flex flex-col items-center">
-                                            <p className="text-xs text-teal-400 uppercase font-bold tracking-wider">Total Views</p>
-                                            <p className="text-3xl font-bold mt-1">{stats.views}</p>
-                                        </CardBody>
-                                    </Card>
-                                    <Card className="bg-purple-500/10 border-purple-500/20">
-                                        <CardBody className="p-4 flex flex-col items-center">
-                                            <p className="text-xs text-purple-400 uppercase font-bold tracking-wider">Avg Rating</p>
-                                            <p className="text-3xl font-bold mt-1">{stats.ratings.average || "N/A"}</p>
-                                        </CardBody>
-                                    </Card>
-                                    <Card className="bg-orange-500/10 border-orange-500/20">
-                                        <CardBody className="p-4 flex flex-col items-center">
-                                            <p className="text-xs text-orange-400 uppercase font-bold tracking-wider">Ratings Given</p>
-                                            <p className="text-3xl font-bold mt-1">{stats.ratings.count}</p>
-                                        </CardBody>
-                                    </Card>
                                 </div>
+                            </motion.div>
+                        </div>
+                    </Tab>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Activity Chart */}
-                                    <Card className="bg-white/50 dark:bg-black/20 backdrop-blur-xl border border-white/20">
-                                        <CardBody className="p-6">
-                                            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                                                Upload Activity (Last 6 Months)
+                    <Tab
+                        key="stats"
+                        title={
+                            <div className="flex items-center space-x-2">
+                                <Activity size={16} />
+                                <span>Transmission Data</span>
+                            </div>
+                        }
+                    >
+                        <div className="mt-4">
+                            {isStatsLoading ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-white/5 rounded-3xl" />)}
+                                </div>
+                            ) : stats ? (
+                                <div className="flex flex-col gap-8">
+                                    {/* Metric Cards */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {[
+                                            { label: "Total Uploads", value: stats.counts.total, color: "purple" },
+                                            { label: "Total Views", value: stats.views, color: "blue" },
+                                            { label: "Avg Rating", value: stats.ratings.average || "0.0", color: "pink" },
+                                            { label: "Evaluations", value: stats.ratings.count, color: "orange" },
+                                        ].map((m, i) => (
+                                            <motion.div
+                                                key={m.label}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: i * 0.1 }}
+                                                className={`bg-[#121214]/60 border border-white/5 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center`}
+                                            >
+                                                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2">{m.label}</p>
+                                                <p className="text-3xl font-black text-white tracking-tight">{m.value}</p>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Activity Chart */}
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl"
+                                        >
+                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-3">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                                                Uplink Activity <span className="text-white/20">(6M)</span>
                                             </h3>
                                             <div className="h-64">
                                                 <Line data={activityData} options={chartOptions} />
                                             </div>
-                                        </CardBody>
-                                    </Card>
+                                        </motion.div>
 
-                                    {/* Distribution Chart */}
-                                    <Card className="bg-white/50 dark:bg-black/20 backdrop-blur-xl border border-white/20">
-                                        <CardBody className="p-6">
-                                            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                                                Content Distribution
+                                        {/* Distribution Chart */}
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl"
+                                        >
+                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-3">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                                Media Distribution
                                             </h3>
                                             <div className="h-64 flex justify-center">
                                                 <Doughnut
@@ -330,21 +383,33 @@ export default function ProfilePage() {
                                                     options={{
                                                         ...chartOptions,
                                                         scales: { x: { display: false }, y: { display: false } },
-                                                        plugins: { legend: { display: true, position: 'bottom', labels: { color: 'white' } } }
+                                                        plugins: {
+                                                            legend: {
+                                                                display: true,
+                                                                position: 'bottom',
+                                                                labels: {
+                                                                    color: 'rgba(255,255,255,0.5)',
+                                                                    font: { size: 10, weight: 'bold' },
+                                                                    usePointStyle: true,
+                                                                    padding: 20
+                                                                }
+                                                            }
+                                                        }
                                                     }}
-
                                                 />
                                             </div>
-                                        </CardBody>
-                                    </Card>
+                                        </motion.div>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <p className="text-center text-default-400 py-20">Failed to load statistics.</p>
-                        )}
-                    </div>
-                </Tab>
-            </Tabs>
+                            ) : (
+                                <div className="py-20 text-center bg-[#121214]/60 rounded-3xl border border-white/5 backdrop-blur-xl">
+                                    <p className="text-gray-500 font-black uppercase tracking-widest text-sm">Transmission synchronization failed</p>
+                                </div>
+                            )}
+                        </div>
+                    </Tab>
+                </Tabs>
+            </div>
         </div>
     )
 }
