@@ -2,15 +2,16 @@
 
 import { incrementView } from '@/src/lib/actions/views';
 import { Comment, Quote } from '@/src/lib/types/types';
-import { faEye, faQuoteLeft, faShare, faStar, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faEllipsisVertical, faQuoteLeft, faShare, faStar, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Avatar, BreadcrumbItem, Breadcrumbs, Button } from "@heroui/react";
+import { Avatar, Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/react";
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CommentsSection } from '../../shared/comments-section';
 import { RatingModal } from '../../shared/rating-modal';
 import { DeleteButton } from '../../ui/delete-button';
+import { PageShell } from '../../ui/page-shell';
 
 export default function QuoteView({ quote, initialComments = [] }: { quote: Quote, initialComments?: Comment[] }) {
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -28,180 +29,216 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
     };
 
     return (
-        <div className="relative z-10 w-full max-w-480 mx-auto p-6 pt-4 pb-20">
+        <PageShell variant="aurora">
+            <div className="relative z-10 w-full pt-24 pb-8 px-4 md:px-8">
+                {/* Back Button */}
+                <Link
+                    href="/quotes"
+                    className="fixed top-24 right-8 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition z-50 border border-white/10 group overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <FontAwesomeIcon icon={faTimes} className="relative z-10" />
+                </Link>
 
-            {/* Back Button */}
-            <Link href="/quotes" className="fixed top-24 right-8 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition z-50 border border-white/10">
-                <FontAwesomeIcon icon={faTimes} />
-            </Link>
-
-            <div className="flex flex-col lg:flex-row gap-8 justify-center">
-
-                {/* LEFT: Main Chat Content */}
-                <div className="flex-1 max-w-4xl space-y-8">
-                    <Breadcrumbs className="mb-6" color="foreground">
-                        <BreadcrumbItem href="/">Home</BreadcrumbItem>
-                        <BreadcrumbItem href="/quotes">Quotes</BreadcrumbItem>
-                        <BreadcrumbItem>Quote #{quote.id}</BreadcrumbItem>
-                    </Breadcrumbs>
-
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex flex-col h-[60vh] bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
-                    >
-                        {/* Header */}
-                        <div className="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-white/5 relative">
-                            <div className="flex items-center gap-4">
-                                <Avatar src={quote.uploadedBy.profilePicture || ""} isBordered />
-                                <div>
-                                    <h1 className="text-white font-bold text-lg">Conversation</h1>
-                                    <p className="text-white/40 text-xs">
-                                        Archived by {quote.uploadedBy.username} • {new Date(quote.uploadedAt).toLocaleDateString()}
-                                    </p>
+                <div className="max-w-450 mx-auto grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
+                    {/* LEFT COLUMN: Quote Content */}
+                    <div className="xl:col-span-3 space-y-6">
+                        {/* Quote Stage with Frosty Glass */}
+                        <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative min-h-[70vh] flex flex-col group">
+                            {/* Header */}
+                            <div className="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-white/5 relative shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <Avatar src={quote.uploadedBy.profilePicture || ""} size="md" className="w-12 h-12" />
+                                    <div>
+                                        <h2 className="text-white font-black text-xl leading-tight">{quote.uploadedBy.username}</h2>
+                                        <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">
+                                            Archivist
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none transform group-hover:rotate-12 transition-transform duration-700">
+                                    <FontAwesomeIcon icon={faQuoteLeft} className="text-4xl text-white" />
                                 </div>
                             </div>
-                            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                                <FontAwesomeIcon icon={faQuoteLeft} className="text-6xl text-white" />
-                            </div>
-                        </div>
 
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-linear-to-b from-transparent to-black/20">
-                            {(() => {
-                                let actualMsgIdx = 0;
-                                return quote.messages.map((msg, idx) => {
-                                    if (msg.isContext) {
+                            {/* Messages Area */}
+                            <div className="flex-1 p-8 md:p-12 space-y-8 bg-linear-to-b from-transparent to-black/20 overflow-y-auto max-h-[85vh] custom-scrollbar">
+                                {(() => {
+                                    let actualMsgIdx = 0;
+                                    return quote.messages.map((msg, idx) => {
+                                        if (msg.isContext) {
+                                            return (
+                                                <div key={idx} className="flex justify-center w-full">
+                                                    <div className="bg-white/10 border border-white/5 text-white/60 text-[11px] md:text-xs px-6 py-2 rounded-full text-center max-w-[85%] shadow-lg backdrop-blur-md font-medium">
+                                                        {msg.message}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        const isRight = actualMsgIdx % 2 !== 0;
+                                        actualMsgIdx++;
+
                                         return (
                                             <motion.div
                                                 key={idx}
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                className="flex justify-center w-full px-2"
+                                                className={`flex gap-4 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}
                                             >
-                                                <div className="bg-white/5 border border-white/5 text-white/40 text-[13px] italic px-6 py-2 rounded-full text-center max-w-[80%] shadow-lg">
-                                                    {msg.message}
+                                                <Avatar src={msg.user.profilePicture || ""} size="sm" className="mt-1 shadow-xl border border-white/10 shrink-0" />
+                                                <div className={`max-w-[80%] md:max-w-[70%] space-y-1.5 ${isRight ? 'items-end flex flex-col' : ''}`}>
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/30">
+                                                        <span className="text-white/60">{msg.user.username}</span>
+                                                    </div>
+                                                    <div className={`p-4 md:p-5 rounded-2xl text-white text-sm md:text-base leading-relaxed shadow-2xl backdrop-blur-md border border-white/5 group/bubble transition-all duration-300 ${isRight
+                                                        ? 'bg-purple-600/20 border-purple-500/30 rounded-tr-sm hover:bg-purple-600/30'
+                                                        : 'bg-white/10 rounded-tl-sm hover:bg-white/20 hover:border-white/20'
+                                                        }`}>
+                                                        {msg.message}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         );
-                                    }
-
-                                    const isRight = actualMsgIdx % 2 !== 0;
-                                    actualMsgIdx++;
-
-                                    return (
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className={`flex gap-4 ${isRight ? 'justify-end' : ''}`}
-                                        >
-                                            {!isRight && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
-
-                                            <div className={`max-w-[70%] space-y-1 ${isRight ? 'items-end flex flex-col' : ''}`}>
-                                                <div className="flex items-baseline gap-2 text-xs text-white/40">
-                                                    <span className="font-bold text-white/70">{msg.user.username}</span>
-                                                </div>
-                                                <div className={`p-4 rounded-2xl text-white/90 leading-relaxed shadow-sm backdrop-blur-md border border-white/5 ${isRight
-                                                    ? 'bg-blue-600/20 border-blue-500/30 rounded-tr-sm'
-                                                    : 'bg-white/10 rounded-tl-sm'
-                                                    }`}>
-                                                    {msg.message}
-                                                </div>
-                                            </div>
-
-                                            {isRight && <Avatar src={msg.user.profilePicture || ""} className="mt-1" />}
-                                        </motion.div>
-                                    );
-                                });
-                            })()}
+                                    });
+                                })()}
+                            </div>
                         </div>
-                    </motion.div>
 
-                    {/* Comments Section */}
-                    <div className="mt-12">
-                        <CommentsSection
-                            contentType="quote"
-                            contentId={quote.id}
-                            initialComments={initialComments}
-                        />
-                    </div>
-                </div>
-
-                {/* RIGHT: Sidebar */}
-                <div className="w-full lg:w-80 shrink-0 space-y-6 pt-14">
-                    {/* Actions Card */}
-                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col gap-3">
-                        <Button
-                            className="w-full bg-white/5 text-white border border-white/5 font-bold"
-                            startContent={<FontAwesomeIcon icon={faStar} className="text-yellow-400" />}
-                            onPress={() => setIsRatingModalOpen(true)}
-                        >
-                            Rate
-                        </Button>
-                        <Button
-                            className="w-full bg-white/5 text-white border border-white/5 font-bold"
-                            startContent={<FontAwesomeIcon icon={faShare} />}
-                            onPress={handleShare}
-                        >
-                            Share
-                        </Button>
-                        <Link href={`/quotes/${quote.id}/edit`}>
-                            <Button className="w-full bg-purple-600 text-white font-bold shadow-lg shadow-purple-900/20">
-                                Edit
-                            </Button>
-                        </Link>
-                        <DeleteButton
-                            id={quote.id}
-                            type="quote"
-                            ownerId={quote.uploadedBy.id}
-                            redirectUrl="/quotes"
-                        />
+                        {/* Comments Row */}
+                        <div className="space-y-4 px-2">
+                            <div className="pt-4">
+                                <CommentsSection
+                                    contentType="quote"
+                                    contentId={quote.id}
+                                    initialComments={initialComments}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Stats Card */}
-                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                        <h3 className="text-white/40 text-xs font-bold uppercase mb-4">Stats</h3>
+                    {/* RIGHT COLUMN: Info & Metadata */}
+                    <div className="space-y-6">
+                        {/* Status Boxes */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">
-                                <FontAwesomeIcon icon={faEye} className="text-white/40 mb-1" />
-                                <div className="text-xl font-bold text-white">{quote.views}</div>
-                                <div className="text-[10px] text-white/30 uppercase">Views</div>
+                            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col items-center justify-center text-center">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Views</span>
+                                <span className="text-xl font-black text-white">{quote.views.toLocaleString()}</span>
                             </div>
-                            <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">
-                                <FontAwesomeIcon icon={faStar} className="text-yellow-500/80 mb-1" />
-                                <div className="text-xl font-bold text-white">{rating}</div>
-                                <div className="text-[10px] text-white/30 uppercase">Rating</div>
+                            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 flex flex-col items-center justify-center text-center">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Rating</span>
+                                <span className="text-xl font-black text-amber-400">{rating}</span>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Participants */}
-                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                        <h3 className="text-white/40 text-xs font-bold uppercase mb-4">Participants</h3>
-                        <div className="flex flex-col gap-3">
-                            {quote.participants.map((participant, idx) => {
-                                const name = participant.username;
-                                const src = participant.profilePicture;
-                                return (
-                                    <div key={idx} className="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5">
-                                        <Avatar src={src || undefined} size="sm" name={name} />
-                                        <span className="text-white text-sm font-medium">{name}</span>
+                        {/* Details Box */}
+                        <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 group overflow-hidden relative">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 blur-3xl -mr-16 -mt-16" />
+                            <h3 className="text-sm font-bold text-white/40 mb-6">Transmission Intel</h3>
+
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-6 flex-wrap">
+                                    <div className="flex items-center gap-4">
+                                        <Avatar src={quote.uploadedBy.profilePicture || undefined} size="md" className="border border-white/10" />
+                                        <span className="text-white font-bold text-lg leading-none">{quote.uploadedBy.username}</span>
                                     </div>
-                                );
-                            })}
+
+                                    <div className="h-4 w-px bg-white/10" />
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-white/50 font-black uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                                            Memory Archive
+                                        </span>
+                                        <span className="text-[11px] text-white/20 font-bold px-2.5 py-1 border border-white/5 rounded-lg uppercase tracking-widest">
+                                            {new Date(quote.uploadedAt).toLocaleDateString("de-DE")}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex p-1 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md justify-center">
+                            <Button
+                                size="md"
+                                className="bg-transparent text-white font-bold hover:bg-white/10 rounded-xl flex-1"
+                                startContent={<FontAwesomeIcon icon={faStar} className="text-amber-400" />}
+                                onPress={() => setIsRatingModalOpen(true)}
+                            >
+                                Rate
+                            </Button>
+                            <Button
+                                size="md"
+                                className="bg-transparent text-white font-bold hover:bg-white/10 rounded-xl flex-1"
+                                startContent={<FontAwesomeIcon icon={faShare} />}
+                                onPress={handleShare}
+                            >
+                                Share
+                            </Button>
+
+                            <Dropdown placement="bottom-end">
+                                <DropdownTrigger>
+                                    <Button
+                                        isIconOnly
+                                        size="md"
+                                        variant="flat"
+                                        className="bg-transparent text-white/40 hover:text-white rounded-xl"
+                                    >
+                                        <FontAwesomeIcon icon={faEllipsisVertical} />
+                                    </Button>
+                                </DropdownTrigger>
+                                <DropdownMenu aria-label="Administrative Actions" className="p-2">
+                                    <DropdownItem
+                                        key="edit"
+                                        href={`/quotes/${quote.id}/edit`}
+                                        as={Link}
+                                        startContent={<FontAwesomeIcon icon={faEdit} className="text-xs" />}
+                                    >
+                                        Edit Quote
+                                    </DropdownItem>
+                                    <DropdownItem
+                                        key="delete"
+                                        className="text-danger"
+                                        color="danger"
+                                        variant="flat"
+                                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                    >
+                                        <DeleteButton
+                                            id={quote.id}
+                                            type="quote"
+                                            ownerId={quote.uploadedBy.id}
+                                            redirectUrl="/quotes"
+                                        />
+                                    </DropdownItem>
+                                </DropdownMenu>
+                            </Dropdown>
+                        </div>
+
+                        {/* Participants Box */}
+                        <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 group hover:border-purple-500/30 transition-all duration-300">
+                            <h3 className="text-sm font-bold text-white/40 mb-3">Transmission Group</h3>
+                            <div className="space-y-4">
+                                {quote.participants.map((participant, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 group/member p-2 rounded-xl hover:bg-white/5 transition-colors">
+                                        <Avatar src={participant.profilePicture || undefined} size="sm" className="border-2 border-white/5 group-hover/member:border-purple-500/30" />
+                                        <div>
+                                            <p className="text-white/90 font-bold text-sm tracking-wide leading-none mb-1">{participant.username}</p>
+                                            <p className="text-[9px] text-white/30 uppercase font-black">Member</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <RatingModal
-                contentType="quote"
-                contentId={quote.id}
-                isOpen={isRatingModalOpen}
-                onOpenChange={setIsRatingModalOpen}
-            />
-        </div>
+                <RatingModal
+                    contentType="quote"
+                    contentId={quote.id}
+                    isOpen={isRatingModalOpen}
+                    onOpenChange={setIsRatingModalOpen}
+                />
+            </div>
+        </PageShell>
     );
 }

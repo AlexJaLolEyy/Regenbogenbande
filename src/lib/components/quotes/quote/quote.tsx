@@ -17,8 +17,8 @@ export default function QuoteComponent({ quote }: { quote: QuoteListItem }) {
   return (
     <Link href={`/quotes/${quote.id}`} className="block h-full mb-6">
       <motion.div
-        whileHover={{ y: -5 }}
-        className="bg-[#18181b]/60 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all shadow-lg group flex flex-col break-inside-avoid"
+        whileHover={{ scale: 1.02 }}
+        className="bg-[#1A1A1A]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-[#F5F5DC]/50 hover:shadow-[0_0_20px_-5px_rgba(245,245,220,0.3)] transition-all duration-300 shadow-xl group flex flex-col break-inside-avoid"
       >
         {/* Header (Minimal) */}
         <div className="px-5 pt-5 pb-2 flex justify-between items-start">

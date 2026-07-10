@@ -9,7 +9,7 @@ import {
   faGripLines,
   faInfoCircle,
   faPlus,
-  faQuoteRight,
+  faQuoteLeft,
   faSave,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm, useWatch } from "react-hook-form";
 import type { QuoteUploadForm, User } from "../../../types/types";
+import { PageShell } from "../../ui/page-shell";
 
 type Message = QuoteUploadForm['messages'][number];
 
@@ -178,312 +179,397 @@ export default function QuoteUpload() {
   const getParticipant = (id: string) => participants.find(p => p.id === id);
 
   return (
-    <div className="w-full h-full px-4 md:px-12 pt-6">
+    <PageShell variant="aurora">
+      <div className="fixed inset-0 pt-24 pb-4 md:pb-8 px-4 md:px-8">
+        <div className="flex flex-col xl:flex-row gap-8 xl:items-stretch max-w-400 mx-auto h-full">
 
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
-      >
-        <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+          {/* Left Box: Preview area */}
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-full xl:w-[45%] flex flex-col gap-6"
+          >
+            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
+              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
 
-        <div className="flex flex-col lg:flex-row h-full min-h-187.5">
-
-          {/* Left Column: Live Preview */}
-          <div className="lg:w-[45%] bg-black/40 rounded-4xl m-2 border border-white/5 flex flex-col overflow-hidden relative">
-            <div className="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-10 rounded-t-4xl">
-              <h2 className="text-white font-bold flex items-center gap-2">
-                <FontAwesomeIcon icon={faQuoteRight} className="text-primary-500" /> Preview
+              <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
+                <FontAwesomeIcon icon={faQuoteLeft} className="text-white/40 text-sm" />
+                Live Preview
               </h2>
-            </div>
 
-            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar max-h-125 bg-[url('/noise.png')] bg-opacity-5 relative">
-              <AnimatePresence initial={false}>
-                {(() => {
-                  let actualMsgIdx = 0;
-                  return messages.map((msg, idx) => {
-                    const participant = getParticipant(msg.userId);
+              <div className="relative flex-1 bg-black/40 rounded-3xl overflow-hidden border border-white/5 group/preview">
+                <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-8 space-y-6">
+                  <AnimatePresence initial={false}>
+                    {(() => {
+                      let actualMsgIdx = 0;
+                      return messages.map((msg) => {
+                        const participant = getParticipant(msg.userId);
 
-                    if (msg.isContext) {
-                      return (
-                        <motion.div
-                          key={msg.id}
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          className="flex justify-center"
-                        >
-                          <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-full px-6 py-2 text-xs text-white/50 italic text-center max-w-[80%] leading-relaxed shadow-sm">
-                            {msg.message || "Context description..."}
-                          </div>
-                        </motion.div>
-                      );
-                    }
+                        if (msg.isContext) {
+                          return (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="flex justify-center"
+                            >
+                              <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-2xl px-6 py-2 text-xs text-white/50 italic text-center max-w-[90%] leading-relaxed shadow-sm">
+                                {msg.message || "Context description..."}
+                              </div>
+                            </motion.div>
+                          );
+                        }
 
-                    const isRight = actualMsgIdx % 2 !== 0;
-                    actualMsgIdx++;
-                    const displayName = participant ? participant.username : "Selecting...";
-                    const profilePicture = participant?.profilePicture;
+                        const isRight = actualMsgIdx % 2 !== 0;
+                        actualMsgIdx++;
+                        const displayName = participant ? participant.username : "Selecting author...";
+                        const profilePicture = participant?.profilePicture;
 
-                    return (
-                      <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, x: !isRight ? -20 : 20, y: 10 }}
-                        animate={{ opacity: 1, x: 0, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className={`flex gap-3 ${isRight ? 'flex-row-reverse' : ''}`}
-                      >
-                        <Avatar
-                          src={profilePicture || undefined}
-                          className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${participant?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
-                          showFallback
-                        />
-                        <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                          <div className="text-[10px] font-bold text-white/40 mb-1 px-1 flex items-center gap-1">
-                            {displayName}
-                            {participant?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
-                          </div>
-                          <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${isRight
-                            ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
-                            : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
-                            }`}>
-                            <p className="whitespace-pre-wrap wrap-break-word">
-                              {msg.message || <span className="italic opacity-30">Type content...</span>}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  });
-                })()}
-              </AnimatePresence>
-              {messages.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-white/20 italic space-y-4">
-                  <FontAwesomeIcon icon={faCommentDots} className="text-4xl opacity-20" />
-                  <p>Start the conversation...</p>
+                        return (
+                          <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, x: !isRight ? -20 : 20, y: 10 }}
+                            animate={{ opacity: 1, x: 0, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className={`flex gap-3 ${isRight ? 'flex-row-reverse' : ''}`}
+                          >
+                            <Avatar
+                              src={profilePicture || undefined}
+                              className={`w-10 h-10 shrink-0 border border-white/10 shadow-lg rounded-full ${participant?.status === 'INVITED' ? 'border-warning/50' : ''}`}
+                              showFallback
+                            />
+                            <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[85%]`}>
+                              <div className="text-[10px] font-bold text-white/30 mb-1 px-1 flex items-center gap-1 uppercase tracking-wider">
+                                {displayName}
+                                {participant?.status === 'INVITED' && <span className="text-[8px] text-warning/60 italic">(Pending)</span>}
+                              </div>
+                              <div className={`p-4 rounded-3xl text-sm leading-relaxed shadow-2xl border transition-all duration-300 ${isRight
+                                ? 'bg-purple-600/20 text-white border-purple-500/30 rounded-tr-none'
+                                : 'bg-white/5 text-white/90 border-white/10 rounded-tl-none backdrop-blur-md'
+                                }`}>
+                                <p className="whitespace-pre-wrap wrap-break-word">
+                                  {msg.message || <span className="italic opacity-20">Type something...</span>}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      });
+                    })()}
+                  </AnimatePresence>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
 
-          {/* Right Column: Builder */}
-          <div className="lg:w-[55%] p-8 lg:p-10 flex flex-col">
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold text-white">Redact Quote</h1>
-              <div className="flex gap-2">
-                <Chip variant="flat" className="bg-white/5 text-white/50 border border-white/5">
-                  {messages.length} Items
+            <div className="bg-[#1A1A1A]/40 backdrop-blur-xl border border-white/10 rounded-4xl p-6 flex flex-col justify-center h-40 shrink-0">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 text-purple-400">
+                  <FontAwesomeIcon icon={faInfoCircle} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-white">Quote Drafting</h4>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    You can reorder messages by dragging the handles. Use &quot;Context&quot; for narrator descriptions or background info to make the quote more readable.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Box: Builder area */}
+          <motion.div
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-full xl:w-[55%] flex"
+          >
+            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 lg:p-10 shadow-2xl relative group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
+              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <FontAwesomeIcon icon={faSave} className="text-white/40 text-sm" />
+                  Redact Quote
+                </h2>
+                <Chip variant="flat" size="sm" className="bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold px-3">
+                  {messages.length} ITEMS
                 </Chip>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/50">Uploaded By</label>
-                <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12">
-                  {isSessionPending ? (
-                    <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                  ) : session?.user ? (
-                    <>
-                      <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6" />
-                      <span className="text-sm text-white">{session.user.name}</span>
-                    </>
-                  ) : (
-                    <span className="text-sm text-white/40 italic">Not logged in</span>
-                  )}
-                </div>
-              </div>
-
-              <Controller
-                name="createdAt"
-                control={control}
-                rules={{ required: true }}
-                render={({ field }) => (
-                  <DateInput
-                    {...field}
-                    label="Event Date"
-                    variant="bordered"
-                    labelPlacement="outside"
-                    isRequired
-                    isInvalid={!!errors.createdAt}
-                    classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", label: "text-white/50" }}
-                    value={field.value ? fromDate(field.value, getLocalTimeZone()) as any : null}
-                    onChange={(date) => field.onChange(date ? (date as any).toDate(getLocalTimeZone()) : new Date())}
-                  />
-                )}
-              />
-            </div>
-
-            {/* Message Manager List with Reorder */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6 space-y-3 min-h-0 max-h-87.5">
-              <div className="flex justify-between items-center sticky top-0 bg-[#070707]/80 backdrop-blur-md py-3 z-20">
-                <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest">
-                  Conversation Flow
-                </h3>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-white/10 text-white font-medium h-9 px-4 rounded-xl"
-                    startContent={<FontAwesomeIcon icon={faPlus} />}
-                    onPress={() => addMessage(false)}
-                  >
-                    Message
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-white/5 text-white/60 font-medium h-9 px-4 rounded-xl border border-white/5 hover:bg-white/10"
-                    startContent={<FontAwesomeIcon icon={faInfoCircle} />}
-                    onPress={() => addMessage(true)}
-                  >
-                    Context
-                  </Button>
-                </div>
-              </div>
-
-              <Reorder.Group
-                axis="y"
-                values={messages}
-                onReorder={handleReorder}
-                className="space-y-3"
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.1
+                    }
+                  }
+                }}
+                initial="hidden"
+                animate="show"
+                className="flex flex-col gap-8 flex-1"
               >
-                <AnimatePresence initial={false}>
-                  {messages.map((msg, index) => (
-                    <Reorder.Item
-                      key={msg.id}
-                      value={msg}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className={`flex gap-3 items-start p-4 rounded-2xl border transition-all duration-300 ${msg.isContext
-                        ? 'bg-white/5 border-white/5 border-dashed'
-                        : 'bg-white/5 border-white/5 group hover:border-white/10 shadow-sm'
-                        }`}
-                    >
-                      <div className="w-6 flex flex-col items-center justify-center text-white/20 pt-4 cursor-grab active:cursor-grabbing">
-                        <FontAwesomeIcon icon={faGripLines} className="text-sm" />
-                      </div>
-
-                      <div className="flex-1 space-y-3">
-                        <div className="flex gap-3">
-                          {!msg.isContext && (
-                            <Select
-                              placeholder="Select Speaker"
-                              size="sm"
-                              variant="bordered"
-                              aria-label="Speaker"
-                              classNames={{ trigger: "bg-black/40 text-white h-10 border-white/10", value: "text-white" }}
-                              selectedKeys={msg.userId ? [msg.userId] : []}
-                              onChange={(e) => updateMessage(msg.id, 'userId', e.target.value)}
-                              items={participants}
-                              renderValue={() => {
-                                const participant = participants.find(p => p.id === msg.userId);
-                                if (!participant) return null;
-                                return (
-                                  <div className="flex items-center gap-2">
-                                    <Avatar src={participant.profilePicture || undefined} size="sm" className={`w-5 h-5 ${participant.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
-                                    <span>{participant.username}</span>
-                                  </div>
-                                );
-                              }}
-                            >
-                              {(p) => (
-                                <SelectItem
-                                  key={p.id}
-                                  textValue={p.username}
-                                  startContent={
-                                    <Avatar src={p.profilePicture || undefined} size="sm" className={`w-5 h-5 ${p.status === 'INVITED' ? 'bg-warning/20' : ''}`} />
-                                  }
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span>{p.username}</span>
-                                    {p.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-4 text-[8px]">Pending</Chip>}
-                                  </div>
-                                </SelectItem>
-                              )}
-                            </Select>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            className={`h-10 px-4 font-medium ${msg.isContext ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30' : 'bg-white/5 text-white/40'}`}
-                            onPress={() => updateMessage(msg.id, 'isContext', !msg.isContext)}
-                          >
-                            {msg.isContext ? "Context Message" : "Set as Context"}
-                          </Button>
-                        </div>
-
-                        <Textarea
-                          placeholder={msg.isContext ? "Add context about what's happening..." : "What did they say?"}
-                          minRows={1}
-                          maxRows={5}
-                          variant="bordered"
-                          classNames={{ inputWrapper: "bg-transparent border-white/10 hover:border-white/20 focus-within:border-primary-500/50", input: "text-white" }}
-                          value={msg.message}
-                          onValueChange={(val) => updateMessage(msg.id, 'message', val)}
-                        />
-                      </div>
-
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="danger"
-                        onPress={() => removeMessage(msg.id)}
-                        className="opacity-40 hover:opacity-100 transition-opacity"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </Button>
-                    </Reorder.Item>
-                  ))}
-                </AnimatePresence>
-              </Reorder.Group>
-            </div>
-
-            {/* Action Area */}
-            <div className="pt-6 border-t border-white/10 space-y-4">
-              {/* Progress Bar */}
-              {uploadStatus.stage !== 'idle' && (
-                <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/70">{uploadStatus.message}</span>
-                    {uploadStatus.progress !== undefined && (
-                      <span className="text-white/50">{uploadStatus.progress}%</span>
-                    )}
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                >
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest pl-1">Uploaded By</label>
+                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl h-12">
+                      {isSessionPending ? (
+                        <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                      ) : session?.user ? (
+                        <>
+                          <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6 rounded-full border border-white/10" />
+                          <span className="text-xs text-white font-bold truncate">{session.user.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-white/40 italic">Not logged in</span>
+                      )}
+                    </div>
                   </div>
-                  <Progress
-                    aria-label="Upload progress"
-                    value={uploadStatus.progress}
-                    isIndeterminate={uploadStatus.progress === undefined}
-                    color={uploadStatus.stage === 'error' ? 'danger' : uploadStatus.stage === 'done' ? 'success' : 'primary'}
-                    size="sm"
-                  />
-                </div>
-              )}
 
-              <div className="flex gap-3">
-                <Button
-                  className="flex-1 bg-primary text-white font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
-                  startContent={<FontAwesomeIcon icon={faSave} />}
-                  onPress={() => handleSubmit(onSubmit)()}
-                  isLoading={uploadStatus.stage === 'saving'}
+                  <Controller
+                    name="createdAt"
+                    control={control}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <DateInput
+                        {...field}
+                        label="Event Date"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        isRequired
+                        isInvalid={!!errors.createdAt}
+                        classNames={{
+                          inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
+                          label: "text-[10px] font-bold text-white/30 uppercase tracking-widest"
+                        }}
+                        value={field.value ? fromDate(field.value, getLocalTimeZone()) : null}
+                        onChange={(date) => field.onChange(date ? (date).toDate() : new Date())}
+                      />
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="flex-1 flex flex-col min-h-0"
                 >
-                  Save Quote
-                </Button>
-                <Button
-                  as={Link}
-                  href="/quotes"
-                  variant="bordered"
-                  className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5 font-medium"
+                  <div className="flex justify-between items-center sticky top-0 bg-[#070707]/80 backdrop-blur-md py-4 z-20 mb-4 px-4 rounded-2xl border border-white/5">
+                    <div className="flex flex-col">
+                      <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.25em]">
+                        Conversation Flow
+                      </h3>
+                      <span className="text-[9px] text-purple-400/60 font-medium">Reorder by dragging handles</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className="bg-purple-500/10 text-purple-300 font-bold h-8 px-4 rounded-xl border border-purple-500/20 hover:bg-purple-500/20 transition-all"
+                        startContent={<FontAwesomeIcon icon={faPlus} className="text-[10px]" />}
+                        onPress={() => addMessage(false)}
+                      >
+                        Message
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className="bg-white/5 text-white/40 font-bold h-8 px-4 rounded-xl border border-white/5 hover:bg-white/10 hover:text-white/60 transition-all"
+                        startContent={<FontAwesomeIcon icon={faInfoCircle} className="text-[10px]" />}
+                        onPress={() => addMessage(true)}
+                      >
+                        Context
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 bg-black/20 border border-white/5 rounded-3xl overflow-hidden flex flex-col relative min-h-0">
+                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-4">
+                      <Reorder.Group
+                        axis="y"
+                        values={messages}
+                        onReorder={handleReorder}
+                        className="space-y-3 pb-2"
+                      >
+                        <AnimatePresence initial={false}>
+                          {messages.map((msg) => (
+                            <Reorder.Item
+                              key={msg.id}
+                              value={msg}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className={`flex gap-3 items-start p-3 rounded-2xl border transition-all duration-300 ${msg.isContext
+                                ? 'bg-purple-500/5 border-purple-500/10 border-dashed'
+                                : 'bg-white/5 border-white/5 group hover:border-purple-500/30'
+                                }`}
+                            >
+                              {/* Drag Handle */}
+                              <div className="w-5 flex flex-col items-center justify-center text-white/10 pt-3 cursor-grab active:cursor-grabbing hover:text-purple-400 transition-colors">
+                                <FontAwesomeIcon icon={faGripLines} className="text-xs" />
+                              </div>
+
+                              <div className="flex-1 space-y-3">
+                                {/* Compact Controls Header */}
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex-1">
+                                    {!msg.isContext ? (
+                                      <Select
+                                        placeholder="Select Speaker"
+                                        size="lg"
+                                        variant="bordered"
+                                        aria-label="Speaker"
+                                        classNames={{
+                                          trigger: "bg-black/40 text-white h-10 border-white/5 hover:border-purple-500/30 transition-all min-w-[140px] max-w-[220px] rounded-xl",
+                                          value: "text-xs font-bold"
+                                        }}
+                                        selectedKeys={msg.userId ? [msg.userId] : []}
+                                        onChange={(e) => updateMessage(msg.id, 'userId', e.target.value)}
+                                        items={participants}
+                                        renderValue={() => {
+                                          const participant = participants.find(p => p.id === msg.userId);
+                                          if (!participant) return null;
+                                          return (
+                                            <div className="flex items-center gap-1.5">
+                                              <Avatar src={participant.profilePicture || undefined} size="sm" className="w-3.5 h-3.5 border border-white/10 shadow-sm" />
+                                              <span className="truncate">{participant.username}</span>
+                                            </div>
+                                          );
+                                        }}
+                                      >
+                                        {(p) => (
+                                          <SelectItem
+                                            key={p.id}
+                                            textValue={p.username}
+                                            startContent={
+                                              <Avatar src={p.profilePicture || undefined} size="sm" className="w-4 h-4 border border-white/10" />
+                                            }
+                                          >
+                                            <div className="flex items-center justify-between gap-2 w-full">
+                                              <span className="text-xs font-medium">{p.username}</span>
+                                              {p.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-3.5 text-[7px] font-bold">PENDING</Chip>}
+                                            </div>
+                                          </SelectItem>
+                                        )}
+                                      </Select>
+                                    ) : (
+                                      <div className="flex items-center gap-2 text-purple-400/60 uppercase tracking-widest font-black text-[9px]">
+                                        <FontAwesomeIcon icon={faInfoCircle} className="text-[10px]" />
+                                        Contextual Info
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                      isIconOnly
+                                      size="sm"
+                                      variant="flat"
+                                      className={`h-10 w-10 rounded-xl transition-all ${msg.isContext ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-white/5 text-white/20 border border-white/5 hover:bg-white/10'}`}
+                                      onPress={() => updateMessage(msg.id, 'isContext', !msg.isContext)}
+                                      title={msg.isContext ? "Switch to Speaker" : "Switch to Context"}
+                                    >
+                                      <FontAwesomeIcon icon={msg.isContext ? faCommentDots : faInfoCircle} className="text-sm" />
+                                    </Button>
+                                    <Button
+                                      isIconOnly
+                                      size="sm"
+                                      variant="light"
+                                      color="danger"
+                                      onPress={() => removeMessage(msg.id)}
+                                      className="text-white/5 hover:text-red-500 hover:bg-red-500/10 transition-all rounded-xl h-10 w-10"
+                                    >
+                                      <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <Textarea
+                                  placeholder={msg.isContext ? "Add scene description..." : "Type what was said..."}
+                                  minRows={1}
+                                  maxRows={5}
+                                  variant="bordered"
+                                  classNames={{
+                                    inputWrapper: "bg-black/20 border-white/10 hover:border-purple-500/30 focus-within:!border-purple-500/50 transition-all rounded-2xl p-4",
+                                    input: "text-white text-sm leading-relaxed placeholder:text-white/10"
+                                  }}
+                                  value={msg.message}
+                                  onValueChange={(val) => updateMessage(msg.id, 'message', val)}
+                                />
+                              </div>
+                            </Reorder.Item>
+                          ))}
+                        </AnimatePresence>
+                      </Reorder.Group>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="space-y-6 pt-6 border-t border-white/5"
                 >
-                  Cancel
-                </Button>
-              </div>
+                  {uploadStatus.stage !== 'idle' && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="space-y-3 p-5 bg-purple-500/5 rounded-3xl border border-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]"
+                    >
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                        <span className="text-purple-300">{uploadStatus.message}</span>
+                        {uploadStatus.progress !== undefined && <span className="text-purple-400">{uploadStatus.progress}%</span>}
+                      </div>
+                      <Progress
+                        value={uploadStatus.progress}
+                        isIndeterminate={uploadStatus.progress === undefined}
+                        classNames={{
+                          base: "h-1.5",
+                          indicator: "bg-purple-500 shadow-[0_0_10px_#a855f7]",
+                          track: "bg-white/5"
+                        }}
+                      />
+                    </motion.div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <Button
+                      color="secondary"
+                      size="lg"
+                      className="flex-1 font-black h-12 rounded-2xl bg-purple-600 hover:bg-purple-500 shadow-xl shadow-purple-900/30 text-sm uppercase tracking-wider"
+                      startContent={<FontAwesomeIcon icon={faSave} />}
+                      onPress={() => handleSubmit(onSubmit)()}
+                      isLoading={uploadStatus.stage === 'saving'}
+                    >
+                      Publish Quote
+                    </Button>
+                    <Button
+                      as={Link}
+                      href="/quotes"
+                      variant="bordered"
+                      size="lg"
+                      className="px-10 h-12 rounded-2xl border-white/10 text-white hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </motion.div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </PageShell>
   );
 }
