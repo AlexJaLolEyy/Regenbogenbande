@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { GlassDropZone } from "../../ui/glass-drop-zone";
+import { PageShell } from "../../ui/page-shell";
 
 export default function VideoUpload() {
   const { data: session, isPending: isSessionPending } = useSession();
@@ -59,7 +60,6 @@ export default function VideoUpload() {
     formState: { errors },
   } = useForm<VideoUploadForm>({
     defaultValues: {
-      uploadedAt: new Date(),
       participants: [],
     }
   })
@@ -112,6 +112,8 @@ export default function VideoUpload() {
     videoUrl?: string; // For link preview
     thumbnailUrl?: string; // For link preview
   }>({});
+
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   useEffect(() => {
     getAllSelectableParticipants().then((p) => {
@@ -284,7 +286,7 @@ export default function VideoUpload() {
       }
 
       const { video: _video, thumbnail: _thumbnail, ...metadata } = data;
-      const videoData = { ...metadata, id: "" };
+      const videoData = { ...metadata, id: "", uploadedAt: new Date() };
 
       await createVideo(videoData, videoPath, thumbnailPath);
 
@@ -299,199 +301,380 @@ export default function VideoUpload() {
   }
 
   return (
-    <div className="w-full h-full px-4 md:px-12">
+    <PageShell variant="aurora">
+      <div className="w-full h-full pt-24 pb-4 md:pb-8 px-4 md:px-8 min-h-screen">
 
-      <Modal isOpen={errorModalOpen} onOpenChange={setErrorModalOpen} backdrop="blur">
-        <ModalContent className="glass-panel border border-white/10 text-white bg-black/80">
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Import Error</ModalHeader>
-              <ModalBody>
-                <p>{errorMessage}</p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Close
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        <Modal isOpen={errorModalOpen} onOpenChange={setErrorModalOpen} backdrop="blur">
+          <ModalContent className="glass-panel border border-white/10 text-white bg-black/80">
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">Import Error</ModalHeader>
+                <ModalBody>
+                  <p>{errorMessage}</p>
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="danger" variant="light" onPress={onClose}>
+                    Close
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
 
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
-      >
-        <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+        {/* Fullscreen Preview Modal */}
+        <Modal
+          isOpen={isPreviewModalOpen}
+          onOpenChange={setIsPreviewModalOpen}
+          size="5xl"
+          backdrop="blur"
+          classNames={{
+            base: "bg-[#050505]/90 border border-white/10",
+            header: "border-b border-white/5",
+            body: "p-0",
+          }}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="text-white">Video Preview</ModalHeader>
+                <ModalBody>
+                  <div className="aspect-video bg-black flex items-center justify-center">
+                    <video
+                      src={uploadMode === 'file' && preview ? URL.createObjectURL(preview) : videoMetadata.videoUrl}
+                      controls
+                      className="w-full h-full"
+                    />
+                  </div>
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
 
-        <div className="flex flex-col lg:flex-row h-full">
-          {/* Left Column: Upload Zone */}
-          <div className="lg:w-[60%] bg-black/40 rounded-4xl m-2 relative group overflow-hidden border border-white/5 flex flex-col min-h-125">
+        <div className="flex flex-col xl:flex-row gap-8 xl:items-stretch max-w-400 mx-auto">
+          {/* Left Box: Upload & Preview */}
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-full xl:w-[55%] flex flex-col gap-6"
+          >
+            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
+              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
 
-            <div className="absolute top-6 inset-x-6 z-30 flex justify-center">
-              <Tabs
-                aria-label="Upload Method"
-                radius="full"
-                variant="bordered"
-                selectedKey={uploadMode}
-                onSelectionChange={(k) => {
-                  setUploadMode(k as "file" | "link");
-                  if (k === 'file') {
-                    setVideoMetadata(prev => ({ ...prev, videoUrl: undefined, thumbnailUrl: undefined }));
-                  } else {
-                    setPreview(null);
-                  }
-                }}
-                classNames={{ tabList: "bg-black/80 border border-white/10 backdrop-blur-md", cursor: "bg-white/20", tabContent: "text-white/70 group-data-[selected=true]:text-white" }}
-              >
-                <Tab key="file" title={<div className="flex items-center gap-2"><FontAwesomeIcon icon={faCloudArrowUp} /><span>File Upload</span></div>} />
-                <Tab key="link" title={<div className="flex items-center gap-2"><FontAwesomeIcon icon={faLink} /><span>Medal.tv Link</span></div>} />
-              </Tabs>
-            </div>
+              <div className="flex justify-center mb-8">
+                <Tabs
+                  aria-label="Upload Method"
+                  radius="full"
+                  variant="bordered"
+                  selectedKey={uploadMode}
+                  onSelectionChange={(k) => {
+                    setUploadMode(k as "file" | "link");
+                    if (k === 'file') {
+                      setVideoMetadata(prev => ({ ...prev, videoUrl: undefined, thumbnailUrl: undefined }));
+                    } else {
+                      setPreview(null);
+                    }
+                  }}
+                  classNames={{
+                    tabList: "bg-black/40 border border-white/10 backdrop-blur-md p-1",
+                    cursor: "bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]",
+                    tabContent: "text-white/60 group-data-[selected=true]:text-white font-bold"
+                  }}
+                >
+                  <Tab key="file" title={<div className="flex items-center gap-2 px-2"><FontAwesomeIcon icon={faCloudArrowUp} /><span>File Upload</span></div>} />
+                  <Tab key="link" title={<div className="flex items-center gap-2 px-2"><FontAwesomeIcon icon={faLink} /><span>Medal.tv Link</span></div>} />
+                </Tabs>
+              </div>
 
-            <div className="flex-1 flex items-center justify-center p-8 relative pt-24">
-              <AnimatePresence mode="wait">
-                {uploadMode === "file" ? (
-                  <motion.div
-                    key="file-upload"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="w-full h-full"
-                  >
-                    {preview ? (
-                      <div className="z-20 w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-300">
-                        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group/preview flex items-center justify-center">
+              <div className="relative flex-1 bg-black/40 rounded-3xl overflow-hidden border border-white/5 group/preview flex flex-col">
+                <AnimatePresence mode="wait">
+                  {uploadMode === "file" ? (
+                    <motion.div
+                      key="file-upload"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="w-full h-full"
+                    >
+                      {preview ? (
+                        <div className="w-full h-full relative flex items-center justify-center">
                           <video src={URL.createObjectURL(preview)} controls className="max-w-full max-h-full object-contain" />
                           <button
                             onClick={() => setPreview(null)}
-                            className="absolute top-4 right-4 w-8 h-8 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10 opacity-0 group-hover/preview:opacity-100"
+                            className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-red-500/80 text-white rounded-full flex items-center justify-center transition-all z-50 backdrop-blur-md border border-white/10 opacity-0 group-hover/preview:opacity-100"
                           >
                             <FontAwesomeIcon icon={faTimes} />
                           </button>
-                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.size}</Chip>
-                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.resolution}</Chip>
-                            <Chip size="sm" className="bg-black/60 backdrop-blur-md border border-white/10 text-white font-mono">{videoMetadata.duration ? formatDuration(videoMetadata.duration) : '...'}</Chip>
-                          </div>
                         </div>
-                        <div className="mt-6 text-center">
-                          <h2 className="text-xl font-bold text-white mb-1 truncate max-w-md">{preview.name}</h2>
-                          <p className="text-white/40 text-sm">Click the preview to change file</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <motion.div
-                        className="w-full h-full"
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                      >
-                        <GlassDropZone onFileSelect={handleFileChange} className="w-full h-full border-none bg-transparent hover:bg-white/5" />
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="link-import"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="w-full max-w-md space-y-6 text-center"
-                  >
-                    {videoMetadata.videoUrl ? (
-                      <div className="space-y-6">
-                        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group/preview flex items-center justify-center">
+                      ) : (
+                        <GlassDropZone
+                          onFileSelect={handleFileChange}
+                          title="Upload Video"
+                          subtitle="MP4, WebM (Max 500MB)"
+                          className="w-full h-full border-none bg-transparent hover:bg-white/5 transition-colors"
+                        />
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="link-import"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="w-full h-full flex flex-col items-center justify-center p-8"
+                    >
+                      {videoMetadata.videoUrl ? (
+                        <div className="w-full h-full relative flex items-center justify-center">
                           <video src={videoMetadata.videoUrl} poster={videoMetadata.thumbnailUrl} controls className="max-w-full max-h-full object-contain" />
                           <button
                             onClick={() => setVideoMetadata(prev => ({ ...prev, videoUrl: undefined }))}
-                            className="absolute top-4 right-4 w-8 h-8 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10"
+                            className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-red-500/80 text-white rounded-full flex items-center justify-center transition-all z-50 backdrop-blur-md border border-white/10"
                           >
                             <FontAwesomeIcon icon={faTimes} />
                           </button>
                         </div>
-                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 flex items-center justify-center gap-2">
-                          <span className="text-sm font-medium">✓ Medal clip imported successfully</span>
+                      ) : (
+                        <div className="w-full max-w-sm space-y-6 text-center">
+                          <div className="w-20 h-20 rounded-2xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4 border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.1)]">
+                            <FontAwesomeIcon icon={faLink} className="text-3xl text-purple-400" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white">Import from Medal.tv</h3>
+                          <div className="flex flex-col gap-3">
+                            <Input
+                              placeholder="https://medal.tv/clip/..."
+                              value={linkUrl}
+                              onValueChange={setLinkUrl}
+                              variant="bordered"
+                              classNames={{
+                                inputWrapper: "bg-white/5 border-white/10 h-14 hover:border-purple-500/30 transition-colors focus-within:!border-purple-500/50",
+                                input: "text-white placeholder:text-white/20"
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              color="secondary"
+                              size="lg"
+                              onPress={handleImportLink}
+                              isLoading={isScraping}
+                              className="h-12 font-bold bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-900/20 text-sm"
+                            >
+                              Import Clip
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-24 h-24 rounded-full bg-[#FFB000]/10 flex items-center justify-center mx-auto mb-2">
-                          <FontAwesomeIcon icon={faLink} className="text-4xl text-[#FFB000]" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-white">Import from Medal.tv</h3>
-                        <p className="text-white/40 text-sm">Paste your clip link below to auto-fill details.</p>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="https://medal.tv/clip/..."
-                            value={linkUrl}
-                            onValueChange={setLinkUrl}
-                            classNames={{ inputWrapper: "bg-white/5 border-white/10 h-14", input: "text-white" }}
-                          />
-                          <Button color="primary" size="lg" onPress={handleImportLink} isLoading={isScraping} className="h-14 px-8 font-bold">
-                            Import
-                          </Button>
-                        </div>
-                      </>
-                    )}
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Video Info Strip - Moved below preview */}
+              <AnimatePresence>
+                {(preview || videoMetadata.videoUrl) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="mt-6 flex flex-wrap gap-4 justify-center"
+                  >
+                    <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                      <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Size</span>
+                      <span className="text-sm text-purple-300 font-mono">{videoMetadata.size || '...'}</span>
+                    </div>
+                    <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                      <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Resolution</span>
+                      <span className="text-sm text-purple-300 font-mono">{videoMetadata.resolution || '...'}</span>
+                    </div>
+                    <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                      <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Duration</span>
+                      <span className="text-sm text-purple-300 font-mono">{videoMetadata.duration ? formatDuration(videoMetadata.duration) : '...'}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-purple-500/20 text-purple-300 border border-purple-500/20 px-4 h-9 font-bold"
+                      onPress={() => setIsPreviewModalOpen(true)}
+                    >
+                      Fullscreen Preview
+                    </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-          </div>
 
-          {/* Right Column: Metadata form */}
-          <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col">
-            <div className="flex-1 space-y-4">
-              <h2 className="text-2xl font-bold text-white mb-2">Video Details</h2>
+            <div className="bg-[#1A1A1A]/40 backdrop-blur-xl border border-white/10 rounded-4xl p-6 flex flex-col justify-center min-h-35">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 text-purple-400">
+                  <FontAwesomeIcon icon={faInfoCircle} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-white">Processing Info</h4>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    {uploadMode === 'file'
+                      ? "Videos are automatically compressed using specialized codecs for optimal web performance without visible quality loss."
+                      : "Medal clips are already optimized. We'll import the source file directly to our secure storage."}
+                  </p>
+                </div>
+              </div>
 
-              <form className="space-y-4">
-                <Controller
-                  name="title"
-                  control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      label="Title"
+              {uploadMode === 'file' && (
+                <div className="pt-2 pl-14">
+                  <Checkbox
+                    isSelected={qualityMode}
+                    onValueChange={setQualityMode}
+                    size="sm"
+                    classNames={{ label: "text-white/70 text-xs font-bold", wrapper: "after:bg-purple-600" }}
+                  >
+                    Enable High Quality Mode (Maximum Bitrate)
+                  </Checkbox>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Right Box: Metadata Form */}
+          <motion.div
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-full xl:w-[45%] flex"
+          >
+            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 lg:p-10 shadow-2xl relative group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
+              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+
+              <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
+                <FontAwesomeIcon icon={faFilm} className="text-white/40 text-sm" />
+                Clip Metadata
+              </h2>
+
+              <motion.form
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.1
+                    }
+                  }
+                }}
+                initial="hidden"
+                animate="show"
+                className="space-y-8"
+              >
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="flex flex-col md:flex-row gap-6"
+                >
+                  <div className="md:w-2/3">
+                    <Controller
+                      name="title"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          label="Title"
+                          variant="bordered"
+                          labelPlacement="outside"
+                          placeholder="e.g. Wieso hat der ne lilane RPG?"
+                          isRequired
+                          isInvalid={!!errors.title}
+                          errorMessage="Title is required"
+                          classNames={{
+                            inputWrapper: "bg-white/5 border-white/10 h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
+                            input: "text-white placeholder:text-white/20",
+                            label: "text-sm font-medium text-white/50"
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="md:w-1/3">
+                    <Select
+                      label="Category"
                       variant="bordered"
                       labelPlacement="outside"
-                      placeholder="Give your video a title"
+                      placeholder="Select Category"
                       isRequired
-                      isInvalid={!!errors.title}
-                      errorMessage="Title is required"
-                      classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors", input: "text-white font-medium", label: "text-white/50" }}
-                    />
-                  )}
-                />
+                      classNames={{
+                        trigger: "bg-white/5 border-white/10 h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
+                        label: "text-sm font-medium text-white/50",
+                        value: "text-white font-medium"
+                      }}
+                      {...register("categoryId", { required: true })}
+                      items={categories}
+                      renderValue={(items) => {
+                        return items.map((item) => {
+                          const category = categories.find(c => c.id === item.key);
+                          return (
+                            <div key={item.key} className="flex items-center gap-2">
+                              {category?.iconUrl && (
+                                <Avatar src={category.iconUrl} className="w-5 h-5" />
+                              )}
+                              <span>{item.textValue}</span>
+                            </div>
+                          );
+                        });
+                      }}
+                    >
+                      {(category) => (
+                        <SelectItem
+                          key={category.id}
+                          textValue={category.name}
+                          startContent={category.iconUrl ? <Avatar src={category.iconUrl} alt="" className="w-5 h-5" /> : undefined}
+                        > 
+                          {category.name}
+                        </SelectItem>
+                      )}
+                    </Select>
+                  </div>
+                </motion.div>
 
-                <Controller
-                  name="description"
-                  control={control}
-                  render={({ field }) => (
-                    <Textarea
-                      {...field}
-                      label="Description"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      placeholder="Describe what's happening..."
-                      minRows={3}
-                      classNames={{ inputWrapper: "bg-white/5 border-white/10 hover:border-white/20 transition-colors", input: "text-white", label: "text-white/50" }}
-                    />
-                  )}
-                />
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                >
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <Textarea
+                        {...field}
+                        label="Description"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        placeholder="Tell the story behind this clip..."
+                        minRows={4}
+                        classNames={{
+                          inputWrapper: "bg-white/5 border-white/10 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
+                          input: "text-white leading-relaxed placeholder:text-white/20",
+                          label: "text-sm font-medium text-white/50"
+                        }}
+                      />
+                    )}
+                  />
+                </motion.div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end"
+                >
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-white/50">Uploaded By</label>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12">
+                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl h-14">
                       {isSessionPending ? (
-                        <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                       ) : session?.user ? (
                         <>
-                          <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6" />
-                          <span className="text-sm text-white">{session.user.name}</span>
+                          <Avatar src={session.user.image || undefined} size="sm" className="w-8 h-8 rounded-full border border-white/10" />
+                          <span className="text-sm text-white font-bold truncate">{session.user.name}</span>
                         </>
                       ) : (
                         <span className="text-sm text-white/40 italic">Not logged in</span>
@@ -499,176 +682,148 @@ export default function VideoUpload() {
                     </div>
                   </div>
 
+                  <Select
+                    label="Participants"
+                    variant="bordered"
+                    labelPlacement="outside"
+                    placeholder="Involved creators"
+                    selectionMode="multiple"
+                    isRequired
+                    isInvalid={!!errors.participants}
+                    classNames={{
+                      trigger: "bg-white/5 border-white/10 min-h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
+                      label: "text-sm font-medium text-white/50",
+                      value: "text-white"
+                    }}
+                    {...register("participants", { required: true })}
+                    items={participants}
+                    isMultiline
+                    renderValue={(items) => (
+                      <div className="flex flex-wrap gap-1 py-1">
+                        {items.map((item) => (
+                          <Chip key={item.key} size="sm" variant="flat" className="bg-purple-500/20 text-purple-300 border border-purple-500/20 text-[10px] font-bold">
+                            {item.textValue}
+                          </Chip>
+                        ))}
+                      </div>
+                    )}
+                  >
+                    {(participant) => (
+                      <SelectItem key={participant.id} textValue={participant.username}>
+                        <div className="flex items-center gap-2">
+                          <Avatar size="sm" src={participant.profilePicture || undefined} className={participant.status === 'INVITED' ? 'bg-warning/20' : ''} />
+                          <span className="font-normal">{participant.username}</span>
+                          {participant.status === 'INVITED' && (
+                            <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[9px] font-bold uppercase">Pending</Chip>
+                          )}
+                        </div>
+                      </SelectItem>
+                    )}
+                  </Select>
+                </motion.div>
+
+                <div className="flex-1" />
+
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="space-y-4 pt-4 border-t border-white/5"
+                >
                   <Controller
-                    name="uploadedAt"
+                    name="createdAt"
                     control={control}
+                    rules={{ required: true }}
                     render={({ field }) => (
                       <DateInput
                         {...field}
-                        label="Uploaded At"
+                        label="Event Date (Recorded At)"
                         variant="bordered"
                         labelPlacement="outside"
                         isRequired
-                        isReadOnly
-                        classNames={{ inputWrapper: "bg-white/5 border-white/10 h-12 opacity-50", label: "text-white/50" }}
+                        isReadOnly={!manualDateOverride}
+                        isInvalid={!!errors.createdAt}
+                        classNames={{
+                          inputWrapper: `bg-white/5 border-white/10 h-14 transition-all ${!manualDateOverride ? 'opacity-40 cursor-not-allowed' : 'hover:border-purple-500/30 focus-within:!border-purple-500/50'}`,
+                          label: "text-sm font-medium text-white/50"
+                        }}
                         value={field.value ? fromDate(field.value, getLocalTimeZone()) : null}
                         onChange={(date) => field.onChange(date ? (date).toDate() : new Date())}
                       />
                     )}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Category"
-                    variant="bordered"
-                    labelPlacement="outside"
-                    placeholder="Select Category"
-                    isRequired
-                    classNames={{ trigger: "bg-white/5 border-white/10 h-12", label: "text-white/50", value: "text-white" }}
-                    {...register("categoryId", { required: true })}
-                    items={categories}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="light"
+                    className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter h-auto p-0 min-w-0 hover:text-purple-300 transition-colors"
+                    onPress={() => setManualDateOverride(!manualDateOverride)}
                   >
-                    {(category) => (
-                      <SelectItem key={category.id} textValue={category.name}>
-                        {category.name}
-                      </SelectItem>
-                    )}
-                  </Select>
+                    {manualDateOverride ? "Reset to Auto-Detection" : "Change manual recorded date"}
+                  </Button>
+                </motion.div>
 
-                  <div className="space-y-2">
-                    <Controller
-                      name="createdAt"
-                      control={control}
-                      rules={{ required: true }}
-                      render={({ field }) => (
-                        <DateInput
-                          {...field}
-                          label="Recorded At"
-                          variant="bordered"
-                          labelPlacement="outside"
-                          isRequired
-                          isReadOnly={!manualDateOverride}
-                          isInvalid={!!errors.createdAt}
-                          classNames={{
-                            inputWrapper: `bg-white/5 border-white/10 h-12 ${!manualDateOverride ? 'opacity-50' : ''}`,
-                            label: "text-white/50"
-                          }}
-                          value={field.value ? fromDate(field.value, getLocalTimeZone()) : null}
-                          onChange={(date) => field.onChange(date ? (date).toDate() : new Date())}
-                        />
-                      )}
-                    />
-                    <Button
-                      size="sm"
-                      variant="light"
-                      className="text-[10px] text-white/40 h-auto p-0 min-w-0"
-                      onPress={() => setManualDateOverride(!manualDateOverride)}
-                    >
-                      {manualDateOverride ? "Cancel manual override" : "I know the original Date and wanna change it"}
-                    </Button>
-                  </div>
-                </div>
-
-                <Select
-                  label="Participants"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  placeholder="Who is in this video?"
-                  selectionMode="multiple"
-                  isRequired
-                  isInvalid={!!errors.participants}
-                  classNames={{ trigger: "bg-white/5 border-white/10 min-h-12", label: "text-white/50", value: "text-white" }}
-                  {...register("participants", { required: true })}
-                  items={participants}
-                  isMultiline
+                {/* Progress & Actions */}
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 10 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  className="space-y-6 pt-6"
                 >
-                  {(participant) => (
-                    <SelectItem key={participant.id} textValue={participant.username}>
-                      <div className="flex items-center gap-2">
-                        <Avatar src={participant.profilePicture || undefined} size="sm" className={participant.status === 'INVITED' ? 'bg-warning/20' : ''} />
-                        <span>{participant.username}</span>
-                        {participant.status === 'INVITED' && (
-                          <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[10px]">Pending</Chip>
+                  {uploadStatus.stage !== 'idle' && (
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="space-y-3 p-5 bg-purple-500/5 rounded-3xl border border-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]"
+                    >
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                        <span className="text-purple-300">{uploadStatus.message}</span>
+                        {uploadStatus.progress !== undefined && (
+                          <span className="text-purple-400">{uploadStatus.progress}%</span>
                         )}
                       </div>
-                    </SelectItem>
+                      <Progress
+                        aria-label="Upload progress"
+                        value={uploadStatus.progress}
+                        isIndeterminate={uploadStatus.progress === undefined}
+                        classNames={{
+                          base: "h-1.5",
+                          indicator: "bg-purple-500 shadow-[0_0_10px_#a855f7]",
+                          track: "bg-white/5"
+                        }}
+                      />
+                    </motion.div>
                   )}
-                </Select>
-              </form>
-            </div>
 
-            {/* Action area fixed at bottom */}
-            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-              {/* Compression Info Panel */}
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
-                {uploadMode === 'file' ? (
-                  <>
-                    <div className="flex items-center gap-2 text-xs text-white/60">
-                      <FontAwesomeIcon icon={faInfoCircle} className="text-primary-400" />
-                      <span>Videos are automatically compressed for optimal streaming</span>
-                    </div>
-                    <Checkbox
-                      isSelected={qualityMode}
-                      onValueChange={setQualityMode}
-                      size="sm"
-                      classNames={{ label: "text-white/70 text-xs" }}
+                  <div className="flex gap-4">
+                    <Button
+                      color="secondary"
+                      size="lg"
+                      className="flex-1 font-black h-12 rounded-2xl bg-purple-600 hover:bg-purple-500 shadow-xl shadow-purple-900/30 text-sm uppercase tracking-wider"
+                      startContent={<FontAwesomeIcon icon={faFilm} />}
+                      onPress={() => handleSubmit(onSubmit)()}
+                      isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
                     >
-                      High Quality Mode (larger file, better detail)
-                    </Checkbox>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs text-white/60">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-green-400" />
-                    <span>Medal clips are already optimized - no additional compression needed</span>
+                      Publish Clip
+                    </Button>
+                    <Button
+                      as={Link}
+                      href="/videos"
+                      variant="bordered"
+                      size="lg"
+                      className="px-10 h-12 rounded-2xl border-white/10 text-white hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest"
+                    >
+                      Cancel
+                    </Button>
                   </div>
-                )}
-              </div>
-
-              {/* Progress Bar */}
-              {uploadStatus.stage !== 'idle' && (
-                <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/70">{uploadStatus.message}</span>
-                    {uploadStatus.progress !== undefined && (
-                      <span className="text-white/50">{uploadStatus.progress}%</span>
-                    )}
-                  </div>
-                  <Progress
-                    aria-label="Upload progress"
-                    value={uploadStatus.progress}
-                    isIndeterminate={uploadStatus.progress === undefined}
-                    color={uploadStatus.stage === 'error' ? 'danger' : uploadStatus.stage === 'done' ? 'success' : 'primary'}
-                    size="sm"
-                  />
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                <Button
-                  color="primary"
-                  size="lg"
-                  className="flex-1 font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
-                  startContent={<FontAwesomeIcon icon={faFilm} />}
-                  onPress={() => handleSubmit(onSubmit)()}
-                  isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
-                >
-                  Publish Video
-                </Button>
-                <Button
-                  as={Link}
-                  href="/videos"
-                  variant="bordered"
-                  size="lg"
-                  className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5"
-                >
-                  Cancel
-                </Button>
-              </div>
+                </motion.div>
+              </motion.form>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </PageShell>
   );
 }
