@@ -1,6 +1,6 @@
 "use server"
 
-import { requireAdmin } from "@/src/lib/auth-utils";
+import { requireAdminOrOwner } from "@/src/lib/auth-utils";
 import { pictureListSelect, PrismaPictureList, transformPicture, transformPictureListItem } from "@/src/lib/db/selects/pictures";
 import { PrismaQuoteList, quoteListSelect, transformQuote, transformQuoteListItem } from "@/src/lib/db/selects/quotes";
 import { PrismaVideoList, transformVideo, transformVideoListItem, videoListSelect } from "@/src/lib/db/selects/videos";
@@ -9,7 +9,7 @@ import { Picture, PictureListItem, Quote, QuoteListItem, Video, VideoListItem } 
 import { revalidatePath } from "next/cache";
 
 export async function getPublishedContent(type: 'video' | 'picture' | 'quote', page: number = 1): Promise<{ items: (VideoListItem | PictureListItem | QuoteListItem)[], total: number }> {
-    await requireAdmin();
+    await requireAdminOrOwner();
     const limit = 20;
     const skip = (page - 1) * limit;
 
@@ -64,7 +64,7 @@ export async function getPublishedContent(type: 'video' | 'picture' | 'quote', p
 }
 
 export async function toggleVisibility(type: string, id: string, isPublic: boolean) {
-    await requireAdmin();
+    await requireAdminOrOwner();
     try {
         const data = {
             isPublic,
@@ -84,7 +84,7 @@ export async function toggleVisibility(type: string, id: string, isPublic: boole
 }
 
 export async function getContentById(type: string, id: string): Promise<Video | Picture | Quote | null> {
-    await requireAdmin();
+    await requireAdminOrOwner();
     try {
         if (type === 'video') {
             const item = await prisma.video.findUnique({

@@ -1,17 +1,17 @@
 "use server"
 
-import { requireAdmin } from "@/src/lib/auth-utils";
+import { requireAdminOrOwner } from "@/src/lib/auth-utils";
 import { addCategory as _addCategory, deleteCategory as _deleteCategory, updateCategory as _updateCategory } from "@/src/lib/db/mutations/categories";
 import { getAllCategories as _getAllCategories } from "@/src/lib/db/selects/categories";
 import { revalidatePath } from "next/cache";
 
 export async function fetchCategories() {
-    await requireAdmin();
+    await requireAdminOrOwner();
     return await _getAllCategories();
 }
 
 export async function createCategory(name: string, iconUrl?: string) {
-    await requireAdmin();
+    await requireAdminOrOwner();
     try {
         const category = await _addCategory(name, iconUrl);
         revalidatePath("/admin/categories");
@@ -24,7 +24,7 @@ export async function createCategory(name: string, iconUrl?: string) {
 }
 
 export async function editCategory(id: string, name?: string, iconUrl?: string) {
-    await requireAdmin();
+    await requireAdminOrOwner();
     try {
         const category = await _updateCategory(id, { name, iconUrl });
         revalidatePath("/admin/categories");
@@ -37,7 +37,7 @@ export async function editCategory(id: string, name?: string, iconUrl?: string) 
 }
 
 export async function removeCategory(id: string) {
-    await requireAdmin();
+    await requireAdminOrOwner();
     try {
         await _deleteCategory(id);
         revalidatePath("/admin/categories");
