@@ -8,7 +8,7 @@ export default async function Page() {
   const session = await getSession();
   const quotes: QuoteListItem[] = await getQuotesForList(session);
   const categories = await prisma.category.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, iconUrl: true },
     orderBy: { name: 'asc' }
   });
 

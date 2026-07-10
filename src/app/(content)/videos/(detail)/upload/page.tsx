@@ -9,8 +9,6 @@ export default async function Page() {
   }
 
   return (
-    <div>
       <VideoUpload></VideoUpload>
-    </div>
   )
 }

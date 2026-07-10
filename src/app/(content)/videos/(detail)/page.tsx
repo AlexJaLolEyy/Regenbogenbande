@@ -6,13 +6,19 @@ import { VideoListItem } from "@/src/lib/types/types";
 
 export default async function Page() {
   const session = await getSession();
-  const videos: VideoListItem[] = await getVideosForList(session);
+  const videos: VideoListItem[] = await getVideosForList(session, { limit: 15 });
+  const initialTotal = await prisma.video.count({
+    where: {
+      isPublic: session?.user && !session.user.isAnonymous ? undefined : true,
+    }
+  });
+
   const categories = await prisma.category.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, iconUrl: true },
     orderBy: { name: 'asc' }
   });
 
   return (
-    <VideoList initialVideos={videos} categories={categories} />
+    <VideoList initialVideos={videos} initialTotal={initialTotal} categories={categories} />
   );
 }
