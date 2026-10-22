@@ -1,10 +1,9 @@
 "use client";
 
 import { getUserRating, rateMedia } from '@/src/lib/actions/ratings';
-import { faStar as faStarRegular } from '@fortawesome/free-regular-svg-icons';
-import { faStar as faStarSolid } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { cn } from '@/src/lib/utils';
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface RatingModalProps {
@@ -41,52 +40,59 @@ export const RatingModal = ({ contentType, contentId, isOpen, onOpenChange }: Ra
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onOpenChange={onOpenChange}
       backdrop="blur"
       classNames={{
-        base: "bg-[#121212]/90 border border-white/10",
-        header: "border-b border-white/5",
-        footer: "border-t border-white/5",
+        base: "bg-elevated border border-border",
+        header: "border-b border-divider",
+        footer: "border-t border-divider",
       }}
     >
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 text-white">Rate this {contentType}</ModalHeader>
+            <ModalHeader className="flex flex-col gap-1 text-foreground">Rate this {contentType}</ModalHeader>
             <ModalBody className="py-8">
               <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onMouseEnter={() => setHoveredRating(star)}
-                    onMouseLeave={() => setHoveredRating(0)}
-                    onClick={() => setRating(star)}
-                    className="text-4xl transition-transform hover:scale-125 focus:outline-none"
-                  >
-                    <FontAwesomeIcon 
-                      icon={(hoveredRating || rating) >= star ? faStarSolid : faStarRegular} 
-                      className={(hoveredRating || rating) >= star ? "text-yellow-400" : "text-white/20"}
-                    />
-                  </button>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const active = (hoveredRating || rating) >= star;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      onClick={() => setRating(star)}
+                      className="transition-transform hover:scale-110 focus-visible:outline-2 outline-theme-accent rounded"
+                    >
+                      <Star
+                        size={36}
+                        fill={active ? "currentColor" : "none"}
+                        className={cn(active ? "text-gold" : "text-faint")}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-center text-white/40 text-sm mt-4">
+              <p className="mt-4 text-center text-sm text-muted-foreground">
                 {rating > 0 ? `You selected ${rating} star${rating > 1 ? 's' : ''}` : "Select your rating"}
               </p>
             </ModalBody>
             <ModalFooter>
-              <Button variant="light" onPress={onClose} className="text-white/60">
+              <Button variant="light" onPress={onClose}>
                 Cancel
               </Button>
-              <Button 
-                className="bg-purple-600 text-white font-bold"
+              <Button
+                color="primary"
+                className="font-medium"
                 onPress={handleRate}
                 isLoading={isSubmitting}
                 isDisabled={rating === 0}
               >
-                Submit Rating
+                Submit rating
               </Button>
             </ModalFooter>
           </>

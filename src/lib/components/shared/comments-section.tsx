@@ -1,11 +1,12 @@
 "use client";
 
 import { addComment, deleteComment, voteComment } from '@/src/lib/actions/comments';
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { useSession } from '@/src/lib/auth-client';
 import { Comment } from '@/src/lib/types/types';
 import { faChevronDown, faChevronUp, faReply, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Avatar, Button, Input } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { formatDistanceToNow } from 'date-fns';
 import React, { useState } from 'react';
 
@@ -51,39 +52,39 @@ const CommentItem = ({
   };
 
   return (
-    <div className={`group flex gap-4 p-4 rounded-xl transition duration-300 ${isReply ? 'ml-12 bg-white/5' : 'hover:bg-white/5'}`}>
-      <Avatar src={comment.user.profilePicture || ""} size={isReply ? "sm" : "md"} />
+    <div className={`group flex gap-4 p-4 rounded-xl transition duration-300 ${isReply ? 'ml-12 bg-muted' : 'hover:bg-muted'}`}>
+      <UserAvatar src={comment.user.profilePicture || ""} size={isReply ? "sm" : "md"} />
       <div className="flex-1 space-y-1">
         <div className="flex justify-between items-start">
           <div className="flex gap-2 items-baseline">
-            <span className="text-sm font-bold text-white">{comment.user.username}</span>
-            <span className="text-xs text-white/30">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+            <span className="text-sm font-bold text-foreground">{comment.user.username}</span>
+            <span className="text-xs text-faint">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
           </div>
           {mounted && (session?.user.id === comment.user.id || session?.user.role === 'admin') && (
             <button
               onClick={() => onDelete(comment.id)}
-              className="opacity-0 group-hover:opacity-100 transition text-white/30 hover:text-danger"
+              className="opacity-0 group-hover:opacity-100 transition text-faint hover:text-danger"
             >
               <FontAwesomeIcon icon={faTrash} size="sm" />
             </button>
           )}
         </div>
-        <p className="text-sm text-white/70">{comment.content}</p>
+        <p className="text-sm text-muted-foreground">{comment.content}</p>
 
         <div className="flex gap-4 pt-2 items-center">
-          <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-1">
+          <div className="flex items-center gap-1 bg-muted rounded-full px-2 py-1">
             <button
               onClick={() => onVote(comment.id, 1, comment.userVote)}
-              className={`text-xs transition hover:scale-110 ${comment.userVote === 1 ? 'text-primary' : 'text-white/40 hover:text-white'}`}
+              className={`text-xs transition hover:scale-110 ${comment.userVote === 1 ? 'text-theme-accent' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <FontAwesomeIcon icon={faChevronUp} />
             </button>
-            <span className="text-xs font-bold text-white/60 min-w-3 text-center">
+            <span className="text-xs font-bold text-muted-foreground min-w-3 text-center">
               {comment.upvotes - comment.downvotes}
             </span>
             <button
               onClick={() => onVote(comment.id, -1, comment.userVote)}
-              className={`text-xs transition hover:scale-110 ${comment.userVote === -1 ? 'text-danger' : 'text-white/40 hover:text-white'}`}
+              className={`text-xs transition hover:scale-110 ${comment.userVote === -1 ? 'text-danger' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <FontAwesomeIcon icon={faChevronDown} />
             </button>
@@ -92,7 +93,7 @@ const CommentItem = ({
           {!isReply && mounted && session && (
             <button
               onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-              className="text-xs text-white/40 hover:text-white font-bold flex items-center gap-1"
+              className="text-xs text-muted-foreground hover:text-foreground font-bold flex items-center gap-1"
             >
               <FontAwesomeIcon icon={faReply} /> Reply
             </button>
@@ -101,7 +102,7 @@ const CommentItem = ({
 
         {replyingTo === comment.id && (
           <div className="mt-4 flex gap-4 animate-in fade-in slide-in-from-top-2">
-            <Avatar src={session?.user.image || ""} size="sm" />
+            <UserAvatar src={session?.user.image || ""} size="sm" />
             <div className="flex-1">
               <Input
                 size="sm"
@@ -109,13 +110,13 @@ const CommentItem = ({
                 placeholder="Write a reply..."
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
-                classNames={{ input: "text-white", inputWrapper: "border-white/20" }}
+                classNames={{ input: "text-foreground", inputWrapper: "border-border" }}
               />
               <div className="flex justify-end mt-2 gap-2">
                 <Button size="sm" variant="light" onClick={() => setReplyingTo(null)}>Cancel</Button>
                 <Button
                   size="sm"
-                  className="bg-white/10 text-white rounded-full font-bold"
+                  className="bg-muted text-foreground rounded-full font-medium"
                   isLoading={isSubmitting}
                   onClick={handleReplySubmit}
                 >
@@ -202,8 +203,8 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
   const renderCommentInput = () => {
     if (!mounted) {
       return (
-        <div className="mb-8 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/10 animate-pulse">
-          <p className="text-white/20 text-sm">Loading session...</p>
+        <div className="mb-8 p-4 bg-muted rounded-xl text-center border border-dashed border-border animate-pulse">
+          <p className="text-faint text-sm">Loading session...</p>
         </div>
       );
     }
@@ -211,19 +212,19 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
     if (session) {
       return (
         <div className="mb-8 flex gap-4">
-          <Avatar src={session.user.image || ""} />
+          <UserAvatar src={session.user.image || ""} />
           <div className="flex-1">
             <Input
               variant="underlined"
               placeholder="Add a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              classNames={{ input: "text-white", inputWrapper: "border-white/20" }}
+              classNames={{ input: "text-foreground", inputWrapper: "border-border" }}
             />
             <div className="flex justify-end mt-2">
               <Button
                 size="sm"
-                className="bg-white/10 text-white rounded-full font-bold hover:bg-white hover:text-black transition"
+                className="bg-muted text-foreground rounded-full font-medium"
                 isLoading={isSubmitting}
                 onClick={() => handleAddComment()}
               >
@@ -236,16 +237,16 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
     }
 
     return (
-      <div className="mb-8 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/10">
-        <p className="text-white/40 text-sm">Please log in to leave a comment</p>
+      <div className="mb-8 p-4 bg-muted rounded-xl text-center border border-dashed border-border">
+        <p className="text-muted-foreground text-sm">Please log in to leave a comment</p>
       </div>
     );
   };
 
   return (
-    <div className="bg-[#121212]/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mt-8">
-      <h3 className="text-xl font-bold text-white mb-6">
-        Comments <span className="text-white/40 font-normal">({initialComments.length})</span>
+    <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl p-8 mt-8">
+      <h3 className="text-xl font-bold text-foreground mb-6">
+        Comments <span className="text-muted-foreground font-normal">({initialComments.length})</span>
       </h3>
 
       {renderCommentInput()}
@@ -266,7 +267,7 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
         ))}
         {initialComments.length === 0 && (
           <div className="py-12 text-center">
-            <p className="text-white/20 italic">No comments yet. Be the first to share your thoughts!</p>
+            <p className="text-faint italic">No comments yet. Be the first to share your thoughts!</p>
           </div>
         )}
       </div>
