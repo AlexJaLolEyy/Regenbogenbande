@@ -3,8 +3,8 @@
 import { signIn } from "@/src/lib/auth-client"
 import { FireworksBackground } from "@/src/lib/components/home/fireworks-background"
 import { Button } from "@heroui/react"
+import { motion } from "framer-motion"
 import { AlertCircle, LogIn } from "lucide-react"
-import { motion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 

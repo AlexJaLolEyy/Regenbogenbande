@@ -1,10 +1,14 @@
 "use client"
 
-import { signOut, useSession } from "@/src/lib/auth-client"
-import { getEffectiveRole } from "@/src/lib/auth-utils-shared"
-import { queryKeys } from "@/src/lib/queries/query-keys"
-import { Avatar, Button, Input, Tab, Tabs } from "@heroui/react"
-import { useQuery } from "@tanstack/react-query"
+import { signOut, useSession } from "@/src/lib/auth-client";
+import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
+import { AccentId, useAccent } from "@/src/lib/hooks/use-accent";
+import { useChartColors } from "@/src/lib/hooks/use-chart-colors";
+import { queryKeys } from "@/src/lib/queries/query-keys";
+import { cn } from "@/src/lib/utils";
+import { Button, Input, Tab, Tabs } from "@heroui/react";
+import { useQuery } from "@tanstack/react-query";
 import {
     ArcElement,
     BarElement,
@@ -16,15 +20,15 @@ import {
     PointElement,
     Title,
     Tooltip,
-} from 'chart.js'
-import { Activity, Crown, LogOut, Settings, ShieldCheck, User as UserIcon } from "lucide-react"
-import { motion } from "motion/react"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { Doughnut, Line } from 'react-chartjs-2'
-import { getUserStats, updateDisplayName } from "./actions"
+} from 'chart.js';
+import { motion } from "framer-motion";
+import { Activity, Camera, Crown, LogOut, Monitor, Moon, Settings, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { Doughnut, Line } from 'react-chartjs-2';
+import { getUserStats, updateDisplayName, updateProfilePicture } from "./actions";
 
-// Register ChartJS components
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -37,10 +41,48 @@ ChartJS.register(
     Legend
 )
 
+const FIELD = {
+    inputWrapper: "bg-muted h-12 rounded-xl border border-border hover:border-foreground/30 transition-colors data-[focus=true]:border-theme-accent",
+    label: "text-sm font-medium text-muted-foreground",
+}
+
+const THEME_OPTIONS = [
+    { id: "light", label: "Light", icon: Sun },
+    { id: "dark", label: "Dark", icon: Moon },
+    { id: "system", label: "System", icon: Monitor },
+] as const
+
+// Accent palettes are defined in globals.css ([data-accent]).
+const ACCENTS: { id: AccentId; label: string; color: string }[] = [
+    { id: "neutral", label: "Neutral", color: "var(--foreground)" },
+    { id: "ocean", label: "Ocean Blue", color: "#3E82C7" },
+    { id: "forest", label: "Forest Green", color: "#3F7D5B" },
+    { id: "teal", label: "Teal", color: "#2E9090" },
+    { id: "wine", label: "Wine Red", color: "#9C3B49" },
+    { id: "pink", label: "Dusty Pink", color: "#C56A8E" },
+    { id: "violet", label: "Violet", color: "#7A6AC6" },
+]
+
+const Card = ({ className, children }: { className?: string; children: React.ReactNode }) => (
+    <div className={cn("rounded-2xl border border-border bg-card/70 p-8 shadow-sm backdrop-blur-md", className)}>
+        {children}
+    </div>
+)
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+    <h3 className="mb-6 text-sm font-medium text-muted-foreground">{children}</h3>
+)
+
 export default function ProfilePage() {
     const { data: session, isPending: isSessionPending } = useSession();
     const router = useRouter()
+    const { theme, setTheme } = useTheme()
+    const colors = useChartColors()
+    const { accent: activeAccent, setAccent } = useAccent()
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+    const [mounted, setMounted] = useState(false)
     const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null)
     const role = getEffectiveRole(session);
 
@@ -48,7 +90,11 @@ export default function ProfilePage() {
     const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
     const displayName = localDisplayName ?? session?.user?.name ?? "";
 
-    // Stats fetching with TanStack Query
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMounted(true)
+    }, [])
+
     const { data: statsData, isLoading: isStatsLoading } = useQuery({
         queryKey: queryKeys.user.stats(),
         queryFn: async () => {
@@ -60,7 +106,6 @@ export default function ProfilePage() {
     });
     const stats = statsData;
 
-    // Handle session redirection
     useEffect(() => {
         if (!isSessionPending && !session?.user) {
             router.push('/login');
@@ -72,12 +117,38 @@ export default function ProfilePage() {
         setMessage(null)
         const res = await updateDisplayName(displayName)
         if (res.success) {
-            setMessage({ type: "success", text: "Display name synchronized with the orbital core." })
-            setLocalDisplayName(null); // Reset to use session's updated name
+            setMessage({ type: "success", text: "Display name updated." })
+            setLocalDisplayName(null);
         } else {
-            setMessage({ type: "error", text: res.error || "Transmission failure during update." })
+            setMessage({ type: "error", text: res.error || "Failed to update display name." })
         }
         setIsLoading(false)
+    }
+
+    const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        e.target.value = ""
+        if (!file) return
+
+        setIsUploading(true)
+        setMessage(null)
+        try {
+            const formData = new FormData()
+            formData.append("avatar", file)
+            const uploadRes = await fetch("/api/profile/avatar", { method: "POST", body: formData })
+            const uploadData = await uploadRes.json()
+            if (!uploadRes.ok || !uploadData.url) {
+                throw new Error(uploadData.error || "Upload failed")
+            }
+            const res = await updateProfilePicture(uploadData.url)
+            if (!res.success) throw new Error(res.error)
+            setMessage({ type: "success", text: "Profile picture updated." })
+            router.refresh()
+        } catch (err) {
+            setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed to update profile picture." })
+        } finally {
+            setIsUploading(false)
+        }
     }
 
     const handleLogout = async () => {
@@ -96,30 +167,16 @@ export default function ProfilePage() {
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false,
-            },
-        },
+        plugins: { legend: { display: false } },
         scales: {
             y: {
                 beginAtZero: true,
-                grid: {
-                    color: 'rgba(255, 255, 255, 0.05)',
-                },
-                ticks: {
-                    color: 'rgba(255, 255, 255, 0.3)',
-                    font: { size: 10, weight: 'bold' }
-                }
+                grid: { color: colors.grid },
+                ticks: { color: colors.tick, font: { size: 10 } },
             },
             x: {
-                grid: {
-                    display: false,
-                },
-                ticks: {
-                    color: 'rgba(255, 255, 255, 0.3)',
-                    font: { size: 10, weight: 'bold' }
-                }
+                grid: { display: false },
+                ticks: { color: colors.tick, font: { size: 10 } },
             }
         }
     };
@@ -129,71 +186,56 @@ export default function ProfilePage() {
         datasets: [{
             label: 'Uploads',
             data: stats?.monthlyActivity.map((a: any) => a.count) || [],
-            borderColor: 'rgb(147, 51, 234)',
-            backgroundColor: 'rgba(147, 51, 234, 0.2)',
+            borderColor: colors.accent,
+            backgroundColor: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
             tension: 0.4,
             fill: true,
-            pointBackgroundColor: 'rgb(147, 51, 234)',
-            pointBorderColor: '#fff',
+            pointBackgroundColor: colors.accent,
             pointHoverRadius: 6,
         }]
     };
 
+    const distributionColors = [colors.accent, colors.success, colors.warning];
     const distributionData = {
         labels: ['Videos', 'Pictures', 'Quotes'],
         datasets: [{
             data: [stats?.counts.videos || 0, stats?.counts.pictures || 0, stats?.counts.quotes || 0],
-            backgroundColor: [
-                'rgba(147, 51, 234, 0.4)',
-                'rgba(59, 130, 246, 0.4)',
-                'rgba(236, 72, 153, 0.4)',
-            ],
-            borderColor: [
-                'rgba(147, 51, 234, 1)',
-                'rgba(59, 130, 246, 1)',
-                'rgba(236, 72, 153, 1)',
-            ],
+            backgroundColor: distributionColors,
+            borderColor: colors.grid,
             borderWidth: 2,
             hoverOffset: 10
         }]
     };
 
-    return (
-        <div className="min-h-screen w-full relative overflow-x-hidden bg-[#0a0a0b] text-white">
-            {/* Custom Prismatic Background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/5 blur-[150px] rounded-full" />
-                <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-pink-900/5 blur-[100px] rounded-full animate-bounce [animation-duration:10s]" />
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
-            </div>
+    // Each metric card uses one semantic token color.
+    const metrics = [
+        { label: "Total uploads", value: stats?.counts.total, color: "var(--theme-accent)" },
+        { label: "Total views", value: stats?.views, color: "var(--chart-2)" },
+        { label: "Average rating", value: stats?.ratings.average || "0.0", color: "var(--gold)" },
+        { label: "Ratings given", value: stats?.ratings.count, color: "var(--chart-3)" },
+    ]
 
-            <div className="container mx-auto p-6 pt-24 max-w-5xl relative z-10">
+    return (
+        <div className="w-full text-foreground">
+            <div className="container mx-auto max-w-5xl p-6 pt-8">
                 <motion.div
-                    initial={{ opacity: 0, y: -20 }}
+                    initial={{ opacity: 0, y: -12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-12"
+                    className="mb-10"
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-1.5 bg-linear-to-tr from-purple-500/20 to-blue-500/20 rounded-xl border border-white/10">
-                            <UserIcon className="text-purple-400" size={20} />
-                        </div>
-                        <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-sm">
-                            Identity <span className="text-purple-500">Node</span>
-                        </h1>
-                    </div>
-                    <p className="text-gray-400 font-medium text-sm">Synchronize your presence within the orbital collective</p>
+                    <h1 className="mb-1 text-3xl font-semibold tracking-tight">Profile</h1>
+                    <p className="text-sm text-muted-foreground">Manage your account, appearance and statistics</p>
                 </motion.div>
 
                 <Tabs
                     aria-label="Profile options"
                     variant="bordered"
-                    className="p-1 bg-white/5 backdrop-blur-md rounded-2xl border border-white/5 w-fit mb-8"
+                    className="mb-8 w-fit rounded-xl border border-border bg-card/70 p-1"
                     classNames={{
                         tabList: "gap-2 border-0 bg-transparent p-0",
-                        cursor: "bg-purple-600 rounded-xl shadow-lg shadow-purple-900/40",
-                        tab: "h-11 px-8 font-black transition-all",
-                        tabContent: "group-data-[selected=true]:text-white text-gray-500"
+                        cursor: "bg-primary rounded-lg",
+                        tab: "h-10 px-6 font-medium",
+                        tabContent: "group-data-[selected=true]:text-primary-foreground text-muted-foreground"
                     }}
                 >
                     <Tab
@@ -201,115 +243,161 @@ export default function ProfilePage() {
                         title={
                             <div className="flex items-center space-x-2">
                                 <Settings size={16} />
-                                <span>Core Settings</span>
+                                <span>Settings</span>
                             </div>
                         }
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-4">
-                            {/* Profile Card */}
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="md:col-span-1"
-                            >
-                                <div className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 flex flex-col items-center gap-6 shadow-2xl relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/5 blur-3xl -mr-16 -mt-16 group-hover:bg-purple-600/10 transition-all" />
-
+                        <div className="mt-4 grid grid-cols-1 gap-8 md:grid-cols-3">
+                            {/* Profile card */}
+                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="md:col-span-1">
+                                <Card className="flex flex-col items-center gap-6">
                                     <div className="relative">
-                                        <Avatar
+                                        <UserAvatar
                                             src={session?.user?.image || undefined}
-                                            className="w-32 h-32 text-4xl ring-4 ring-purple-600/20"
+                                            className="h-32 w-32 text-4xl ring-4 ring-border"
                                             name={session?.user?.name?.[0]}
-                                            isBordered
-                                            color="secondary"
                                         />
-                                        <div className="absolute -bottom-2 -right-2 bg-purple-600 p-2 rounded-xl shadow-lg border-2 border-[#121214]">
-                                            {role === 'owner' ? <Crown size={16} /> : role === 'admin' ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploading || role === "guest"}
+                                            aria-label="Change profile picture"
+                                            className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-card bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                        >
+                                            {isUploading ? (
+                                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                                            ) : (
+                                                <Camera size={16} />
+                                            )}
+                                        </button>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="hidden"
+                                            onChange={handleAvatarSelected}
+                                        />
                                     </div>
 
                                     <div className="text-center">
-                                        <h2 className="text-2xl font-black tracking-tight text-white mb-1 uppercase">{session?.user?.name}</h2>
-                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{session?.user?.email || "No direct uplink"}</p>
+                                        <h2 className="mb-1 text-2xl font-semibold tracking-tight">{session?.user?.name}</h2>
+                                        <p className="text-sm text-muted-foreground">{session?.user?.email || "No email"}</p>
 
-                                        <div className="mt-6 flex items-center justify-center">
-                                            <div className="px-4 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest">
-                                                Level: {role || "Entity"}
-                                            </div>
+                                        <div className="mt-5 flex items-center justify-center">
+                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                                {role === 'owner' ? <Crown size={12} /> : role === 'admin' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
+                                                <span className="capitalize">{role}</span>
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
+                                </Card>
                             </motion.div>
 
                             {/* Settings */}
-                            <motion.div
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="md:col-span-2"
-                            >
-                                <div className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl">
-                                    <div className="flex flex-col gap-8">
-                                        <div>
-                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-6">Uplink Configuration</h3>
-                                            <div className="flex flex-col gap-6">
-                                                <Input
-                                                    label="DISPLAY ALIAS"
-                                                    placeholder="Enter your collective name"
-                                                    value={displayName}
-                                                    onValueChange={setLocalDisplayName}
-                                                    variant="flat"
-                                                    classNames={{
-                                                        inputWrapper: "bg-white/5 h-14 rounded-2xl border border-white/5 hover:border-white/10 transition-all",
-                                                        label: "text-gray-500 font-bold"
-                                                    }}
-                                                />
-                                                <Input
-                                                    label="ACCESS EMAIL"
-                                                    value={session?.user?.email || ""}
-                                                    isReadOnly
-                                                    variant="flat"
-                                                    description={<span className="text-[10px] uppercase font-bold text-gray-600">Locked to Discord authorization</span>}
-                                                    classNames={{
-                                                        inputWrapper: "bg-white/5 h-14 rounded-2xl border border-white/5 opacity-50",
-                                                        label: "text-gray-500 font-bold"
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {message && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className={`p-4 rounded-2xl text-xs font-bold text-center border ${message.type === 'success'
-                                                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                                        : 'bg-danger/10 text-danger border-danger/20'
-                                                    }`}
-                                            >
-                                                {message.text}
-                                            </motion.div>
-                                        )}
-
-                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-white/5">
-                                            <Button
-                                                color="danger"
-                                                variant="flat"
-                                                className="h-12 w-full sm:w-auto px-8 rounded-2xl font-black bg-danger/10 text-danger hover:bg-danger/20 transition-all"
-                                                startContent={<LogOut size={18} />}
-                                                onPress={handleLogout}
-                                            >
-                                                TERMINATE SESSION
-                                            </Button>
-                                            <Button
-                                                className="h-12 w-full sm:w-auto px-10 rounded-2xl font-black bg-purple-600 text-white shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all"
-                                                onPress={handleUpdateDisplayName}
-                                                isLoading={isLoading}
-                                            >
-                                                SYNC IDENTITY
-                                            </Button>
-                                        </div>
+                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 md:col-span-2">
+                                <Card>
+                                    <SectionTitle>Account</SectionTitle>
+                                    <div className="flex flex-col gap-6">
+                                        <Input
+                                            label="Display name"
+                                            labelPlacement="outside"
+                                            placeholder="Enter your name"
+                                            value={displayName}
+                                            onValueChange={setLocalDisplayName}
+                                            variant="bordered"
+                                            classNames={FIELD}
+                                        />
+                                        <Input
+                                            label="Email"
+                                            labelPlacement="outside"
+                                            value={session?.user?.email || ""}
+                                            isReadOnly
+                                            variant="bordered"
+                                            description={<span className="text-xs text-faint">Linked to your Discord account</span>}
+                                            classNames={{ ...FIELD, inputWrapper: cn(FIELD.inputWrapper, "opacity-60") }}
+                                        />
                                     </div>
-                                </div>
+
+                                    {message && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.97 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            className={cn(
+                                                "mt-6 rounded-xl border p-3 text-center text-sm",
+                                                message.type === 'success'
+                                                    ? 'border-success/30 bg-success/10 text-success'
+                                                    : 'border-danger/30 bg-danger/10 text-danger'
+                                            )}
+                                        >
+                                            {message.text}
+                                        </motion.div>
+                                    )}
+
+                                    <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-divider pt-6 sm:flex-row">
+                                        <Button
+                                            variant="flat"
+                                            className="h-11 w-full rounded-xl bg-danger/10 px-6 font-medium text-danger hover:bg-danger/20 sm:w-auto"
+                                            startContent={<LogOut size={18} />}
+                                            onPress={handleLogout}
+                                        >
+                                            Log out
+                                        </Button>
+                                        <Button
+                                            className="h-11 w-full rounded-xl bg-primary px-8 font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
+                                            onPress={handleUpdateDisplayName}
+                                            isLoading={isLoading}
+                                        >
+                                            Save changes
+                                        </Button>
+                                    </div>
+                                </Card>
+
+                                <Card>
+                                    <SectionTitle>Appearance</SectionTitle>
+
+                                    <p className="mb-3 text-sm font-medium text-foreground">Theme</p>
+                                    <div className="mb-8 inline-flex gap-1 rounded-xl border border-border bg-muted p-1">
+                                        {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
+                                            const active = mounted && theme === id
+                                            return (
+                                                <button
+                                                    key={id}
+                                                    type="button"
+                                                    onClick={() => setTheme(id)}
+                                                    aria-pressed={active}
+                                                    className={cn(
+                                                        "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors",
+                                                        active
+                                                            ? "bg-primary font-medium text-primary-foreground"
+                                                            : "text-muted-foreground hover:text-foreground"
+                                                    )}
+                                                >
+                                                    <Icon size={14} /> {label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+
+                                    <p className="mb-1 text-sm font-medium text-foreground">Accent color</p>
+                                    <p className="mb-3 text-xs text-faint">Used sparingly for focus rings, active items and charts.</p>
+                                    <div className="flex flex-wrap gap-3">
+                                        {ACCENTS.map((accent) => (
+                                            <button
+                                                key={accent.id}
+                                                type="button"
+                                                onClick={() => setAccent(accent.id)}
+                                                title={accent.label}
+                                                aria-label={accent.label}
+                                                aria-pressed={mounted && activeAccent === accent.id}
+                                                className={cn(
+                                                    "h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 outline-offset-2",
+                                                    mounted && activeAccent === accent.id ? "border-foreground" : "border-transparent"
+                                                )}
+                                                style={{ background: accent.color }}
+                                            />
+                                        ))}
+                                    </div>
+                                </Card>
                             </motion.div>
                         </div>
                     </Tab>
@@ -319,93 +407,71 @@ export default function ProfilePage() {
                         title={
                             <div className="flex items-center space-x-2">
                                 <Activity size={16} />
-                                <span>Transmission Data</span>
+                                <span>Statistics</span>
                             </div>
                         }
                     >
                         <div className="mt-4">
                             {isStatsLoading ? (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
-                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-white/5 rounded-3xl" />)}
+                                <div className="grid animate-pulse grid-cols-2 gap-4 md:grid-cols-4">
+                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-muted" />)}
                                 </div>
                             ) : stats ? (
                                 <div className="flex flex-col gap-8">
-                                    {/* Metric Cards */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {[
-                                            { label: "Total Uploads", value: stats.counts.total, color: "purple" },
-                                            { label: "Total Views", value: stats.views, color: "blue" },
-                                            { label: "Avg Rating", value: stats.ratings.average || "0.0", color: "pink" },
-                                            { label: "Evaluations", value: stats.ratings.count, color: "orange" },
-                                        ].map((m, i) => (
+                                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                        {metrics.map((m, i) => (
                                             <motion.div
                                                 key={m.label}
-                                                initial={{ opacity: 0, y: 20 }}
+                                                initial={{ opacity: 0, y: 12 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: i * 0.1 }}
-                                                className={`bg-[#121214]/60 border border-white/5 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center`}
+                                                transition={{ delay: i * 0.05 }}
+                                                className="flex flex-col items-center rounded-2xl border border-border bg-card/70 p-6 text-center shadow-sm"
                                             >
-                                                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2">{m.label}</p>
-                                                <p className="text-3xl font-black text-white tracking-tight">{m.value}</p>
+                                                <p className="mb-2 text-xs text-faint">{m.label}</p>
+                                                <p className="font-mono text-3xl font-semibold tracking-tight" style={{ color: m.color }}>{m.value}</p>
                                             </motion.div>
                                         ))}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {/* Activity Chart */}
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl"
-                                        >
-                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-3">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                                                Uplink Activity <span className="text-white/20">(6M)</span>
-                                            </h3>
-                                            <div className="h-64">
-                                                <Line data={activityData} options={chartOptions} />
-                                            </div>
+                                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                                            <Card>
+                                                <SectionTitle>Upload activity (6 months)</SectionTitle>
+                                                <div className="h-64">
+                                                    <Line data={activityData} options={chartOptions} />
+                                                </div>
+                                            </Card>
                                         </motion.div>
 
-                                        {/* Distribution Chart */}
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl"
-                                        >
-                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-3">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                                Media Distribution
-                                            </h3>
-                                            <div className="h-64 flex justify-center">
-                                                <Doughnut
-                                                    data={distributionData}
-                                                    options={{
-                                                        ...chartOptions,
-                                                        scales: { x: { display: false }, y: { display: false } },
-                                                        plugins: {
-                                                            legend: {
-                                                                display: true,
-                                                                position: 'bottom',
-                                                                labels: {
-                                                                    color: 'rgba(255,255,255,0.5)',
-                                                                    font: { size: 10, weight: 'bold' },
-                                                                    usePointStyle: true,
-                                                                    padding: 20
+                                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                                            <Card>
+                                                <SectionTitle>Media distribution</SectionTitle>
+                                                <div className="flex h-64 justify-center">
+                                                    <Doughnut
+                                                        data={distributionData}
+                                                        options={{
+                                                            responsive: true,
+                                                            maintainAspectRatio: false,
+                                                            plugins: {
+                                                                legend: {
+                                                                    display: true,
+                                                                    position: 'bottom',
+                                                                    labels: {
+                                                                        color: colors.tick,
+                                                                        font: { size: 11 },
+                                                                        usePointStyle: true,
+                                                                        padding: 20
+                                                                    }
                                                                 }
                                                             }
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
+                                                        }}
+                                                    />
+                                                </div>
+                                            </Card>
                                         </motion.div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="py-20 text-center bg-[#121214]/60 rounded-3xl border border-white/5 backdrop-blur-xl">
-                                    <p className="text-gray-500 font-black uppercase tracking-widest text-sm">Transmission synchronization failed</p>
-                                </div>
-                            )}
+                            ) : null}
                         </div>
                     </Tab>
                 </Tabs>

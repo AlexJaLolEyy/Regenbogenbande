@@ -16,8 +16,8 @@ import {
     useDisclosure
 } from "@heroui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { Eye, EyeOff, Search } from "lucide-react";
-import { motion } from "motion/react";
 import Image from "next/image";
 import { useState } from "react";
 import { getContentById, getPublishedContent, toggleVisibility } from "./actions";
@@ -96,25 +96,19 @@ export default function ContentAdminPage() {
     };
 
     return (
-        <div className="min-h-screen w-full relative overflow-x-hidden bg-[#0a0a0b] text-white">
+        <div className="w-full">
             {/* Custom Prismatic Background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/5 blur-[150px] rounded-full" />
-                <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-pink-900/5 blur-[100px] rounded-full animate-bounce [animation-duration:10s]" />
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] mix-blend-overlay" />
-            </div>
-
-            <div className="container mx-auto p-6 pt-24 max-w-350 relative z-10">
+            
+            <div className="relative z-10">
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-12"
                 >
-                    <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-sm mb-2">
-                        Content <span className="text-purple-500">Access</span>
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-2">
+                        Content <span className="text-foreground">Access</span>
                     </h1>
-                    <p className="text-gray-400 font-medium text-sm">Manage visibility and access control for collective media</p>
+                    <p className="text-muted-foreground font-medium text-sm">Manage visibility and access control for collective media</p>
                 </motion.div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -129,12 +123,12 @@ export default function ContentAdminPage() {
                             }}
                             color="primary"
                             variant="bordered"
-                            className="p-1 bg-white/5 backdrop-blur-md rounded-2xl border border-white/5 w-fit"
+                            className="p-1 bg-muted backdrop-blur-md rounded-2xl border border-border w-fit"
                             classNames={{
                                 tabList: "gap-2 border-0 bg-transparent p-0",
-                                cursor: "bg-purple-600 rounded-xl shadow-lg shadow-purple-900/40",
-                                tab: "h-11 px-8 font-black transition-all",
-                                tabContent: "group-data-[selected=true]:text-white text-gray-400"
+                                cursor: "bg-primary text-primary-foreground rounded-xl",
+                                tab: "h-11 px-8 font-semibold transition-all",
+                                tabContent: "text-muted-foreground group-data-[selected=true]:text-primary-foreground"
                             }}
                         >
                             <Tab key="video" title="Videos" />
@@ -142,20 +136,20 @@ export default function ContentAdminPage() {
                             <Tab key="quote" title="Quotes" />
                         </Tabs>
 
-                        <div className="bg-[#121214]/60 backdrop-blur-2xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl p-6">
-                            <h3 className="text-lg font-black uppercase tracking-widest text-gray-500/50 mb-6 px-2">Published {activeTab}s <span className="text-purple-500">({total})</span></h3>
+                        <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm p-6">
+                            <h3 className="text-lg font-semibold text-muted-foreground mb-6 px-2">Published {activeTab}s <span className="text-foreground">({total})</span></h3>
 
                             {isLoading ? (
                                 <div className="space-y-3 p-2">
-                                    {[1, 2, 3].map(i => <div key={i} className="h-20 bg-white/5 rounded-2xl animate-pulse" />)}
+                                    {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}
                                 </div>
                             ) : items.length > 0 ? (
                                 <div className="space-y-2">
                                     {items.map((item) => (
-                                        <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 group">
-                                            <div className="relative w-20 h-12 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/5 group-hover:border-white/20 transition-all shadow-lg">
+                                        <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted transition-colors border border-transparent hover:border-border group">
+                                            <div className="relative w-20 h-12 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-border group-hover:border-border transition-all shadow-lg">
                                                 {activeTab === 'quote' ? (
-                                                    <div className="flex items-center justify-center h-full text-[10px] text-gray-500 font-black uppercase tracking-widest">Quote</div>
+                                                    <div className="flex items-center justify-center h-full text-[10px] text-muted-foreground font-semibold">Quote</div>
                                                 ) : (
                                                     <Image
                                                         src={(item as VideoListItem | PictureListItem).thumbnailUrl}
@@ -166,8 +160,8 @@ export default function ContentAdminPage() {
                                                 )}
                                             </div>
                                             <div className="grow min-w-0">
-                                                <p className="font-bold truncate text-white">{(item as any).title || renderQuotePreview(item)}</p>
-                                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tighter">by {item.uploadedBy?.username} • {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : 'N/A'}</p>
+                                                <p className="font-bold truncate text-foreground">{(item as any).title || renderQuotePreview(item)}</p>
+                                                <p className="text-[11px] font-bold text-muted-foreground">by {item.uploadedBy?.username} • {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : 'N/A'}</p>
                                             </div>
                                             <Button
                                                 size="sm"
@@ -184,7 +178,7 @@ export default function ContentAdminPage() {
                                 </div>
                             ) : (
                                 <div className="py-20 text-center">
-                                    <p className="text-gray-500 font-black uppercase tracking-widest text-sm">No published content found</p>
+                                    <p className="text-muted-foreground font-semibold text-sm">No published content found</p>
                                 </div>
                             )}
 
@@ -197,7 +191,7 @@ export default function ContentAdminPage() {
                                         color="primary"
                                         variant="flat"
                                         classNames={{
-                                            cursor: "bg-purple-600 rounded-xl",
+                                            cursor: "bg-primary text-primary-foreground rounded-xl",
                                             item: "rounded-xl font-bold",
                                             prev: "rounded-xl",
                                             next: "rounded-xl"
@@ -210,8 +204,8 @@ export default function ContentAdminPage() {
 
                     {/* Right: Publish by ID */}
                     <div className="space-y-6">
-                        <div className="bg-[#121214]/60 border border-white/5 rounded-3xl p-6 backdrop-blur-xl shadow-2xl">
-                            <h3 className="text-lg font-black uppercase tracking-widest text-white mb-6">Target <span className="text-purple-500">Bypasser</span></h3>
+                        <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-6">Publish by ID</h3>
                             <div className="flex flex-col gap-6">
                                 <Input
                                     label="CONTENT ID"
@@ -221,13 +215,13 @@ export default function ContentAdminPage() {
                                     onValueChange={setSearchId}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                     classNames={{
-                                        inputWrapper: "bg-white/5 h-14 rounded-2xl border border-white/5 hover:border-white/10 transition-all",
-                                        label: "text-gray-500 font-bold",
+                                        inputWrapper: "bg-muted h-14 rounded-2xl border border-border hover:border-border transition-all",
+                                        label: "text-muted-foreground font-bold",
                                         input: "font-mono"
                                     }}
                                     endContent={
-                                        <Button isIconOnly size="sm" variant="light" className="hover:bg-white/5 rounded-xl transition-all" onPress={handleSearch} isLoading={isSearching}>
-                                            <Search size={18} className="text-gray-400" />
+                                        <Button isIconOnly size="sm" variant="light" className="hover:bg-muted rounded-xl transition-all" onPress={handleSearch} isLoading={isSearching}>
+                                            <Search size={18} className="text-muted-foreground" />
                                         </Button>
                                     }
                                 />
@@ -236,10 +230,10 @@ export default function ContentAdminPage() {
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.95 }}
                                         animate={{ opacity: 1, scale: 1 }}
-                                        className="p-4 rounded-3xl bg-white/5 border border-white/10"
+                                        className="p-4 rounded-2xl bg-muted border border-border"
                                     >
-                                        <p className="text-[10px] text-purple-400 uppercase font-black tracking-widest mb-4">Identification Preview</p>
-                                        <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-black/40 border border-white/5 shadow-2xl">
+                                        <p className="text-[10px] text-foreground uppercase font-semibold tracking-widest mb-4">Identification Preview</p>
+                                        <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-black/40 border border-border shadow-2xl">
                                             {(activeTab === 'video' || activeTab === 'picture') && (
                                                 <Image
                                                     src={(previewItem as Video | Picture).thumbnailUrl}
@@ -249,31 +243,31 @@ export default function ContentAdminPage() {
                                                 />
                                             )}
                                             {activeTab === 'quote' && (
-                                                <div className="p-4 text-xs italic h-full flex items-center justify-center text-center text-gray-400">
+                                                <div className="p-4 text-xs italic h-full flex items-center justify-center text-center text-muted-foreground">
                                                     &quot;{renderQuotePreview(previewItem)}&quot;
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="font-black truncate text-white uppercase tracking-tight text-lg">{(previewItem as any).title || "Quote"}</p>
-                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tighter mb-6">Uploaded by {previewItem.uploadedBy?.username}</p>
+                                        <p className="font-semibold truncate text-foreground uppercase tracking-tight text-lg">{(previewItem as any).title || "Quote"}</p>
+                                        <p className="text-[11px] font-bold text-muted-foreground mb-6">Uploaded by {previewItem.uploadedBy?.username}</p>
 
                                         <Button
                                             fullWidth
                                             color={previewItem.isPublic ? "danger" : "primary"}
-                                            className={`h-12 rounded-2xl font-black ${previewItem.isPublic ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-purple-600 shadow-lg shadow-purple-900/40'}`}
+                                            className={`h-12 rounded-2xl font-semibold ${previewItem.isPublic ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-primary text-primary-foreground'}`}
                                             startContent={previewItem.isPublic ? <EyeOff size={18} /> : <Eye size={18} />}
                                             onPress={() => handleToggle(previewItem.id, previewItem.isPublic)}
                                             isLoading={isPublishing}
                                         >
-                                            {previewItem.isPublic ? "UNPUBLISH" : "PUBLISH ACCESS"}
+                                            {previewItem.isPublic ? "Unpublish" : "Publish"}
                                         </Button>
                                     </motion.div>
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 px-6 py-4 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-md">
-                            <Search size={16} className="text-purple-500 shrink-0" />
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+                        <div className="flex items-center gap-3 px-6 py-4 bg-muted rounded-2xl border border-border backdrop-blur-md">
+                            <Search size={16} className="text-foreground shrink-0" />
+                            <p className="text-[10px] text-muted-foreground font-bold leading-relaxed">
                                 Tip: Pasting a direct ID sidesteps database hydration lag.
                             </p>
                         </div>
@@ -286,24 +280,24 @@ export default function ContentAdminPage() {
                     onOpenChange={onUnpublishOpenChange}
                     backdrop="blur"
                     classNames={{
-                        base: "bg-[#121214]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem]",
+                        base: "bg-elevated border border-border rounded-2xl",
                     }}
                 >
                     <ModalContent>
                         {(onClose) => (
                             <>
-                                <ModalHeader className="flex flex-row gap-2 items-center whitespace-nowrap pt-8 px-8 pb-4 border-b border-white/5">
+                                <ModalHeader className="flex flex-row gap-2 items-center whitespace-nowrap pt-8 px-8 pb-4 border-b border-border">
                                     Revoke <span className="text-danger">Visibility</span>
                                 </ModalHeader>
                                 <ModalBody className="px-8 py-6">
-                                    <p className="text-gray-400">Are you sure you want to unpublish this {activeTab}?</p>
-                                    <p className="text-xs text-danger/60 mt-4 font-bold uppercase tracking-tighter">
+                                    <p className="text-muted-foreground">Are you sure you want to unpublish this {activeTab}?</p>
+                                    <p className="text-xs text-danger/60 mt-4 font-bold">
                                         Action: Regular members will lose access, but the archive remains intact.
                                     </p>
                                 </ModalBody>
                                 <ModalFooter className="px-8 pb-8">
                                     <div className="grid grid-cols-2 gap-3 w-full">
-                                        <Button variant="flat" className="h-12 rounded-xl font-bold bg-white/5 border border-white/5" onPress={onClose}>CANCEL</Button>
+                                        <Button variant="flat" className="h-12 rounded-xl font-bold bg-muted border border-border" onPress={onClose}>CANCEL</Button>
                                         <Button color="danger" className="h-12 rounded-xl font-bold" onPress={() => confirmUnpublish(onClose)}>
                                             UNPUBLISH
                                         </Button>
