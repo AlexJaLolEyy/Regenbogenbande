@@ -1,14 +1,13 @@
 'use client'
 
-import { useSession } from "@/src/lib/auth-client";
 import { useQuotes } from "@/src/lib/queries/use-quotes";
 import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
-import { Button, Skeleton } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { useState } from "react";
 import { QuoteListItem } from "../../../types/types";
 import { AnimatedMasonryItem } from "../../motion/animated-grid-item";
-import { AppSidebar } from "../../navigation/app-sidebar";
-import { MobileSidebar } from '../../navigation/mobile-sidebar';
+import { FilterBar } from "../../navigation/filter-bar";
+import { CardSkeleton, EmptyState, LIST_MASONRY, ListPanel } from '../../ui/media-card';
 import { PageShell } from '../../ui/page-shell';
 import QuoteComponent from "../quote/quote";
 
@@ -27,92 +26,46 @@ export default function QuoteList({ initialQuotes, categories }: { initialQuotes
   const quotes = data?.pages.flat() ?? [];
   const loading = isInitialLoading || (isFetching && !isFetchingNextPage);
 
-  const { data: session } = useSession();
-  const canUploadContent = session?.user && !session.user.isAnonymous;
-
   return (
-    <PageShell variant="aurora">
-      <div className="flex gap-6 items-start h-screen w-full px-4 lg:px-6 pt-24 pb-4 lg:pb-6">
-        <AppSidebar
-          className="h-full! sticky-0!"
+    <PageShell>
+      <div className="flex flex-col gap-4 h-[calc(100vh-3rem)] w-full px-4 lg:px-6 pt-4 pb-4 lg:pb-6">
+        <FilterBar
           contentType="quote"
           filters={filters}
           onFiltersChange={setFilters}
           categories={categories}
         />
-        <div className="flex-1 min-w-0 h-full flex flex-col border border-white/10 rounded-3xl bg-black/40 overflow-hidden shadow-2xl relative">
-          <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-            <MobileSidebar
-              contentType="quote"
-              filters={filters}
-              onFiltersChange={setFilters}
-              categories={categories}
-            />
-            <div className="max-w-400 mx-auto space-y-8">
-              <div className="flex justify-between items-center mb-8 pl-1">
-                <div>
-                  <h1 className="text-3xl font-bold text-white text-glow">Archived Quotes</h1>
-                  <p className="text-white/40 text-sm">Refined Gallery</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-white/50 border border-white/10 px-3 py-1 rounded-full bg-white/5 backdrop-blur-md">
-                    {quotes?.length ?? 0} Arrived
-                  </div>
-                </div>
-              </div>
-
-              {loading && quotes.length === 0 ? (
-                <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-6 space-y-6">
-                  {Array.from({ length: 15 }).map((_, i) => (
-                    <div key={i} className="break-inside-avoid bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-md animate-pulse">
-                      <div className="p-6 space-y-4">
-                        <div className="flex gap-4">
-                          <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-1/2 rounded" />
-                            <Skeleton className="h-10 w-full rounded" />
-                          </div>
-                        </div>
-                        <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-                          <div className="flex gap-2">
-                            <Skeleton className="w-6 h-6 rounded-full" />
-                            <Skeleton className="w-16 h-3 rounded" />
-                          </div>
-                          <Skeleton className="w-12 h-3 rounded" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : quotes && quotes.length > 0 ? (
-                <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-6 space-y-6">
-                  {quotes.map((quote, idx) => (
-                    <AnimatedMasonryItem key={quote.id} delay={idx * 0.05} className="break-inside-avoid">
-                      <QuoteComponent quote={quote} />
-                    </AnimatedMasonryItem>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 text-white/30">
-                  No quotes available yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {hasNextPage && (
-            <div className="p-4 border-t border-white/5 bg-black/60 backdrop-blur-md flex justify-center z-10 shrink-0">
-              <Button
-                onClick={() => fetchNextPage()}
-                isLoading={isFetchingNextPage}
-                variant="flat"
-                className="min-w-30 font-bold bg-white/5 hover:bg-white/10 text-white"
-              >
-                Load More
-              </Button>
-            </div>
+        <ListPanel
+          title="Quotes"
+          footer={hasNextPage && (
+            <Button
+              onPress={() => fetchNextPage()}
+              isLoading={isFetchingNextPage}
+              variant="flat"
+              className="min-w-30 font-medium"
+            >
+              Load more
+            </Button>
           )}
-        </div>
+        >
+          {loading && quotes.length === 0 ? (
+            <div className={LIST_MASONRY}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <CardSkeleton key={i} media={i % 2 ? 'h-40' : 'h-28'} className="mb-6 break-inside-avoid" />
+              ))}
+            </div>
+          ) : quotes.length > 0 ? (
+            <div className={LIST_MASONRY}>
+              {quotes.map((quote, idx) => (
+                <AnimatedMasonryItem key={quote.id} delay={idx * 0.05} className="break-inside-avoid">
+                  <QuoteComponent quote={quote} />
+                </AnimatedMasonryItem>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No quotes available yet" />
+          )}
+        </ListPanel>
       </div>
     </PageShell>
   );

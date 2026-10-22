@@ -1,6 +1,7 @@
 "use client";
 
 import { updateQuoteElement } from "@/src/app/(content)/quotes/(detail)/[id]/edit/actions";
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { getAllUsers } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
@@ -17,18 +18,7 @@ import {
     faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-    Avatar,
-    BreadcrumbItem,
-    Breadcrumbs,
-    Button,
-    Chip,
-    DateInput,
-    Progress,
-    Select,
-    SelectItem,
-    Textarea
-} from "@heroui/react";
+import { Button, Chip, DateInput, Progress, Select, SelectItem, Textarea } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
@@ -176,39 +166,30 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
     const getUser = (id: string) => users.find(u => u.id === id);
 
     return (
-        <AuroraBackground className="fixed inset-0 h-screen! z-0">
-            <div className="relative z-10 w-full h-full overflow-y-auto pt-24 pb-32 px-4 md:px-12">
-
-                <div className="max-w-400 mx-auto mb-6">
-                    <Breadcrumbs variant="bordered" classNames={{ list: "bg-black/40 border-white/10 backdrop-blur-md" }}>
-                        <BreadcrumbItem href="/">Home</BreadcrumbItem>
-                        <BreadcrumbItem href="/quotes">Quotes</BreadcrumbItem>
-                        <BreadcrumbItem href={`/quotes/${quote.id}`}>Quote #{quote.id}</BreadcrumbItem>
-                        <BreadcrumbItem>Edit</BreadcrumbItem>
-                    </Breadcrumbs>
-                </div>
+        <AuroraBackground className="fixed inset-x-0 bottom-0 top-12 md:left-(--sidebar-w) z-0">
+            <div className="relative z-10 w-full h-full overflow-y-auto pt-8 pb-32 px-4 md:px-12">
 
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="w-full max-w-400 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-2 overflow-hidden shadow-2xl relative mx-auto"
+                    className="w-full max-w-400 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-2 overflow-hidden shadow-2xl relative mx-auto"
                 >
-                    <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
 
                     <div className="flex flex-col lg:flex-row h-full min-h-187.5">
 
                         {/* Left Column: Live Preview Panel */}
-                        <div className="lg:w-[45%] bg-black/40 rounded-4xl m-2 border border-white/5 flex flex-col overflow-hidden relative">
-                            <div className="p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-10">
-                                <h2 className="text-white font-bold flex items-center gap-2">
-                                    <FontAwesomeIcon icon={faQuoteRight} className="text-primary-500" /> Preview
+                        <div className="lg:w-[45%] bg-muted/50 rounded-2xl m-2 border border-border flex flex-col overflow-hidden relative">
+                            <div className="p-6 border-b border-border bg-muted/50 backdrop-blur-md z-10">
+                                <h2 className="text-foreground font-bold flex items-center gap-2">
+                                    <FontAwesomeIcon icon={faQuoteRight} className="text-muted-foreground" /> Preview
                                 </h2>
                             </div>
 
-                            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar bg-[url('/noise.png')] bg-opacity-5 relative max-h-150">
+                            <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar relative max-h-150">
                                 <AnimatePresence initial={false}>
                                     {(() => {
-                                        let actualMsgIdx = 0;
+                                        let side = false;
+                                        let lastUserId: string | null = null;
                                         return messages.map((msg, idx) => {
                                             const user = getUser(msg.userId);
 
@@ -221,15 +202,17 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                         exit={{ opacity: 0, scale: 0.9 }}
                                                         className="flex justify-center"
                                                     >
-                                                        <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-full px-6 py-2 text-xs text-white/50 italic text-center max-w-[80%] leading-relaxed shadow-sm">
+                                                        <div className="bg-muted backdrop-blur-sm border border-border rounded-full px-6 py-2 text-xs text-faint italic text-center max-w-[80%] leading-relaxed shadow-sm">
                                                             {msg.message || "Context description..."}
                                                         </div>
                                                     </motion.div>
                                                 );
                                             }
 
-                                            const isRight = actualMsgIdx % 2 !== 0;
-                                            actualMsgIdx++;
+                                            // Side flips only when the speaker changes, so consecutive messages from one user stay together.
+                                            if (lastUserId !== null && lastUserId !== msg.userId) side = !side;
+                                            const isRight = side;
+                                            lastUserId = msg.userId;
 
                                             return (
                                                 <motion.div
@@ -239,19 +222,19 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                     exit={{ opacity: 0, scale: 0.9 }}
                                                     className={`flex gap-3 ${isRight ? 'flex-row-reverse' : ''}`}
                                                 >
-                                                    <Avatar
+                                                    <UserAvatar
                                                         src={user?.profilePicture || undefined}
-                                                        className={`w-10 h-10 shrink-0 border-2 border-white/10 shadow-lg ${user?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
+                                                        className={`w-10 h-10 shrink-0 border-2 border-border shadow-lg ${user?.status === 'INVITED' ? 'bg-warning/20' : ''}`}
                                                         showFallback
                                                     />
                                                     <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                                                        <div className="text-[10px] font-bold text-white/40 mb-1 px-1 flex items-center gap-1">
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1 px-1 flex items-center gap-1">
                                                             {user?.username || "Selecting..."}
                                                             {user?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
                                                         </div>
                                                         <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${isRight
-                                                            ? 'bg-primary-600 text-white border-primary-400/30 rounded-tr-none'
-                                                            : 'bg-white/10 text-white/90 border-white/5 rounded-tl-none backdrop-blur-md'
+                                                            ? 'bg-muted text-foreground border-border rounded-tr-none'
+                                                            : 'bg-card text-foreground border-border rounded-tl-none backdrop-blur-md'
                                                             }`}>
                                                             <p className="whitespace-pre-wrap wrap-break-word">
                                                                 {msg.message || <span className="italic opacity-30">Type content...</span>}
@@ -264,7 +247,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                     })()}
                                 </AnimatePresence>
                                 {messages.length === 0 && (
-                                    <div className="h-full flex flex-col items-center justify-center text-white/20 italic space-y-4">
+                                    <div className="h-full flex flex-col items-center justify-center text-faint italic space-y-4">
                                         <FontAwesomeIcon icon={faCommentDots} className="text-4xl opacity-20" />
                                         <p>Start the conversation...</p>
                                     </div>
@@ -275,12 +258,12 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                         {/* Right Column: Builder Panel */}
                         <div className="lg:w-[55%] p-8 lg:p-10 flex flex-col h-187.5">
                             <div className="flex justify-between items-center mb-8">
-                                <h1 className="text-2xl font-bold text-white">Edit Quote #{quote.id}</h1>
+                                <h1 className="text-2xl font-bold text-foreground">Edit Quote #{quote.id}</h1>
                                 <div className="flex gap-2">
-                                    <Chip variant="flat" className="bg-white/5 text-white/50 border border-white/5">
+                                    <Chip variant="flat" className="bg-muted text-faint border border-border">
                                         {messages.length} Items
                                     </Chip>
-                                    <Chip size="sm" color="warning" variant="flat" className="bg-amber-500/10 text-amber-500 border border-amber-500/20">EDIT MODE</Chip>
+                                    <Chip size="sm" variant="flat" className="bg-muted text-muted-foreground border border-border">Edit mode</Chip>
                                 </div>
                             </div>
 
@@ -313,10 +296,10 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                     className="grid grid-cols-2 gap-4 mb-8"
                                 >
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/50">Uploaded By</label>
-                                        <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-xl h-12 opacity-50">
-                                            <Avatar src={quote.uploadedBy.profilePicture || undefined} size="sm" className="w-6 h-6" />
-                                            <span className="text-sm text-white">{quote.uploadedBy.username}</span>
+                                        <label className="text-sm font-medium text-faint">Uploaded By</label>
+                                        <div className="flex items-center gap-3 p-3 bg-muted border border-border rounded-xl h-12 opacity-50">
+                                            <UserAvatar src={quote.uploadedBy.profilePicture || undefined} size="sm" className="w-6 h-6" />
+                                            <span className="text-sm text-foreground">{quote.uploadedBy.username}</span>
                                         </div>
                                     </div>
 
@@ -333,8 +316,8 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 isRequired
                                                 isInvalid={!!errors.createdAt}
                                                 classNames={{
-                                                    inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-white/20 transition-colors",
-                                                    label: "text-white/50"
+                                                    inputWrapper: "bg-muted border-border h-12 hover:border-border transition-colors",
+                                                    label: "text-faint"
                                                 }}
                                                 value={field.value ? fromDate(new Date(field.value), getLocalTimeZone()) : null}
                                                 onChange={(date) => field.onChange(date ? date.toDate() : new Date())}
@@ -365,9 +348,9 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 isInvalid={!!errors.participants}
                                                 errorMessage="At least one participant is required"
                                                 classNames={{
-                                                    trigger: "bg-white/5 border-white/10 min-h-12",
-                                                    label: "text-white/50",
-                                                    value: "text-white"
+                                                    trigger: "bg-muted border-border min-h-12",
+                                                    label: "text-faint",
+                                                    value: "text-foreground"
                                                 }}
                                                 items={users}
                                                 isMultiline
@@ -381,7 +364,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 {(user) => (
                                                     <SelectItem key={user.id} textValue={user.username}>
                                                         <div className="flex items-center gap-2">
-                                                            <Avatar src={user.profilePicture || undefined} size="sm" className={user.status === 'INVITED' ? 'bg-warning/20' : ''} />
+                                                            <UserAvatar src={user.profilePicture || undefined} size="sm" className={user.status === 'INVITED' ? 'bg-warning/20' : ''} />
                                                             <span>{user.username}</span>
                                                             {user.status === 'INVITED' && (
                                                                 <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[10px]">Pending</Chip>
@@ -402,7 +385,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                     }}
                                     className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6 space-y-3 min-h-0"
                                 >
-                                    <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest sticky top-0 bg-[#070707]/80 backdrop-blur-md py-3 z-20">
+                                    <h3 className="text-xs font-bold text-faint sticky top-0 bg-card/80 backdrop-blur-md py-3 z-20">
                                         Conversation Flow
                                     </h3>
 
@@ -421,11 +404,11 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, scale: 0.95 }}
                                                     className={`flex gap-3 items-start p-4 rounded-2xl border transition-all duration-300 ${msg.isContext
-                                                        ? 'bg-white/5 border-white/5 border-dashed'
-                                                        : 'bg-white/5 border-white/5 group hover:border-white/10 shadow-sm'
+                                                        ? 'bg-muted border-border border-dashed'
+                                                        : 'bg-muted border-border group hover:border-border shadow-sm'
                                                         }`}
                                                 >
-                                                    <div className="w-6 flex flex-col items-center justify-center text-white/20 pt-4 cursor-grab active:cursor-grabbing">
+                                                    <div className="w-6 flex flex-col items-center justify-center text-faint pt-4 cursor-grab active:cursor-grabbing">
                                                         <FontAwesomeIcon icon={faGripLines} className="text-sm" />
                                                     </div>
 
@@ -437,7 +420,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                                     size="sm"
                                                                     variant="bordered"
                                                                     aria-label="Speaker"
-                                                                    classNames={{ trigger: "bg-black/40 text-white h-10 border-white/10", value: "text-white" }}
+                                                                    classNames={{ trigger: "bg-muted text-foreground h-10 border-border", value: "text-foreground" }}
                                                                     selectedKeys={msg.userId ? [msg.userId] : []}
                                                                     onSelectionChange={(keys) => updateMessage(msg.id, 'userId', String(Array.from(keys)[0]))}
                                                                     items={users}
@@ -446,7 +429,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                                         <SelectItem
                                                                             key={u.id}
                                                                             textValue={u.username}
-                                                                            startContent={<Avatar src={u.profilePicture || undefined} size="sm" className={`w-5 h-5 ${u.status === 'INVITED' ? 'bg-warning/20' : ''}`} />}
+                                                                            startContent={<UserAvatar src={u.profilePicture || undefined} size="sm" className={`w-5 h-5 ${u.status === 'INVITED' ? 'bg-warning/20' : ''}`} />}
                                                                         >
                                                                             <div className="flex items-center gap-2">
                                                                                 <span>{u.username}</span>
@@ -459,7 +442,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                             <Button
                                                                 size="sm"
                                                                 variant="flat"
-                                                                className={`h-10 px-4 font-medium ${msg.isContext ? 'bg-primary-500/20 text-primary-300 border border-primary-500/30' : 'bg-white/5 text-white/40'}`}
+                                                                className={`h-10 px-4 font-medium ${msg.isContext ? 'bg-muted text-foreground border border-border' : 'bg-muted text-muted-foreground'}`}
                                                                 onPress={() => updateMessage(msg.id, 'isContext', !msg.isContext)}
                                                             >
                                                                 {msg.isContext ? "Context Message" : "Set as Context"}
@@ -471,7 +454,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                             minRows={1}
                                                             maxRows={5}
                                                             variant="bordered"
-                                                            classNames={{ inputWrapper: "bg-transparent border-white/10 hover:border-white/20 focus-within:border-primary-500/50", input: "text-white" }}
+                                                            classNames={{ inputWrapper: "bg-transparent border-border hover:border-border focus-within:border-theme-accent", input: "text-foreground" }}
                                                             value={msg.message}
                                                             onValueChange={(val) => updateMessage(msg.id, 'message', val)}
                                                         />
@@ -499,14 +482,14 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                         hidden: { opacity: 0, y: 10 },
                                         show: { opacity: 1, y: 0 }
                                     }}
-                                    className="pt-6 border-t border-white/10 space-y-4"
+                                    className="pt-6 border-t border-border space-y-4"
                                 >
                                     {status.stage !== 'idle' && (
-                                        <div className="space-y-2 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="space-y-2 p-4 bg-muted rounded-2xl border border-border">
                                             <div className="flex justify-between text-xs">
-                                                <span className="text-white/70">{status.message}</span>
+                                                <span className="text-muted-foreground">{status.message}</span>
                                                 {status.progress !== undefined && (
-                                                    <span className="text-white/50">{status.progress}%</span>
+                                                    <span className="text-faint">{status.progress}%</span>
                                                 )}
                                             </div>
                                             <Progress
@@ -523,7 +506,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                         <div className="flex gap-2">
                                             <Button
                                                 variant="flat"
-                                                className="bg-white/10 text-white font-medium h-14 px-6 rounded-2xl"
+                                                className="bg-muted text-foreground font-medium h-12 px-6 rounded-2xl"
                                                 startContent={<FontAwesomeIcon icon={faPlus} />}
                                                 onPress={() => addMessage(false)}
                                             >
@@ -531,7 +514,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             </Button>
                                             <Button
                                                 variant="flat"
-                                                className="bg-white/5 text-white/60 font-medium h-14 px-6 rounded-2xl border border-white/5 hover:bg-white/10"
+                                                className="bg-muted text-muted-foreground font-medium h-12 px-6 rounded-2xl border border-border hover:bg-muted"
                                                 startContent={<FontAwesomeIcon icon={faInfoCircle} />}
                                                 onPress={() => addMessage(true)}
                                             >
@@ -541,7 +524,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
 
                                         <div className="flex gap-3 flex-1">
                                             <Button
-                                                className="flex-1 bg-primary text-white font-bold h-14 rounded-2xl shadow-lg shadow-primary/20"
+                                                className="flex-1 bg-primary text-foreground font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
                                                 startContent={<FontAwesomeIcon icon={faSave} />}
                                                 onPress={() => handleSubmit(onSubmit)()}
                                                 isLoading={status.stage === 'saving'}
@@ -553,7 +536,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 as={Link}
                                                 href={`/quotes/${quote.id}`}
                                                 variant="bordered"
-                                                className="px-8 h-14 rounded-2xl border-white/10 text-white hover:bg-white/5 font-medium"
+                                                className="px-8 h-12 rounded-2xl border-border text-foreground hover:bg-muted font-medium"
                                             >
                                                 Cancel
                                             </Button>

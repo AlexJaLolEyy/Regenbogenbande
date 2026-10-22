@@ -1,6 +1,7 @@
 "use client";
 
 import { createQuote } from "@/src/app/(content)/quotes/(detail)/upload/actions";
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { getAllSelectableParticipants } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { queryKeys } from "@/src/lib/queries/query-keys";
@@ -15,7 +16,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Avatar,
   Button,
   Chip,
   DateInput,
@@ -26,7 +26,7 @@ import {
 } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import { useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion, Reorder } from "motion/react";
+import { AnimatePresence, motion, Reorder } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -180,7 +180,7 @@ export default function QuoteUpload() {
 
   return (
     <PageShell variant="aurora">
-      <div className="fixed inset-0 pt-24 pb-4 md:pb-8 px-4 md:px-8">
+      <div className="fixed inset-x-0 bottom-0 top-12 md:left-(--sidebar-w) pt-4 pb-4 md:pb-8 px-4 md:px-8">
         <div className="flex flex-col xl:flex-row gap-8 xl:items-stretch max-w-400 mx-auto h-full">
 
           {/* Left Box: Preview area */}
@@ -189,19 +189,19 @@ export default function QuoteUpload() {
             animate={{ x: 0, opacity: 1 }}
             className="w-full xl:w-[45%] flex flex-col gap-6"
           >
-            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
-              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+            <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-8 shadow-sm relative overflow-hidden group transition-all duration-300 flex flex-col">
 
-              <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-                <FontAwesomeIcon icon={faQuoteLeft} className="text-white/40 text-sm" />
+              <h2 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-2">
+                <FontAwesomeIcon icon={faQuoteLeft} className="text-muted-foreground text-sm" />
                 Live Preview
               </h2>
 
-              <div className="relative flex-1 bg-black/40 rounded-3xl overflow-hidden border border-white/5 group/preview">
+              <div className="relative flex-1 bg-muted/50 rounded-2xl overflow-hidden border border-border group/preview">
                 <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-8 space-y-6">
                   <AnimatePresence initial={false}>
                     {(() => {
-                      let actualMsgIdx = 0;
+                      let side = false;
+                      let lastUserId: string | null = null;
                       return messages.map((msg) => {
                         const participant = getParticipant(msg.userId);
 
@@ -214,15 +214,17 @@ export default function QuoteUpload() {
                               exit={{ opacity: 0, scale: 0.9 }}
                               className="flex justify-center"
                             >
-                              <div className="bg-white/5 backdrop-blur-sm border border-white/5 rounded-2xl px-6 py-2 text-xs text-white/50 italic text-center max-w-[90%] leading-relaxed shadow-sm">
+                              <div className="bg-muted backdrop-blur-sm border border-border rounded-2xl px-6 py-2 text-xs text-muted-foreground italic text-center max-w-[90%] leading-relaxed shadow-sm">
                                 {msg.message || "Context description..."}
                               </div>
                             </motion.div>
                           );
                         }
 
-                        const isRight = actualMsgIdx % 2 !== 0;
-                        actualMsgIdx++;
+                        // Side flips only when the speaker changes, so consecutive messages from one user stay together.
+                        if (lastUserId !== null && lastUserId !== msg.userId) side = !side;
+                        const isRight = side;
+                        lastUserId = msg.userId;
                         const displayName = participant ? participant.username : "Selecting author...";
                         const profilePicture = participant?.profilePicture;
 
@@ -234,19 +236,19 @@ export default function QuoteUpload() {
                             exit={{ opacity: 0, scale: 0.9 }}
                             className={`flex gap-3 ${isRight ? 'flex-row-reverse' : ''}`}
                           >
-                            <Avatar
+                            <UserAvatar
                               src={profilePicture || undefined}
-                              className={`w-10 h-10 shrink-0 border border-white/10 shadow-lg rounded-full ${participant?.status === 'INVITED' ? 'border-warning/50' : ''}`}
+                              className={`w-10 h-10 shrink-0 border border-border shadow-lg rounded-full ${participant?.status === 'INVITED' ? 'border-warning/50' : ''}`}
                               showFallback
                             />
                             <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[85%]`}>
-                              <div className="text-[10px] font-bold text-white/30 mb-1 px-1 flex items-center gap-1 uppercase tracking-wider">
+                              <div className="text-xs font-medium text-faint mb-1 px-1 flex items-center gap-1">
                                 {displayName}
                                 {participant?.status === 'INVITED' && <span className="text-[8px] text-warning/60 italic">(Pending)</span>}
                               </div>
-                              <div className={`p-4 rounded-3xl text-sm leading-relaxed shadow-2xl border transition-all duration-300 ${isRight
-                                ? 'bg-purple-600/20 text-white border-purple-500/30 rounded-tr-none'
-                                : 'bg-white/5 text-white/90 border-white/10 rounded-tl-none backdrop-blur-md'
+                              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-2xl border transition-all duration-300 ${isRight
+                                ? 'bg-muted text-foreground border-border rounded-tr-none'
+                                : 'bg-card text-foreground border-border rounded-tl-none'
                                 }`}>
                                 <p className="whitespace-pre-wrap wrap-break-word">
                                   {msg.message || <span className="italic opacity-20">Type something...</span>}
@@ -262,14 +264,14 @@ export default function QuoteUpload() {
               </div>
             </div>
 
-            <div className="bg-[#1A1A1A]/40 backdrop-blur-xl border border-white/10 rounded-4xl p-6 flex flex-col justify-center h-40 shrink-0">
+            <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl p-6 flex flex-col justify-center h-40 shrink-0">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 text-purple-400">
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border text-muted-foreground">
                   <FontAwesomeIcon icon={faInfoCircle} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">Quote Drafting</h4>
-                  <p className="text-xs text-white/50 leading-relaxed">
+                  <h4 className="text-sm font-bold text-foreground">Quote Drafting</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     You can reorder messages by dragging the handles. Use &quot;Context&quot; for narrator descriptions or background info to make the quote more readable.
                   </p>
                 </div>
@@ -283,15 +285,14 @@ export default function QuoteUpload() {
             animate={{ x: 0, opacity: 1 }}
             className="w-full xl:w-[55%] flex"
           >
-            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 lg:p-10 shadow-2xl relative group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
-              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+            <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-5 md:p-8 lg:p-10 shadow-sm relative group transition-all duration-300 flex flex-col">
 
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <FontAwesomeIcon icon={faSave} className="text-white/40 text-sm" />
+                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <FontAwesomeIcon icon={faSave} className="text-muted-foreground text-sm" />
                   Redact Quote
                 </h2>
-                <Chip variant="flat" size="sm" className="bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold px-3">
+                <Chip variant="flat" size="sm" className="bg-muted text-foreground border border-border font-bold px-3">
                   {messages.length} ITEMS
                 </Chip>
               </div>
@@ -318,17 +319,17 @@ export default function QuoteUpload() {
                   className="grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest pl-1">Uploaded By</label>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl h-12">
+                    <label className="text-sm font-medium text-muted-foreground">Uploaded By</label>
+                    <div className="flex items-center gap-3 p-3 bg-muted border border-border rounded-2xl h-12">
                       {isSessionPending ? (
-                        <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-3 h-3 border-2 border-theme-accent border-t-transparent rounded-full animate-spin" />
                       ) : session?.user ? (
                         <>
-                          <Avatar src={session.user.image || undefined} size="sm" className="w-6 h-6 rounded-full border border-white/10" />
-                          <span className="text-xs text-white font-bold truncate">{session.user.name}</span>
+                          <UserAvatar src={session.user.image || undefined} size="sm" className="w-6 h-6 rounded-full border border-border" />
+                          <span className="text-xs text-foreground font-bold truncate">{session.user.name}</span>
                         </>
                       ) : (
-                        <span className="text-xs text-white/40 italic">Not logged in</span>
+                        <span className="text-sm text-muted-foreground italic">Not logged in</span>
                       )}
                     </div>
                   </div>
@@ -346,8 +347,8 @@ export default function QuoteUpload() {
                         isRequired
                         isInvalid={!!errors.createdAt}
                         classNames={{
-                          inputWrapper: "bg-white/5 border-white/10 h-12 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
-                          label: "text-[10px] font-bold text-white/30 uppercase tracking-widest"
+                          inputWrapper: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
+                          label: "text-sm font-medium text-muted-foreground"
                         }}
                         value={field.value ? fromDate(field.value, getLocalTimeZone()) : null}
                         onChange={(date) => field.onChange(date ? (date).toDate() : new Date())}
@@ -363,18 +364,18 @@ export default function QuoteUpload() {
                   }}
                   className="flex-1 flex flex-col min-h-0"
                 >
-                  <div className="flex justify-between items-center sticky top-0 bg-[#070707]/80 backdrop-blur-md py-4 z-20 mb-4 px-4 rounded-2xl border border-white/5">
+                  <div className="flex justify-between items-center sticky top-0 bg-card/80 backdrop-blur-md py-4 z-20 mb-4 px-4 rounded-2xl border border-border">
                     <div className="flex flex-col">
-                      <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.25em]">
+                      <h3 className="text-xs font-medium text-muted-foreground">
                         Conversation Flow
                       </h3>
-                      <span className="text-[9px] text-purple-400/60 font-medium">Reorder by dragging handles</span>
+                      <span className="text-[11px] text-foreground/60 font-medium">Reorder by dragging handles</span>
                     </div>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="flat"
-                        className="bg-purple-500/10 text-purple-300 font-bold h-8 px-4 rounded-xl border border-purple-500/20 hover:bg-purple-500/20 transition-all"
+                        className="bg-muted text-foreground font-bold h-8 px-4 rounded-xl border border-border hover:bg-muted transition-all"
                         startContent={<FontAwesomeIcon icon={faPlus} className="text-[10px]" />}
                         onPress={() => addMessage(false)}
                       >
@@ -383,7 +384,7 @@ export default function QuoteUpload() {
                       <Button
                         size="sm"
                         variant="flat"
-                        className="bg-white/5 text-white/40 font-bold h-8 px-4 rounded-xl border border-white/5 hover:bg-white/10 hover:text-white/60 transition-all"
+                        className="bg-muted text-muted-foreground font-bold h-8 px-4 rounded-xl border border-border hover:bg-muted hover:text-foreground/60 transition-all"
                         startContent={<FontAwesomeIcon icon={faInfoCircle} className="text-[10px]" />}
                         onPress={() => addMessage(true)}
                       >
@@ -392,7 +393,7 @@ export default function QuoteUpload() {
                     </div>
                   </div>
 
-                  <div className="flex-1 bg-black/20 border border-white/5 rounded-3xl overflow-hidden flex flex-col relative min-h-0">
+                  <div className="flex-1 bg-black/20 border border-border rounded-2xl overflow-hidden flex flex-col relative min-h-0">
                     <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-4">
                       <Reorder.Group
                         axis="y"
@@ -409,12 +410,12 @@ export default function QuoteUpload() {
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95 }}
                               className={`flex gap-3 items-start p-3 rounded-2xl border transition-all duration-300 ${msg.isContext
-                                ? 'bg-purple-500/5 border-purple-500/10 border-dashed'
-                                : 'bg-white/5 border-white/5 group hover:border-purple-500/30'
+                                ? 'bg-muted border-border border-dashed'
+                                : 'bg-muted border-border group hover:border-border'
                                 }`}
                             >
                               {/* Drag Handle */}
-                              <div className="w-5 flex flex-col items-center justify-center text-white/10 pt-3 cursor-grab active:cursor-grabbing hover:text-purple-400 transition-colors">
+                              <div className="w-5 flex flex-col items-center justify-center text-faint pt-3 cursor-grab active:cursor-grabbing hover:text-foreground transition-colors">
                                 <FontAwesomeIcon icon={faGripLines} className="text-xs" />
                               </div>
 
@@ -429,7 +430,7 @@ export default function QuoteUpload() {
                                         variant="bordered"
                                         aria-label="Speaker"
                                         classNames={{
-                                          trigger: "bg-black/40 text-white h-10 border-white/5 hover:border-purple-500/30 transition-all min-w-[140px] max-w-[220px] rounded-xl",
+                                          trigger: "bg-muted text-foreground h-10 border-border hover:border-border transition-all min-w-[140px] max-w-[220px] rounded-xl",
                                           value: "text-xs font-bold"
                                         }}
                                         selectedKeys={msg.userId ? [msg.userId] : []}
@@ -440,7 +441,7 @@ export default function QuoteUpload() {
                                           if (!participant) return null;
                                           return (
                                             <div className="flex items-center gap-1.5">
-                                              <Avatar src={participant.profilePicture || undefined} size="sm" className="w-3.5 h-3.5 border border-white/10 shadow-sm" />
+                                              <UserAvatar src={participant.profilePicture || undefined} size="sm" className="w-3.5 h-3.5 border border-border shadow-sm" />
                                               <span className="truncate">{participant.username}</span>
                                             </div>
                                           );
@@ -451,7 +452,7 @@ export default function QuoteUpload() {
                                             key={p.id}
                                             textValue={p.username}
                                             startContent={
-                                              <Avatar src={p.profilePicture || undefined} size="sm" className="w-4 h-4 border border-white/10" />
+                                              <UserAvatar src={p.profilePicture || undefined} size="sm" className="w-4 h-4 border border-border" />
                                             }
                                           >
                                             <div className="flex items-center justify-between gap-2 w-full">
@@ -462,7 +463,7 @@ export default function QuoteUpload() {
                                         )}
                                       </Select>
                                     ) : (
-                                      <div className="flex items-center gap-2 text-purple-400/60 uppercase tracking-widest font-black text-[9px]">
+                                      <div className="flex items-center gap-2 text-foreground/60 font-semibold text-[11px]">
                                         <FontAwesomeIcon icon={faInfoCircle} className="text-[10px]" />
                                         Contextual Info
                                       </div>
@@ -474,7 +475,7 @@ export default function QuoteUpload() {
                                       isIconOnly
                                       size="sm"
                                       variant="flat"
-                                      className={`h-10 w-10 rounded-xl transition-all ${msg.isContext ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-white/5 text-white/20 border border-white/5 hover:bg-white/10'}`}
+                                      className={`h-10 w-10 rounded-xl transition-all ${msg.isContext ? 'bg-muted text-foreground border border-border' : 'bg-muted text-faint border border-border hover:bg-muted'}`}
                                       onPress={() => updateMessage(msg.id, 'isContext', !msg.isContext)}
                                       title={msg.isContext ? "Switch to Speaker" : "Switch to Context"}
                                     >
@@ -486,7 +487,7 @@ export default function QuoteUpload() {
                                       variant="light"
                                       color="danger"
                                       onPress={() => removeMessage(msg.id)}
-                                      className="text-white/5 hover:text-red-500 hover:bg-red-500/10 transition-all rounded-xl h-10 w-10"
+                                      className="text-faint hover:text-danger hover:bg-danger/10 transition-all rounded-xl h-10 w-10"
                                     >
                                       <FontAwesomeIcon icon={faTrash} className="text-sm" />
                                     </Button>
@@ -499,8 +500,8 @@ export default function QuoteUpload() {
                                   maxRows={5}
                                   variant="bordered"
                                   classNames={{
-                                    inputWrapper: "bg-black/20 border-white/10 hover:border-purple-500/30 focus-within:!border-purple-500/50 transition-all rounded-2xl p-4",
-                                    input: "text-white text-sm leading-relaxed placeholder:text-white/10"
+                                    inputWrapper: "bg-muted border-border hover:border-foreground/30 focus-within:border-theme-accent! transition-all rounded-2xl p-4",
+                                    input: "text-foreground text-sm leading-relaxed placeholder:text-faint"
                                   }}
                                   value={msg.message}
                                   onValueChange={(val) => updateMessage(msg.id, 'message', val)}
@@ -519,25 +520,25 @@ export default function QuoteUpload() {
                     hidden: { opacity: 0, y: 10 },
                     show: { opacity: 1, y: 0 }
                   }}
-                  className="space-y-6 pt-6 border-t border-white/5"
+                  className="space-y-6 pt-6 border-t border-border"
                 >
                   {uploadStatus.stage !== 'idle' && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="space-y-3 p-5 bg-purple-500/5 rounded-3xl border border-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]"
+                      className="space-y-3 p-5 bg-muted rounded-2xl border border-border"
                     >
-                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                        <span className="text-purple-300">{uploadStatus.message}</span>
-                        {uploadStatus.progress !== undefined && <span className="text-purple-400">{uploadStatus.progress}%</span>}
+                      <div className="flex justify-between items-center text-xs font-medium">
+                        <span className="text-foreground">{uploadStatus.message}</span>
+                        {uploadStatus.progress !== undefined && <span className="text-foreground">{uploadStatus.progress}%</span>}
                       </div>
                       <Progress
                         value={uploadStatus.progress}
                         isIndeterminate={uploadStatus.progress === undefined}
                         classNames={{
                           base: "h-1.5",
-                          indicator: "bg-purple-500 shadow-[0_0_10px_#a855f7]",
-                          track: "bg-white/5"
+                          indicator: "bg-theme-accent",
+                          track: "bg-muted"
                         }}
                       />
                     </motion.div>
@@ -545,9 +546,8 @@ export default function QuoteUpload() {
 
                   <div className="flex gap-4">
                     <Button
-                      color="secondary"
                       size="lg"
-                      className="flex-1 font-black h-12 rounded-2xl bg-purple-600 hover:bg-purple-500 shadow-xl shadow-purple-900/30 text-sm uppercase tracking-wider"
+                      className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
                       startContent={<FontAwesomeIcon icon={faSave} />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage === 'saving'}
@@ -559,7 +559,7 @@ export default function QuoteUpload() {
                       href="/quotes"
                       variant="bordered"
                       size="lg"
-                      className="px-10 h-12 rounded-2xl border-white/10 text-white hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest"
+                      className="px-8 h-12 rounded-xl border-border text-foreground hover:bg-muted font-medium text-sm"
                     >
                       Cancel
                     </Button>
