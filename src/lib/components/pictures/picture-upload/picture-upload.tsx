@@ -1,19 +1,20 @@
 "use client"
 
 import { createPicture } from "@/src/app/(content)/pictures/(detail)/upload/actions";
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { getAllCategories, getAllSelectableParticipants } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { formatFileSize } from "@/src/lib/utils/format";
 import {
   faCircleUp,
+  faCrop,
   faImage,
   faInfoCircle,
   faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Avatar,
   Button,
   Checkbox,
   Chip,
@@ -31,7 +32,7 @@ import {
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import { useQueryClient } from "@tanstack/react-query";
 import EXIF from 'exif-js';
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "framer-motion";
 import NextImage from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,6 +41,7 @@ import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import type { Category, PictureUploadForm, User } from "../../../types/types";
 import { GlassDropZone } from "../../ui/glass-drop-zone";
 import { PageShell } from "../../ui/page-shell";
+import { ImageCropper } from "./image-cropper";
 
 export default function PictureUpload() {
   const { data: session, isPending: isSessionPending } = useSession();
@@ -107,6 +109,7 @@ export default function PictureUpload() {
   }>({});
 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isCropOpen, setIsCropOpen] = useState(false);
 
   useEffect(() => {
     getAllSelectableParticipants().then((p) => {
@@ -121,9 +124,21 @@ export default function PictureUpload() {
   }, [creationDate, setValue, manualDateOverride]);
 
 
+  const clearFileState = () => {
+    setPreview(null);
+    setCreationDate(null);
+    setImageMetadata({});
+    setUploadStatus({ stage: 'idle', message: '' });
+    setUploadStats({});
+  };
+
   const handleFileChange = (file: File) => {
     if (file) {
       setPreview(file);
+      setCreationDate(null);
+      setImageMetadata({});
+      setUploadStatus({ stage: 'idle', message: '' });
+      setUploadStats({});
 
       // Extract basic metadata
       setImageMetadata({
@@ -159,6 +174,24 @@ export default function PictureUpload() {
       img.src = URL.createObjectURL(file);
       setValue("img", file, { shouldValidate: true });
     }
+  };
+
+  const handleCropApply = (croppedFile: File) => {
+    setPreview(croppedFile);
+    setValue("img", croppedFile, { shouldValidate: true });
+    setImageMetadata({
+      size: formatFileSize(croppedFile.size),
+      format: croppedFile.type.split('/')[1]?.toUpperCase() ?? 'IMAGE',
+    });
+    const img = new Image();
+    img.onload = () => {
+      setImageMetadata(prev => ({
+        ...prev,
+        resolution: `${img.width}x${img.height}`
+      }));
+    };
+    img.src = URL.createObjectURL(croppedFile);
+    setIsCropOpen(false);
   };
 
   const onSubmit: SubmitHandler<PictureUploadForm> = async (data) => {
@@ -216,7 +249,37 @@ export default function PictureUpload() {
 
   return (
     <PageShell variant="aurora">
-      <div className="w-full h-full pt-24 pb-4 md:pb-8 px-4 md:px-8 min-h-screen">
+      <div className="w-full h-full pt-8 pb-4 md:pb-8 px-4 md:px-8 min-h-screen">
+
+        {/* Image Crop Modal */}
+        <Modal
+          isOpen={isCropOpen}
+          onOpenChange={setIsCropOpen}
+          size="3xl"
+          backdrop="blur"
+          classNames={{
+            base: "bg-elevated border border-border",
+            header: "border-b border-border",
+            body: "p-4",
+          }}
+        >
+          <ModalContent>
+            {() => (
+              <>
+                <ModalHeader className="text-foreground">Adjust / Crop Image</ModalHeader>
+                <ModalBody>
+                  {preview && (
+                    <ImageCropper
+                      imageFile={preview}
+                      onApply={handleCropApply}
+                      onCancel={() => setIsCropOpen(false)}
+                    />
+                  )}
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
 
         {/* Fullscreen Preview Modal */}
         <Modal
@@ -225,15 +288,15 @@ export default function PictureUpload() {
           size="5xl"
           backdrop="blur"
           classNames={{
-            base: "bg-[#050505]/90 border border-white/10",
-            header: "border-b border-white/5",
+            base: "bg-elevated border border-border",
+            header: "border-b border-border",
             body: "p-0",
           }}
         >
           <ModalContent>
             {(onClose: () => void) => (
               <>
-                <ModalHeader className="text-white">Image Preview</ModalHeader>
+                <ModalHeader className="text-foreground">Image Preview</ModalHeader>
                 <ModalBody>
                   <div className="bg-black flex items-center justify-center p-4">
                     {preview && (
@@ -259,10 +322,9 @@ export default function PictureUpload() {
             animate={{ x: 0, opacity: 1 }}
             className="w-full xl:w-[55%] flex flex-col gap-6"
           >
-            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
-              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+            <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-8 shadow-sm relative overflow-hidden group transition-all duration-300 flex flex-col">
 
-              <div className="relative flex-1 bg-black/40 rounded-3xl overflow-hidden border border-white/5 group/preview flex flex-col min-h-125">
+              <div className="relative flex-1 bg-muted/50 rounded-2xl overflow-hidden border border-border group/preview flex flex-col min-h-125">
                 <AnimatePresence mode="wait">
                   {preview ? (
                     <motion.div
@@ -275,36 +337,45 @@ export default function PictureUpload() {
                       <div className="relative w-full h-full flex items-center justify-center">
                         <NextImage
                           src={URL.createObjectURL(preview)}
-                          className="max-w-full max-h-125 object-contain shadow-2xl rounded-2xl border border-white/10"
+                          className="max-w-full max-h-125 object-contain shadow-2xl rounded-2xl border border-border"
                           alt="Preview"
                           width={800}
                           height={800}
                         />
                         <button
-                          onClick={() => setPreview(null)}
-                          className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-white/10 opacity-0 group-hover/preview:opacity-100"
+                          onClick={clearFileState}
+                          className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-danger text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-border opacity-0 group-hover/preview:opacity-100"
                         >
                           <FontAwesomeIcon icon={faTimes} />
                         </button>
                       </div>
 
                       <div className="mt-6 flex flex-wrap gap-4 justify-center">
-                        <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                          <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Size</span>
-                          <span className="text-sm text-purple-300 font-mono">{imageMetadata.size}</span>
+                        <div className="px-4 py-2 rounded-2xl bg-muted border border-border flex items-center gap-3">
+                          <span className="text-xs text-faint">Size</span>
+                          <span className="text-sm text-foreground font-mono">{imageMetadata.size}</span>
                         </div>
-                        <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                          <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Resolution</span>
-                          <span className="text-sm text-purple-300 font-mono">{imageMetadata.resolution}</span>
+                        <div className="px-4 py-2 rounded-2xl bg-muted border border-border flex items-center gap-3">
+                          <span className="text-xs text-faint">Resolution</span>
+                          <span className="text-sm text-foreground font-mono">{imageMetadata.resolution}</span>
                         </div>
-                        <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                          <span className="text-[10px] uppercase tracking-wider text-white/30 font-bold">Format</span>
-                          <span className="text-sm text-purple-300 font-mono">{imageMetadata.format}</span>
+                        <div className="px-4 py-2 rounded-2xl bg-muted border border-border flex items-center gap-3">
+                          <span className="text-xs text-faint">Format</span>
+                          <span className="text-sm text-foreground font-mono">{imageMetadata.format}</span>
                         </div>
                         <Button
                           size="sm"
                           variant="flat"
-                          className="bg-purple-500/20 text-purple-300 border border-purple-500/20 px-4 h-9 font-bold"
+                          className="bg-muted text-foreground border border-border px-4 h-9 font-bold"
+                          startContent={<FontAwesomeIcon icon={faCrop} />}
+                          onPress={() => setIsCropOpen(true)}
+                        >
+                          Adjust / Crop
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-muted text-foreground border border-border px-4 h-9 font-bold"
                           onPress={() => setIsPreviewModalOpen(true)}
                         >
                           Fullscreen Preview
@@ -322,7 +393,7 @@ export default function PictureUpload() {
                         title="Upload Picture"
                         subtitle="PNG, JPEG, WebP (Max 20MB)"
                         icon={faImage}
-                        className="w-full h-full border-none bg-transparent hover:bg-white/5 transition-colors"
+                        className="w-full h-full border-none bg-transparent hover:bg-muted transition-colors"
                       />
                     </motion.div>
                   )}
@@ -330,14 +401,14 @@ export default function PictureUpload() {
               </div>
             </div>
 
-            <div className="bg-[#1A1A1A]/40 backdrop-blur-xl border border-white/10 rounded-4xl p-6 flex flex-col justify-center min-h-35">
+            <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl p-6 flex flex-col justify-center min-h-35">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 text-purple-400">
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border text-muted-foreground">
                   <FontAwesomeIcon icon={faInfoCircle} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">Image Processing</h4>
-                  <p className="text-xs text-white/50 leading-relaxed">
+                  <h4 className="text-sm font-bold text-foreground">Image Processing</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Images are automatically optimized and converted to modern formats like WebP or high-quality JPEG to ensure fast loading times without quality loss.
                   </p>
                 </div>
@@ -348,7 +419,7 @@ export default function PictureUpload() {
                   isSelected={qualityMode}
                   onValueChange={setQualityMode}
                   size="sm"
-                  classNames={{ label: "text-white/70 text-xs font-bold", wrapper: "after:bg-purple-600" }}
+                  classNames={{ label: "text-muted-foreground text-xs font-bold", wrapper: "after:bg-primary" }}
                 >
                   Enable High Quality Mode (Maximum Detail / Q95)
                 </Checkbox>
@@ -362,11 +433,10 @@ export default function PictureUpload() {
             animate={{ x: 0, opacity: 1 }}
             className="w-full xl:w-[45%] flex"
           >
-            <div className="flex-1 bg-[#050505]/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 lg:p-10 shadow-2xl relative group hover:border-purple-500/30 transition-all duration-500 flex flex-col">
-              <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-purple-500/20 to-transparent" />
+            <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-5 md:p-8 lg:p-10 shadow-sm relative group transition-all duration-300 flex flex-col">
 
-              <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
-                <FontAwesomeIcon icon={faImage} className="text-white/40 text-sm" />
+              <h2 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-2">
+                <FontAwesomeIcon icon={faImage} className="text-muted-foreground text-sm" />
                 Image Metadata
               </h2>
 
@@ -407,9 +477,9 @@ export default function PictureUpload() {
                           isInvalid={!!errors.title}
                           errorMessage="Title is required"
                           classNames={{
-                            inputWrapper: "bg-white/5 border-white/10 h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
-                            input: "text-white placeholder:text-white/20",
-                            label: "text-sm font-medium text-white/50"
+                            inputWrapper: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
+                            input: "text-foreground placeholder:text-faint",
+                            label: "text-sm font-medium text-muted-foreground"
                           }}
                         />
                       )}
@@ -423,9 +493,9 @@ export default function PictureUpload() {
                       placeholder="Select Category"
                       isRequired
                       classNames={{
-                        trigger: "bg-white/5 border-white/10 h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
-                        label: "text-sm font-medium text-white/50",
-                        value: "text-white font-medium"
+                        trigger: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
+                        label: "text-sm font-medium text-muted-foreground",
+                        value: "text-foreground font-medium"
                       }}
                       {...register("categoryId", { required: true })}
                       items={categories}
@@ -435,7 +505,7 @@ export default function PictureUpload() {
                           return (
                             <div key={item.key} className="flex items-center gap-2">
                               {category?.iconUrl && (
-                                <Avatar src={category.iconUrl} className="w-5 h-5" />
+                                <UserAvatar src={category.iconUrl} className="w-5 h-5" />
                               )}
                               <span>{item.textValue}</span>
                             </div>
@@ -447,7 +517,7 @@ export default function PictureUpload() {
                         <SelectItem
                           key={category.id}
                           textValue={category.name}
-                          startContent={category.iconUrl ? <Avatar src={category.iconUrl} alt="" className="w-5 h-5" /> : undefined}
+                          startContent={category.iconUrl ? <UserAvatar src={category.iconUrl} alt="" className="w-5 h-5" /> : undefined}
                         >
                           {category.name}
                         </SelectItem>
@@ -474,9 +544,9 @@ export default function PictureUpload() {
                         placeholder="Tell the story behind this image..."
                         minRows={4}
                         classNames={{
-                          inputWrapper: "bg-white/5 border-white/10 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
-                          input: "text-white leading-relaxed placeholder:text-white/20",
-                          label: "text-sm font-medium text-white/50"
+                          inputWrapper: "bg-muted border-border hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
+                          input: "text-foreground leading-relaxed placeholder:text-faint",
+                          label: "text-sm font-medium text-muted-foreground"
                         }}
                       />
                     )}
@@ -491,17 +561,17 @@ export default function PictureUpload() {
                   className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end"
                 >
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-white/50">Uploaded By</label>
-                    <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl h-14">
+                    <label className="text-sm font-medium text-muted-foreground">Uploaded By</label>
+                    <div className="flex items-center gap-3 p-3 bg-muted border border-border rounded-2xl h-12">
                       {isSessionPending ? (
-                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-theme-accent border-t-transparent rounded-full animate-spin" />
                       ) : session?.user ? (
                         <>
-                          <Avatar src={session.user.image || undefined} size="sm" className="w-8 h-8 rounded-full border border-white/10" />
-                          <span className="text-sm text-white font-bold truncate">{session.user.name}</span>
+                          <UserAvatar src={session.user.image || undefined} size="sm" className="w-8 h-8 rounded-full border border-border" />
+                          <span className="text-sm text-foreground font-bold truncate">{session.user.name}</span>
                         </>
                       ) : (
-                        <span className="text-sm text-white/40 italic">Not logged in</span>
+                        <span className="text-sm text-muted-foreground italic">Not logged in</span>
                       )}
                     </div>
                   </div>
@@ -515,9 +585,9 @@ export default function PictureUpload() {
                     isRequired
                     isInvalid={!!errors.participants}
                     classNames={{
-                      trigger: "bg-white/5 border-white/10 min-h-14 hover:border-purple-500/30 transition-all focus-within:!border-purple-500/50",
-                      label: "text-sm font-medium text-white/50",
-                      value: "text-white"
+                      trigger: "bg-muted border-border min-h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
+                      label: "text-sm font-medium text-muted-foreground",
+                      value: "text-foreground"
                     }}
                     {...register("participants", { required: true })}
                     items={participants}
@@ -525,7 +595,7 @@ export default function PictureUpload() {
                     renderValue={(items) => (
                       <div className="flex flex-wrap gap-1 py-1">
                         {items.map((item) => (
-                          <Chip key={item.key} size="sm" variant="flat" className="bg-purple-500/20 text-purple-300 border border-purple-500/20 text-[10px] font-bold">
+                          <Chip key={item.key} size="sm" variant="flat" className="bg-muted text-foreground border border-border text-xs font-medium">
                             {item.textValue}
                           </Chip>
                         ))}
@@ -535,10 +605,10 @@ export default function PictureUpload() {
                     {(participant) => (
                       <SelectItem key={participant.id} textValue={participant.username}>
                         <div className="flex items-center gap-2">
-                          <Avatar src={participant.profilePicture || undefined} className="w-6 h-6 border border-white/10" />
+                          <UserAvatar src={participant.profilePicture || undefined} className="w-6 h-6 border border-border" />
                           <span className="font-normal">{participant.username}</span>
                           {participant.status === 'INVITED' && (
-                            <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[9px] font-bold uppercase">Pending</Chip>
+                            <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[11px] font-medium">Pending</Chip>
                           )}
                         </div>
                       </SelectItem>
@@ -553,7 +623,7 @@ export default function PictureUpload() {
                     hidden: { opacity: 0, y: 10 },
                     show: { opacity: 1, y: 0 }
                   }}
-                  className="space-y-4 pt-4 border-t border-white/5"
+                  className="space-y-4 pt-4 border-t border-border"
                 >
                   <Controller
                     name="createdAt"
@@ -569,8 +639,8 @@ export default function PictureUpload() {
                         isReadOnly={!manualDateOverride}
                         isInvalid={!!errors.createdAt}
                         classNames={{
-                          inputWrapper: `bg-white/5 border-white/10 h-14 transition-all ${!manualDateOverride ? 'opacity-40 cursor-not-allowed' : 'hover:border-purple-500/30 focus-within:!border-purple-500/50'}`,
-                          label: "text-sm font-medium text-white/50"
+                          inputWrapper: `bg-muted border-border h-12 transition-all ${!manualDateOverride ? 'opacity-40 cursor-not-allowed' : 'hover:border-foreground/30 focus-within:border-theme-accent!'}`,
+                          label: "text-sm font-medium text-muted-foreground"
                         }}
                         value={field.value ? fromDate(field.value, getLocalTimeZone()) : null}
                         onChange={(date) => field.onChange(date ? (date).toDate() : new Date())}
@@ -581,7 +651,7 @@ export default function PictureUpload() {
                     type="button"
                     size="sm"
                     variant="light"
-                    className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter h-auto p-0 min-w-0 hover:text-purple-300 transition-colors"
+                    className="text-xs text-muted-foreground font-medium h-auto p-0 min-w-0 hover:text-foreground transition-colors"
                     onPress={() => setManualDateOverride(!manualDateOverride)}
                   >
                     {manualDateOverride ? "Reset to Auto-Detection" : "Change manual creation date"}
@@ -600,12 +670,12 @@ export default function PictureUpload() {
                     <motion.div
                       initial={{ scale: 0.9, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="space-y-3 p-5 bg-purple-500/5 rounded-3xl border border-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.05)]"
+                      className="space-y-3 p-5 bg-muted rounded-2xl border border-border"
                     >
-                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                        <span className="text-purple-300">{uploadStatus.message}</span>
+                      <div className="flex justify-between items-center text-xs font-medium">
+                        <span className="text-foreground">{uploadStatus.message}</span>
                         {uploadStatus.progress !== undefined && (
-                          <span className="text-purple-400">{uploadStatus.progress}%</span>
+                          <span className="text-foreground">{uploadStatus.progress}%</span>
                         )}
                       </div>
                       <Progress
@@ -614,8 +684,8 @@ export default function PictureUpload() {
                         isIndeterminate={uploadStatus.progress === undefined}
                         classNames={{
                           base: "h-1.5",
-                          indicator: "bg-purple-500 shadow-[0_0_10px_#a855f7]",
-                          track: "bg-white/5"
+                          indicator: "bg-theme-accent",
+                          track: "bg-muted"
                         }}
                       />
                     </motion.div>
@@ -623,9 +693,8 @@ export default function PictureUpload() {
 
                   <div className="flex gap-4">
                     <Button
-                      color="secondary"
                       size="lg"
-                      className="flex-1 font-black h-12 rounded-2xl bg-purple-600 hover:bg-purple-500 shadow-xl shadow-purple-900/30 text-sm uppercase tracking-wider"
+                      className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
                       startContent={<FontAwesomeIcon icon={faCircleUp} />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
@@ -637,7 +706,7 @@ export default function PictureUpload() {
                       href="/pictures"
                       variant="bordered"
                       size="lg"
-                      className="px-10 h-12 rounded-2xl border-white/10 text-white hover:bg-white/5 font-bold uppercase text-[10px] tracking-widest"
+                      className="px-8 h-12 rounded-xl border-border text-foreground hover:bg-muted font-medium text-sm"
                     >
                       Cancel
                     </Button>
