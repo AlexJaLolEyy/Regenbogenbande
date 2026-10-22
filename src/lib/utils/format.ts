@@ -22,3 +22,11 @@ export function formatDuration(seconds: number): string {
     }
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Formats a date for display in lists and views. Always de-DE so every
+ * content type renders dates identically.
+ */
+export function formatDate(date: Date | string | number): string {
+    return new Date(date).toLocaleDateString("de-DE", { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
