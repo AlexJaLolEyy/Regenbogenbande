@@ -25,9 +25,13 @@ export function AnimatedGridItem({ children, delay = 0, className }: AnimatedGri
 export function AnimatedMasonryItem({ children, delay = 0, className }: AnimatedGridItemProps) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay }}
+            transition={{
+                duration: 0.5,
+                delay,
+                ease: [0.23, 1, 0.32, 1]
+            }}
             className={className}
         >
             {children}
