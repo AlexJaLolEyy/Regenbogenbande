@@ -18,6 +18,7 @@ datasource db {
 // Note: 'owner' is application-level check via OWNER_USER_ID env var
 
 enum Role {
+  owner
   admin
   member
 }
