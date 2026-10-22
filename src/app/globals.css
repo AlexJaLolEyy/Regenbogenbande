@@ -1,5 +1,7 @@
 @import "tailwindcss";
+@import "../../node_modules/tw-animate-css/dist/tw-animate.css";
 @plugin './hero';
+
 @source '../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
 @custom-variant dark (&:is(.dark *));
 
@@ -75,23 +77,24 @@
 }
 
 @utility glass-panel {
-  @apply bg-white/5 dark:bg-black/20 backdrop-blur-xl border border-white/10 shadow-xl;
+  @apply bg-card/70 backdrop-blur-md border border-border shadow-sm;
 }
 
 @utility glass-card {
-  @apply bg-white/10 dark:bg-black/40 backdrop-blur-lg border border-white/10 hover:border-white/20 transition-all duration-300;
+  @apply bg-card/70 backdrop-blur-md border border-border shadow-sm transition-all duration-200 hover:bg-card/90 hover:border-foreground/20 hover:shadow-md;
 }
-
 @utility custom-scrollbar {
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+
   &::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+    @apply bg-foreground/15 rounded-full hover:bg-foreground/30 transition-colors;
   }
 }
 
@@ -107,6 +110,14 @@
   h3 {
     @apply text-lg font-semibold;
   }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 html,
@@ -116,21 +127,212 @@ body {
   padding: 0;
 }
 
-.layout {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  height: auto;
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-faint: var(--faint);
+  --color-gold: var(--gold);
+  --color-theme-accent: var(--theme-accent);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  --animate-shine: shine var(--duration) infinite linear
+;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;
+    }
+  50% {
+    background-position: 100% 100%;
+    }
+  to {
+    background-position: 0% 0%;
+    }
+  }
+  --animate-shiny-text: shiny-text 8s infinite;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;
+    }
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;
+    }
+  }}
+
+/* ------------------------------------------------------------------
+   Semantic tokens. Base = neutral / accent-agnostic.
+   Light: vanilla-bone. Dark: blue-charcoal. Never inline hex in components.
+   Surfaces: background -> surface (content box) -> card -> elevated.
+   ------------------------------------------------------------------ */
+:root {
+  --radius: 0.75rem;
+
+  --background: #EFEBE1;
+  --surface: #F6F3EC;
+  --card: #FBFAF5;
+  --elevated: #FFFFFF;
+  --popover: #FFFFFF;
+
+  --foreground: #23262E;
+  --card-foreground: #23262E;
+  --popover-foreground: #23262E;
+  --muted-foreground: #6E6A5F;
+  --faint: #928C7E;
+
+  --border: #E0DACC;
+  --divider: #EAE5D9;
+  --input: #E0DACC;
+
+  --primary: #23262E;
+  --primary-foreground: #F6F3EC;
+  --secondary: #EAE5D9;
+  --secondary-foreground: #23262E;
+  --muted: #EAE5D9;
+  --accent: #EAE5D9;
+  --accent-foreground: #23262E;
+
+  --success: #3F7D5B;
+  --warning: #C08A3E;
+  --danger: #B4433E;
+  --destructive: #B4433E;
+  --gold: #E0A93B;
+
+  /* Accent: neutral until a theme is selected via [data-accent] */
+  --theme-accent: #23262E;
+  --ring: var(--theme-accent);
+
+  --chart-1: var(--theme-accent);
+  --chart-2: #3F7D5B;
+  --chart-3: #C08A3E;
+  --chart-4: #6E6A5F;
+  --chart-5: #B4433E;
+
+  --sidebar: color-mix(in srgb, #F6F3EC 80%, transparent);
+  --sidebar-foreground: #23262E;
+  --sidebar-primary: #23262E;
+  --sidebar-primary-foreground: #F6F3EC;
+  --sidebar-accent: #EAE5D9;
+  --sidebar-accent-foreground: #23262E;
+  --sidebar-border: #E0DACC;
+  --sidebar-ring: var(--theme-accent);
 }
 
-.sidebar {
-  width: 20%;
-  background-image: url("/sidebar.png");
-  background-size: contain;
+.dark {
+  --background: #12151C;
+  --surface: #171B24;
+  --card: #1C212C;
+  --elevated: #232936;
+  --popover: #232936;
+
+  --foreground: #E7E9EE;
+  --card-foreground: #E7E9EE;
+  --popover-foreground: #E7E9EE;
+  --muted-foreground: #98A1B2;
+  --faint: #6B7385;
+
+  --border: #2A303D;
+  --divider: #20252F;
+  --input: #2A303D;
+
+  --primary: #E7E9EE;
+  --primary-foreground: #12151C;
+  --secondary: #232936;
+  --secondary-foreground: #E7E9EE;
+  --muted: #232936;
+  --accent: #232936;
+  --accent-foreground: #E7E9EE;
+
+  --theme-accent: #E7E9EE;
+
+  --chart-2: #4E9A73;
+  --chart-3: #D09A4C;
+  --chart-4: #98A1B2;
+  --chart-5: #CC5A54;
+
+  --sidebar: color-mix(in srgb, #171B24 80%, transparent);
+  --sidebar-foreground: #E7E9EE;
+  --sidebar-primary: #E7E9EE;
+  --sidebar-primary-foreground: #12151C;
+  --sidebar-accent: #232936;
+  --sidebar-accent-foreground: #E7E9EE;
+  --sidebar-border: #2A303D;
 }
 
-.main-content {
-  width: 70%;
-  min-width: 300px;
-  padding: 1em;
+/* ------------------------------------------------------------------
+   Selectable accent themes (designed now, selector wired later).
+   Applied as <html data-accent="ocean">. Used sparingly: focus rings,
+   active nav/tab indicator, selection, links, charts.
+   ------------------------------------------------------------------ */
+html[data-accent="ocean"]  { --theme-accent: #3E82C7; --heroui-focus: 209 56% 51%; }
+html[data-accent="forest"] { --theme-accent: #3F7D5B; --heroui-focus: 147 33% 37%; }
+html[data-accent="teal"]   { --theme-accent: #2E9090; --heroui-focus: 180 52% 38%; }
+html[data-accent="wine"]   { --theme-accent: #9C3B49; --heroui-focus: 352 46% 43%; }
+html[data-accent="pink"]   { --theme-accent: #C56A8E; --heroui-focus: 336 47% 58%; }
+html[data-accent="violet"] { --theme-accent: #7A6AC6; --heroui-focus: 250 48% 62%; }
+
+html.dark[data-accent="ocean"]  { --theme-accent: #5B9BDB; --heroui-focus: 209 64% 61%; }
+html.dark[data-accent="forest"] { --theme-accent: #54A07A; --heroui-focus: 148 31% 48%; }
+html.dark[data-accent="teal"]   { --theme-accent: #44AFAF; --heroui-focus: 180 44% 47%; }
+html.dark[data-accent="wine"]   { --theme-accent: #C25A69; --heroui-focus: 352 48% 58%; }
+html.dark[data-accent="pink"]   { --theme-accent: #DB86A6; --heroui-focus: 336 55% 69%; }
+html.dark[data-accent="violet"] { --theme-accent: #978ADB; --heroui-focus: 250 55% 70%; }
+::selection {
+  background: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+}
+
+
+
+::view-transition-old(root), ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
 }
