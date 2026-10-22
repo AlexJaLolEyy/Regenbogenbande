@@ -60,7 +60,7 @@ export async function requireUploadPermission(): Promise<Session> {
 /**
  * Require admin or owner role
  */
-export async function requireAdmin(): Promise<Session> {
+export async function requireAdminOrOwner(): Promise<Session> {
   return requireEffectiveRole(["admin", "owner"])
 }
 
@@ -69,7 +69,8 @@ export async function requireAdmin(): Promise<Session> {
  */
 export async function requireOwner(): Promise<Session> {
   const session = await requireAuth()
-  if (!shared.isOwner(session.user.id)) {
+  const role = shared.getEffectiveRole(session)
+  if (role !== "owner") {
     throw new Error("Unauthorized: Owner access required")
   }
   return session
@@ -103,5 +104,5 @@ export async function requireContentOwnerOrAdmin(resourceOwnerId: string): Promi
 
 export const checkAuth = requireAuth
 export const checkUploadPermission = requireUploadPermission
-export const checkAdmin = requireAdmin
+export const checkAdmin = requireAdminOrOwner
 export const checkOwnerOrAdmin = requireContentOwnerOrAdmin

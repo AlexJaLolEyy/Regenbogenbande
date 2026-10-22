@@ -104,12 +104,21 @@ export const auth = betterAuth({
             throw new Error("NOT_INVITED")
           }
 
+          // Get the current user to preserve their image if they have one (from Discord)
+          const currentUser = await prisma.user.findUnique({
+            where: { id: account.userId },
+            select: { image: true }
+          })
+
+          const randomIcon = `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${discordId}&backgroundColor=b6e3f4,c0aede,d1d4f9`
+
           // Update the user with the invited role and discordId
           await prisma.user.update({
             where: { id: account.userId },
             data: {
               role: invite.role,
               discordId: discordId,
+              image: currentUser?.image || randomIcon, // Prefer Discord icon, fallback to fun-emoji icon
               status: "ACTIVE",
             },
           })

@@ -9,44 +9,21 @@ interface SessionLike {
   } | null;
 }
 
-// ============================================
-// OWNER DETECTION (application-level logic)
-// ============================================
-// Owner is determined by env var, not DB role
-// Note: On client-side, process.env.OWNER_USER_ID will be undefined unless prefixed with NEXT_PUBLIC_
-const OWNER_USER_ID = process.env.OWNER_USER_ID
-
-/**
- * Check if user is the application owner
- */
-export function isOwner(userId: string): boolean {
-  return !!OWNER_USER_ID && userId === OWNER_USER_ID
-}
-
-// ============================================
-// EFFECTIVE ROLE SYSTEM
-// ============================================
-// Combines DB role with application-level owner check and guest detection
-
 export type EffectiveRole = "owner" | "admin" | "member" | "guest"
 
 /**
  * Get the effective role for a session
  * - guest: no session or anonymous session
- * - owner: user ID matches OWNER_USER_ID env var
- * - admin/member: from DB role
+ * - owner, admin, member: from DB role
  */
 export function getEffectiveRole(session: SessionLike | null): EffectiveRole {
   // No session or anonymous = guest
   if (!session?.user || session.user.isAnonymous) {
     return "guest"
   }
-  // Check owner first (owner supersedes admin)
-  if (isOwner(session.user.id)) {
-    return "owner"
-  }
-  // Return DB role (admin or member)
-  return (session.user.role as Role) || "member"
+
+  // Return DB role (owner, admin, or member)
+  return (session.user.role as EffectiveRole) || "member"
 }
 
 /**
