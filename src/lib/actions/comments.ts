@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin, requireAuth } from "@/src/lib/auth-utils";
+import { requireAdminOrOwner, requireAuth } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { Comment } from '@/src/lib/types/types';
 import { revalidatePath } from "next/cache";
@@ -130,7 +130,7 @@ export async function deleteComment(commentId: string, contentType: 'video' | 'p
 
   // Only author or admin can delete
   if (comment.userId !== session.user.id && session.user.role !== 'admin') {
-    await requireAdmin();
+    await requireAdminOrOwner();
   }
 
   await prisma.comment.delete({

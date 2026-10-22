@@ -10,7 +10,6 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
     where: {
       categoryId,
       id: { not: videoId },
-      isPublic: false,
     },
     take: limit,
     orderBy: [
@@ -28,9 +27,7 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
     },
   });
 
-
-
-  // 2. If we don't have enough, fill with other public videos
+  // 2. If we don't have enough, fill with other videos
   if (videos.length < limit) {
     const remainingLimit = limit - videos.length;
     const existingIds = [videoId, ...videos.map(v => v.id)];
@@ -38,7 +35,6 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
     const additionalVideos = await prisma.video.findMany({
       where: {
         id: { notIn: existingIds },
-        isPublic: true,
       },
       take: remainingLimit,
       orderBy: [
@@ -55,7 +51,6 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
         },
       },
     });
-
 
     videos = [...videos, ...additionalVideos];
   }
@@ -76,13 +71,11 @@ export async function getVideoRecommendations(videoId: string, categoryId: strin
 
 export async function getPictureRecommendations(pictureId: string, categoryId: string, limit: number = 5) {
 
-
   // 1. Try to get pictures from the same category
   let pictures = await prisma.picture.findMany({
     where: {
       categoryId,
       id: { not: pictureId },
-      isPublic: true,
     },
     take: limit,
     orderBy: [
@@ -100,9 +93,7 @@ export async function getPictureRecommendations(pictureId: string, categoryId: s
     },
   });
 
-
-
-  // 2. If we don't have enough, fill with other public pictures
+  // 2. If we don't have enough, fill with other pictures
   if (pictures.length < limit) {
     const remainingLimit = limit - pictures.length;
     const existingIds = [pictureId, ...pictures.map(p => p.id)];
@@ -110,7 +101,6 @@ export async function getPictureRecommendations(pictureId: string, categoryId: s
     const additionalPictures = await prisma.picture.findMany({
       where: {
         id: { notIn: existingIds },
-        isPublic: true,
       },
       take: remainingLimit,
       orderBy: [
@@ -127,7 +117,6 @@ export async function getPictureRecommendations(pictureId: string, categoryId: s
         },
       },
     });
-
 
     pictures = [...pictures, ...additionalPictures];
   }

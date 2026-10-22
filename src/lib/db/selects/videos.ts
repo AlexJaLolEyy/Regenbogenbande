@@ -93,23 +93,23 @@ export async function getVideosForList(session?: Session | null, options?: Fetch
         const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
         const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
 
-        const where: Prisma.VideoWhereInput = {};
+    const where: Prisma.VideoWhereInput = {};
 
-        if (effectiveRole === "guest") {
-            where.isPublic = true;
-        }
+    if (effectiveRole === "guest") {
+        where.isPublic = true;
+    }
 
-        if (search) {
-            where.title = { contains: search, mode: 'insensitive' };
-        }
+    if (search) {
+        where.title = { contains: search, mode: 'insensitive' };
+    }
 
-        if (categoryId) {
-            where.categoryId = categoryId;
-        }
+    if (categoryId) {
+        where.categoryId = categoryId;
+    }
 
-        if (dateRange && dateRange !== 'all') {
-            where.createdAt = getDateRangeFilter(dateRange);
-        }
+    if (dateRange && dateRange !== 'all') {
+        where.createdAt = getDateRangeFilter(dateRange);
+    }
 
         const orderBy = getSortOrder(sort);
 
@@ -129,7 +129,7 @@ export async function getVideosForList(session?: Session | null, options?: Fetch
 
 export async function getAllVideos(session?: Session | null, options?: FetchOptions): Promise<Video[]> {
     try {
-        const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+        const { page = 1, limit = 15, search, sort = 'newest', categoryId, dateRange } = options || {};
         const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
 
         const where: Prisma.VideoWhereInput = {};
