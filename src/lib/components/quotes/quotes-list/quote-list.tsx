@@ -8,7 +8,6 @@ import { useState } from "react";
 import { QuoteListItem } from "../../../types/types";
 import { AnimatedMasonryItem } from "../../motion/animated-grid-item";
 import { AppSidebar } from "../../navigation/app-sidebar";
-import { MobileSidebar } from '../../navigation/mobile-sidebar';
 import { PageShell } from '../../ui/page-shell';
 import QuoteComponent from "../quote/quote";
 
@@ -42,12 +41,6 @@ export default function QuoteList({ initialQuotes, categories }: { initialQuotes
         />
         <div className="flex-1 min-w-0 h-full flex flex-col border border-white/10 rounded-3xl bg-black/40 overflow-hidden shadow-2xl relative">
           <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-            <MobileSidebar
-              contentType="quote"
-              filters={filters}
-              onFiltersChange={setFilters}
-              categories={categories}
-            />
             <div className="max-w-400 mx-auto space-y-8">
               <div className="flex justify-between items-center mb-8 pl-1">
                 <div>

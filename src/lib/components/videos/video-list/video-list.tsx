@@ -3,46 +3,38 @@
 import { useSession } from '@/src/lib/auth-client';
 import { useVideos } from '@/src/lib/queries/use-videos';
 import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
-import { Pagination, Skeleton } from "@heroui/react";
+import { Button, Skeleton } from "@heroui/react";
 import { useState } from "react";
 import type { VideoListItem } from "../../../types/types";
 import { AnimatedGridItem } from "../../motion/animated-grid-item";
 import { AppSidebar } from "../../navigation/app-sidebar";
-import { MobileSidebar } from '../../navigation/mobile-sidebar';
 import { PageShell } from '../../ui/page-shell';
 import VideoComponent from "../video/video";
 
 export default function VideoList({
   initialVideos,
-  initialTotal,
   categories
 }: {
   initialVideos: VideoListItem[],
-  initialTotal: number,
+  initialTotal?: number,
   categories: { id: string; name: string, iconUrl?: string | null }[]
 }) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [page, setPage] = useState(1);
 
   const {
     data,
+    fetchNextPage,
+    hasNextPage,
     isFetching,
+    isFetchingNextPage,
     isLoading: isInitialLoading,
-  } = useVideos(filters, page, { items: initialVideos, total: initialTotal });
+  } = useVideos(filters, initialVideos);
 
-  const videos = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / 15);
-  const loading = isInitialLoading || isFetching;
+  const videos = data?.pages.flat() ?? [];
+  const loading = isInitialLoading || (isFetching && !isFetchingNextPage);
 
   const { data: session } = useSession();
   const canUploadContent = session?.user && !session.user.isAnonymous;
-
-  // Reset page when filters change
-  const handleFiltersChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-    setPage(1);
-  };
 
   return (
     <PageShell variant="aurora">
@@ -51,17 +43,11 @@ export default function VideoList({
           className="!h-full !sticky-0"
           contentType="video"
           filters={filters}
-          onFiltersChange={handleFiltersChange}
+          onFiltersChange={setFilters}
           categories={categories}
         />
         <div className="flex-1 min-w-0 h-full flex flex-col border border-white/10 rounded-3xl bg-black/40 overflow-hidden shadow-2xl relative">
           <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-            <MobileSidebar
-              contentType="video"
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              categories={categories}
-            />
             <div className="flex justify-between items-center mb-8 pl-1">
               <h1 className="text-3xl font-bold text-white tracking-tight">Trending Videos</h1>
             </div>
@@ -98,22 +84,16 @@ export default function VideoList({
             )}
           </div>
 
-          {totalPages > 1 && (
+          {hasNextPage && (
             <div className="p-4 border-t border-white/5 bg-black/60 backdrop-blur-md flex justify-center z-10 shrink-0">
-              <Pagination
-                total={totalPages}
-                page={page}
-                onChange={setPage}
-                showControls
-                loop
+              <Button
+                onClick={() => fetchNextPage()}
+                isLoading={isFetchingNextPage}
                 variant="flat"
-                classNames={{
-                  cursor: "bg-white text-black font-bold",
-                  item: "text-white/70 hover:text-white",
-                  next: "text-white/70 hover:text-white",
-                  prev: "text-white/70 hover:text-white"
-                }}
-              />
+                className="min-w-30 font-bold bg-white/5 hover:bg-white/10 text-white"
+              >
+                Load More
+              </Button>
             </div>
           )}
         </div>

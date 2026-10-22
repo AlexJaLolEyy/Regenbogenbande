@@ -64,6 +64,9 @@ export async function requireAdmin(): Promise<Session> {
   return requireEffectiveRole(["admin", "owner"])
 }
 
+/** Alias used by admin server actions */
+export const requireAdminOrOwner = requireAdmin
+
 /**
  * Require owner role (for publishing)
  */

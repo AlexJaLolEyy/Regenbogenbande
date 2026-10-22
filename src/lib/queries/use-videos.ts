@@ -22,7 +22,8 @@ async function fetchVideos(
 
     const response = await fetch(`/api/videos?${params.toString()}`, { signal });
     if (!response.ok) throw new Error('Failed to fetch videos');
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : data.items;
 }
 
 export function useVideos(filters: FilterState, initialData?: VideoListItem[]) {

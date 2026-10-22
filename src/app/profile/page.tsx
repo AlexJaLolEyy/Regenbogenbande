@@ -109,7 +109,7 @@ export default function ProfilePage() {
                 },
                 ticks: {
                     color: 'rgba(255, 255, 255, 0.3)',
-                    font: { size: 10, weight: 'bold' }
+                    font: { size: 10, weight: 'bold' as const }
                 }
             },
             x: {
@@ -118,7 +118,7 @@ export default function ProfilePage() {
                 },
                 ticks: {
                     color: 'rgba(255, 255, 255, 0.3)',
-                    font: { size: 10, weight: 'bold' }
+                    font: { size: 10, weight: 'bold' as const }
                 }
             }
         }
@@ -389,7 +389,7 @@ export default function ProfilePage() {
                                                                 position: 'bottom',
                                                                 labels: {
                                                                     color: 'rgba(255,255,255,0.5)',
-                                                                    font: { size: 10, weight: 'bold' },
+                                                                    font: { size: 10, weight: 'bold' as const },
                                                                     usePointStyle: true,
                                                                     padding: 20
                                                                 }
