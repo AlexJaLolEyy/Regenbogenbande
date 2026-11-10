@@ -5,6 +5,7 @@
 // GIFs: Keep as-is (no conversion)
 // Files < 50KB: Skip compression
 
+import { guardApi } from '@/src/lib/api-auth';
 import { uploadFile } from '@/src/lib/storage-adapter';
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
@@ -16,15 +17,27 @@ const SKIP_THRESHOLD = 50 * 1024; // 50 KB - don't compress tiny files
 const MAX_WIDTH = 3840; // 4K width
 const MAX_HEIGHT = 2160; // 4K height
 
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+
 export async function POST(req: Request) {
+  const guard = await guardApi('member');
+  if (guard.response) return guard.response;
+
   try {
     const formData = await req.formData();
-    const image = formData.get('image') as File;
+    const image = formData.get('image');
     const title = formData.get('title') as string | null;
     const qualityMode = formData.get('qualityMode') === 'true';
 
-    if (!image) {
+    if (!(image instanceof File)) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
+      return NextResponse.json({ error: 'Unsupported image type' }, { status: 400 });
+    }
+    if (image.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json({ error: 'Image too large' }, { status: 400 });
     }
 
 
@@ -200,9 +213,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('Image upload error:', error);
-    return NextResponse.json({
-      error: 'Image upload failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Image upload failed' }, { status: 500 });
   }
 }

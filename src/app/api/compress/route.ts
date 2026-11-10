@@ -3,14 +3,17 @@
 // Quality Mode: CRF 20 for high-detail content
 // Preserves source FPS (caps at 60), generates thumbnail
 
+import { guardApi } from '@/src/lib/api-auth';
 import { uploadFile } from '@/src/lib/storage-adapter';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promises as fs } from 'fs';
 import { NextResponse } from 'next/server';
 import path from 'path';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+const ALLOWED_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.mkv']);
 
 // Compression settings
 const DEFAULT_CRF = 24;
@@ -26,47 +29,56 @@ async function compressWithCRF(
   crf: number
 ): Promise<{ buffer: Buffer; size: number }> {
   // Get source FPS and cap at 60
-  const probeCommand = `ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate "${inputPath}"`;
-  let fpsFilter = '';
+  let capFps = false;
   try {
-    const { stdout } = await execAsync(probeCommand);
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v', 'error',
+      '-select_streams', 'v',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      '-show_entries', 'stream=r_frame_rate',
+      inputPath,
+    ]);
     const [num, den] = stdout.trim().split('/').map(Number);
     const sourceFps = den ? num / den : 60;
-    if (sourceFps > 60) {
-      fpsFilter = '-r 60';
-    }
+    capFps = sourceFps > 60;
   } catch {
     // If probe fails, don't set FPS filter
   }
 
-  const ffmpegCommand = `
-    ffmpeg -i "${inputPath}" \
-      -c:v libx264 \
-      -preset medium \
-      -crf ${crf} \
-      -vf "scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease" \
-      ${fpsFilter} \
-      -c:a aac \
-      -b:a 128k \
-      -movflags +faststart \
-      -y \
-      "${outputPath}"
-  `.replace(/\s+/g, ' ').trim();
-
-  await execAsync(ffmpegCommand);
+  await execFileAsync('ffmpeg', [
+    '-i', inputPath,
+    '-c:v', 'libx264',
+    '-preset', 'medium',
+    '-crf', String(crf),
+    '-vf', "scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease",
+    ...(capFps ? ['-r', '60'] : []),
+    '-c:a', 'aac',
+    '-b:a', '128k',
+    '-movflags', '+faststart',
+    '-y',
+    outputPath,
+  ]);
   const compressedBuffer = await fs.readFile(outputPath);
   return { buffer: compressedBuffer, size: compressedBuffer.length };
 }
 
 export async function POST(req: Request) {
+  const guard = await guardApi('member');
+  if (guard.response) return guard.response;
+
   try {
     const formData = await req.formData();
     const video = formData.get('video') as File;
     const title = formData.get('title') as string | null;
     const qualityMode = formData.get('qualityMode') === 'true';
 
-    if (!video) {
+    if (!(video instanceof File)) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    const extension = path.extname(video.name).toLowerCase() || '.mp4';
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      return NextResponse.json({ error: 'Unsupported video format' }, { status: 400 });
     }
 
     const originalSize = video.size;
@@ -101,7 +113,6 @@ export async function POST(req: Request) {
       ? sanitizeFilename(title.trim())
       : video.name.replace(/\.[^/.]+$/, '');
 
-    const extension = path.extname(video.name) || '.mp4';
     const fileName = `${baseName}-${uniqueId}${extension}`;
     const thumbnailFileName = `${baseName}-${uniqueId}.jpg`;
 
@@ -211,8 +222,14 @@ export async function POST(req: Request) {
       const tempFinal = path.join(tempDir, `final-${uniqueId}${extension}`);
       await fs.writeFile(tempFinal, finalBuffer);
 
-      const thumbnailCommand = `ffmpeg -i "${tempFinal}" -ss 00:00:02 -vframes 1 -vf "scale=480:-1" -q:v 2 -y "${tempThumbnail}"`;
-      await execAsync(thumbnailCommand);
+      await execFileAsync('ffmpeg', [
+        '-i', tempFinal,
+        '-ss', '00:00:02',
+        '-vframes', '1',
+        '-vf', 'scale=480:-1',
+        '-q:v', '2',
+        '-y', tempThumbnail,
+      ]);
 
       const thumbnailBuffer = await fs.readFile(tempThumbnail);
       const thumbnailKey = `thumbnails/${thumbnailFileName}`;
@@ -257,9 +274,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('Video compression error:', error);
-    return NextResponse.json({
-      error: 'Compression failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Compression failed' }, { status: 500 });
   }
 }

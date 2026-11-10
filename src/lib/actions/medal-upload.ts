@@ -1,8 +1,17 @@
 "use server";
 
+import { getEffectiveRole, getSession } from "@/src/lib/auth-utils";
+import { MAX_HTML_BYTES, assertAllowedUrl, readLimited, safeFetch } from "@/src/lib/safe-fetch";
+
 export async function scrapeMedalClip(url: string) {
+    const session = await getSession();
+    if (!session?.user || getEffectiveRole(session) === "guest") {
+        return { success: false, error: "Unauthorized" };
+    }
+
     try {
-        const response = await fetch(url, {
+        assertAllowedUrl(url);
+        const response = await safeFetch(url, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             },
@@ -12,7 +21,7 @@ export async function scrapeMedalClip(url: string) {
             return { success: false, error: "Failed to fetch URL" };
         }
 
-        const html = await response.text();
+        const html = (await readLimited(response, MAX_HTML_BYTES)).toString("utf-8");
 
         // Regex helper to find meta tags
         const getMeta = (property: string) => {
@@ -93,7 +102,7 @@ export async function scrapeMedalClip(url: string) {
                 // Medal API urls might redirect or show metadata. 
                 // If it's the socialVideoUrl (implied by user's log), it usually works as a direct source but checking HEAD is good.
                 // Note: Medal might require headers or cookies, but let's try a simple HEAD.
-                const headRes = await fetch(videoUrl, {
+                const headRes = await safeFetch(videoUrl, {
                     method: 'HEAD',
                     headers: {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",

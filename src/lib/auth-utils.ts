@@ -18,6 +18,10 @@ export async function getSession(): Promise<Session | null> {
   const session = await auth.api.getSession({
     headers: await headers(),
   })
+  // Disabled users lose access immediately, even with a still-valid session cookie
+  if (session?.user && (session.user as { status?: string | null }).status === "DISABLED") {
+    return null
+  }
   return session
 }
 
