@@ -2,6 +2,7 @@
 
 import { useSession } from "@/src/lib/auth-client";
 import { canUpload, getEffectiveRole, isGuest } from "@/src/lib/auth-utils-shared";
+import { HeaderAction } from "./header-action";
 import { DateRange, DEFAULT_FILTERS, FilterState, SortOption } from "@/src/lib/types/filters";
 import { Button, Drawer, DrawerBody, DrawerContent, DrawerFooter, DrawerHeader, Select, SelectItem, useDisclosure } from "@heroui/react";
 import { Calendar, Eye, Filter, Image as ImageIcon, ListFilter, Plus, Quote, RotateCcw, Search, SlidersHorizontal, Users, Video, type LucideIcon } from "lucide-react";
@@ -76,6 +77,7 @@ export const FilterBar = ({
         (filters.participantId ? 1 : 0) +
         (filters.unseenOnly ? 1 : 0);
 
+    const isDirty = activeCount > 0 || filters.search !== DEFAULT_FILTERS.search;
     const reset = () =>
         onFiltersChange({ ...DEFAULT_FILTERS });
 
@@ -204,14 +206,21 @@ export const FilterBar = ({
             {/* Desktop: inline filters */}
             <div className="contents max-sm:hidden">
                 {controls({ sort: "w-40", category: "w-48", person: "w-44", date: "w-44" })}
-                <button
-                    type="button"
-                    onClick={reset}
-                    className="flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                    <RotateCcw size={14} />
-                    Reset
-                </button>
+                {isDirty && (
+                    <button
+                        type="button"
+                        onClick={reset}
+                        className="flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 outline-theme-accent"
+                    >
+                        <RotateCcw size={14} />
+                        Reset
+                        {activeCount > 0 && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-soft px-1 text-[11px] font-semibold text-theme-accent">
+                                {activeCount}
+                            </span>
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Mobile: filters live in a drawer */}
@@ -223,30 +232,24 @@ export const FilterBar = ({
                 <SlidersHorizontal size={14} />
                 Filters
                 {activeCount > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-soft px-1 text-[11px] font-semibold text-theme-accent">
                         {activeCount}
                     </span>
                 )}
             </button>
 
-            {!isPending && (
-                mayUpload ? (
+            {/* Primary action lives in the app header; guests never see it. */}
+            {!isPending && mayUpload && (
+                <HeaderAction>
                     <Link
                         href={upload.href}
-                        className="flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 max-sm:flex-1"
+                        className="flex h-9 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 outline-theme-accent"
                     >
                         <Plus size={16} />
-                        <UploadIcon size={16} />
-                        {upload.label}
+                        <UploadIcon size={16} className="max-sm:hidden" />
+                        <span className="max-sm:sr-only">{upload.label}</span>
                     </Link>
-                ) : (
-                    <Link
-                        href="/login"
-                        className="flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-sm:flex-1"
-                    >
-                        Sign in to upload
-                    </Link>
-                )
+                </HeaderAction>
             )}
 
             <Drawer isOpen={isOpen} onOpenChange={onOpenChange} placement="bottom" size="lg">
@@ -258,7 +261,7 @@ export const FilterBar = ({
                                 {controls({ sort: "w-full", category: "w-full", person: "w-full", date: "w-full" })}
                             </DrawerBody>
                             <DrawerFooter>
-                                <Button variant="light" onPress={reset} startContent={<RotateCcw size={14} />}>
+                                <Button variant="light" onPress={reset} isDisabled={!isDirty} startContent={<RotateCcw size={14} />}>
                                     Reset
                                 </Button>
                                 <Button color="primary" onPress={onClose}>

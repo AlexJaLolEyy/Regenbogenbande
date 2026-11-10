@@ -1,7 +1,9 @@
 'use client'
 
 import { QUOTES_PER_PAGE, useQuotes } from "@/src/lib/queries/use-quotes";
-import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
+import { staggerDelay } from "@/src/lib/motion";
+import { FilterState } from '@/src/lib/types/filters';
+import { useUrlFilters } from '@/src/lib/hooks/use-url-filters';
 import { useState } from "react";
 import type { PagedList } from "@/src/lib/queries/use-paged-list";
 import { QuoteListItem } from "../../../types/types";
@@ -13,7 +15,7 @@ import { PageShell } from '../../ui/page-shell';
 import QuoteComponent from "../quote/quote";
 
 export default function QuoteList({ initial, categories, people }: { people: { id: string; name: string }[], initial: PagedList<QuoteListItem>, categories: { id: string; name: string, iconUrl?: string | null }[] }) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useUrlFilters();
   const [page, setPage] = useState(1);
 
   const { data, isFetching, isLoading: isInitialLoading } = useQuotes(filters, page, initial);
@@ -39,6 +41,7 @@ export default function QuoteList({ initial, categories, people }: { people: { i
         />
         <ListPanel scrollResetKey={page}
           title="Quotes"
+          subtitle={data ? `${total} ${total === 1 ? "quote" : "quotes"}` : undefined}
           footer={total > QUOTES_PER_PAGE && <ListPagination page={page} total={total} pageSize={QUOTES_PER_PAGE} onChange={setPage} />}
         >
           {loading && quotes.length === 0 ? (
@@ -50,13 +53,13 @@ export default function QuoteList({ initial, categories, people }: { people: { i
           ) : quotes.length > 0 ? (
             <div className={LIST_MASONRY}>
               {quotes.map((quote, idx) => (
-                <AnimatedMasonryItem key={quote.id} delay={idx * 0.05} className="break-inside-avoid">
+                <AnimatedMasonryItem key={quote.id} delay={staggerDelay(idx)} className="break-inside-avoid">
                   <QuoteComponent quote={quote} />
                 </AnimatedMasonryItem>
               ))}
             </div>
           ) : (
-            <EmptyState title="No quotes available yet" />
+            <EmptyState title="No quotes found" hint="Try adjusting your filters" />
           )}
         </ListPanel>
       </div>

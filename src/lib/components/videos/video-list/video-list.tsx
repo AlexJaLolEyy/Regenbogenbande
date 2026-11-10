@@ -1,7 +1,9 @@
 "use client";
 
 import { useVideos, VIDEOS_PER_PAGE } from '@/src/lib/queries/use-videos';
-import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
+import { staggerDelay } from "@/src/lib/motion";
+import { FilterState } from '@/src/lib/types/filters';
+import { useUrlFilters } from '@/src/lib/hooks/use-url-filters';
 import { useState } from "react";
 import type { PagedList } from "@/src/lib/queries/use-paged-list";
 import type { VideoListItem } from "../../../types/types";
@@ -21,7 +23,7 @@ export default function VideoList({
   people: { id: string; name: string }[],
   categories: { id: string; name: string, iconUrl?: string | null }[]
 }) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useUrlFilters();
   const [page, setPage] = useState(1);
 
   const {
@@ -52,6 +54,7 @@ export default function VideoList({
         />
         <ListPanel scrollResetKey={page}
           title="Videos"
+          subtitle={data ? `${total} ${total === 1 ? "clip" : "clips"}` : undefined}
           footer={total > VIDEOS_PER_PAGE && <ListPagination page={page} total={total} pageSize={VIDEOS_PER_PAGE} onChange={setPage} />}
         >
           <div className={LIST_GRID}>
@@ -59,7 +62,7 @@ export default function VideoList({
               Array.from({ length: VIDEOS_PER_PAGE }).map((_, i) => <CardSkeleton key={i} />)
             ) : (
               videos.map((video: VideoListItem, idx: number) => (
-                <AnimatedGridItem key={video.id} delay={idx * 0.05}>
+                <AnimatedGridItem key={video.id} delay={staggerDelay(idx)}>
                   <VideoComponent video={video} />
                 </AnimatedGridItem>
               ))

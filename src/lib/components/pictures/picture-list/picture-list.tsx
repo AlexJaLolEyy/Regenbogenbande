@@ -2,7 +2,9 @@
 
 import type { PagedList } from "@/src/lib/queries/use-paged-list";
 import { PICTURES_PER_PAGE, usePictures } from "@/src/lib/queries/use-pictures";
-import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
+import { staggerDelay } from "@/src/lib/motion";
+import { FilterState } from '@/src/lib/types/filters';
+import { useUrlFilters } from '@/src/lib/hooks/use-url-filters';
 import { useState } from "react";
 import { PictureListItem } from "../../../types/types";
 import { AnimatedMasonryItem } from "../../motion/animated-grid-item";
@@ -15,7 +17,7 @@ import PictureComponent from "../picture/picture";
 const MASONRY_SKELETON_RATIOS = ['aspect-3/4', 'aspect-square', 'aspect-video'];
 
 export default function PictureList({ initial, categories, people }: { people: { id: string; name: string }[], initial: PagedList<PictureListItem>, categories: { id: string; name: string, iconUrl?: string | null }[] }) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useUrlFilters();
   const [page, setPage] = useState(1);
 
   const { data, isFetching, isLoading: isInitialLoading } = usePictures(filters, page, initial);
@@ -42,6 +44,7 @@ export default function PictureList({ initial, categories, people }: { people: {
         <ListPanel
           scrollResetKey={page}
           title="Pictures"
+          subtitle={data ? `${total} ${total === 1 ? "picture" : "pictures"}` : undefined}
           footer={total > PICTURES_PER_PAGE && <ListPagination page={page} total={total} pageSize={PICTURES_PER_PAGE} onChange={setPage} />}
         >
           {loading && pictures.length === 0 ? (
@@ -57,7 +60,7 @@ export default function PictureList({ initial, categories, people }: { people: {
           ) : (
             <div className={LIST_MASONRY}>
               {pictures.map((picture, idx) => (
-                <AnimatedMasonryItem key={picture.id} delay={idx * 0.05} className="break-inside-avoid">
+                <AnimatedMasonryItem key={picture.id} delay={staggerDelay(idx)} className="break-inside-avoid">
                   <PictureComponent picture={picture} mode="masonry" />
                 </AnimatedMasonryItem>
               ))}

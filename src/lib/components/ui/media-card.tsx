@@ -5,6 +5,8 @@ import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { Skeleton } from "@heroui/react";
 import { motion } from "framer-motion";
 import { Eye } from "lucide-react";
+import { formatDate, relativeDate } from "@/src/lib/utils/format";
+import { DURATION, EASE, HOVER_LIFT } from "@/src/lib/motion";
 import React from "react";
 import type { User } from "../../types/types";
 import { Rating } from "../shared/rating";
@@ -15,10 +17,7 @@ export const LIST_GRID =
 export const LIST_MASONRY =
     "columns-1 md:columns-2 lg:columns-3 2xl:columns-4 gap-6";
 
-/** Shared hover scale for all media cards. */
-export const CARD_HOVER_SCALE = 1.02;
-
-/** Card surface: token glass, subtle lift on hover, no colored glow. */
+/** Card surface: token glass, 2px lift + stronger shadow on hover, no colored glow. */
 export const MediaCard = ({
     children,
     className,
@@ -30,15 +29,16 @@ export const MediaCard = ({
     isNew?: boolean;
 }) => (
     <motion.div
-        whileHover={{ scale: CARD_HOVER_SCALE }}
+        whileHover={HOVER_LIFT}
+        transition={{ duration: DURATION.base, ease: EASE }}
         className={cn(
             "group relative overflow-hidden rounded-2xl border border-border bg-card/70 text-card-foreground shadow-sm backdrop-blur-md",
-            "transition-[background-color,border-color,box-shadow] duration-200 hover:border-foreground/20 hover:bg-card/90 hover:shadow-md",
+            "transition-[background-color,border-color,box-shadow] duration-200 hover:border-foreground/20 hover:bg-card/90 hover:shadow-lg",
             className
         )}
     >
         {isNew && (
-            <span className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-md">
+            <span className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-md">
                 <span className="h-1.5 w-1.5 rounded-full bg-theme-accent" />
                 New
             </span>
@@ -64,9 +64,9 @@ export const UserChip = ({ user, className }: { user?: User | null; className?: 
         <UserAvatar
             src={user?.profilePicture || undefined}
             name={user?.username?.[0]?.toUpperCase() || "?"}
-            className="h-5 w-5 shrink-0 text-[10px]"
+            className="h-5 w-5 shrink-0 text-[11px]"
         />
-        <span className="max-w-28 truncate">{user?.username || "Unknown"}</span>
+        <span className="max-w-24 truncate">{user?.username || "Unknown"}</span>
     </span>
 );
 
@@ -78,7 +78,7 @@ export const Views = ({ count }: { count?: number }) => (
 );
 
 /** Stacked participant avatars with "+N" overflow. */
-export const ParticipantStack = ({ participants, max = 3 }: { participants: User[]; max?: number }) => {
+export const ParticipantStack = ({ participants, max = 3, tone = "overlay" }: { participants: User[]; max?: number; tone?: "overlay" | "card" }) => {
     if (!participants?.length) return null;
     const shown = participants.slice(0, max);
     const rest = participants.length - shown.length;
@@ -90,11 +90,11 @@ export const ParticipantStack = ({ participants, max = 3 }: { participants: User
                     src={p.profilePicture || undefined}
                     name={p.username?.[0]?.toUpperCase()}
                     title={p.username}
-                    className="-ml-2 h-6 w-6 border-2 border-black/60 text-[10px] first:ml-0"
+                    className={cn("-ml-2 h-6 w-6 border-2 text-[11px] first:ml-0", tone === "card" ? "border-card" : "border-black/60")}
                 />
             ))}
             {rest > 0 && (
-                <span className="-ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-black/60 bg-black/70 px-1 text-[10px] font-medium text-white">
+                <span className={cn("-ml-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 px-1 text-[11px] font-medium", tone === "card" ? "border-card bg-muted text-muted-foreground" : "border-black/60 bg-black/70 text-white")}>
                     +{rest}
                 </span>
             )}
@@ -102,7 +102,20 @@ export const ParticipantStack = ({ participants, max = 3 }: { participants: User
     );
 };
 
-/** Footer meta row shared by video/picture/quote cards. */
+/** Card title: 15px, 2 lines reserved so grid rows stay aligned. */
+export const CardTitle = ({ children, title }: { children: React.ReactNode; title?: string }) => (
+    <h3 className="line-clamp-2 min-h-[2.6em] text-[15px] font-semibold leading-snug text-foreground" title={title}>
+        {children}
+    </h3>
+);
+
+/** Thumbnail image classes: zooms inside its overflow-hidden parent on card hover. */
+export const THUMB_ZOOM = "transition-transform duration-500 ease-out group-hover:scale-[1.04]";
+
+/** Overlay that shows on hover, and always on touch devices. */
+export const HOVER_REVEAL = "opacity-0 transition duration-300 group-hover:opacity-100 [@media(hover:none)]:opacity-100";
+
+/** One-line footer meta shared by video/picture/quote cards: avatar, name, relative date | views, rating. */
 export const CardMeta = ({
     user,
     date,
@@ -110,14 +123,19 @@ export const CardMeta = ({
     rating,
 }: {
     user?: User | null;
-    date?: string;
+    date?: Date | string;
     views?: number;
     rating?: number | null;
 }) => (
     <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-            <UserChip user={user} />
-            {date && <span className="text-[11px] text-faint">{date}</span>}
+        <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <UserChip user={user} className="min-w-0" />
+            {date && (
+                <>
+                    <span aria-hidden>·</span>
+                    <span className="shrink-0 whitespace-nowrap" title={formatDate(date)}>{relativeDate(date)}</span>
+                </>
+            )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
             <Views count={views} />
@@ -125,7 +143,6 @@ export const CardMeta = ({
         </div>
     </div>
 );
-
 /** Shared skeleton card for all list types. `media` = thumbnail aspect class. */
 export const CardSkeleton = ({ media = "aspect-video", className }: { media?: string; className?: string }) => (
     <div className={cn("overflow-hidden rounded-2xl border border-border bg-card/70", className)}>
