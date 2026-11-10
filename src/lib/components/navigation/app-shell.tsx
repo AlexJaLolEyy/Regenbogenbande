@@ -4,6 +4,7 @@ import { cn } from "@/src/lib/utils";
 import { ChevronRight, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HEADER_ACTION_ID } from "./header-action";
 import { MainSidebar } from "./main-sidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 
@@ -79,6 +80,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <Menu size={20} />
           </button>
           <Breadcrumbs />
+          <div id={HEADER_ACTION_ID} className="ml-auto flex items-center gap-2" />
         </header>
         {children}
       </div>
