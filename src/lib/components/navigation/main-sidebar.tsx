@@ -5,83 +5,23 @@ import { cn } from "@/src/lib/utils";
 import { Skeleton } from "@heroui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BarChart3,
-  Crown,
-  Database,
-  Home,
-  Image as ImageIcon,
-  LayoutGrid,
   LogIn,
   LogOut,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Quote,
-  Settings,
-  Shield,
   Sun,
-  User,
-  Users,
-  Video,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { EffectiveRole, getEffectiveRole } from "../../auth-utils-shared";
+import { getEffectiveRole } from "../../auth-utils-shared";
+import { isNavActive, NAV_SECTIONS, visibleItems, type NavEntry } from "./nav-config";
+import { RolePill } from "./role-pill";
 import { useSidebar } from "./sidebar-context";
-
-interface NavEntry {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  /** Roles allowed to see this entry. Omitted = everyone. */
-  roles?: EffectiveRole[];
-  /** Match exactly instead of by prefix. */
-  exact?: boolean;
-}
-
-const SECTIONS: { title: string; items: NavEntry[] }[] = [
-  {
-    title: "Main Menu",
-    items: [
-      { label: "Overview", href: "/", icon: Home, exact: true },
-      { label: "Videos", href: "/videos", icon: Video },
-      { label: "Pictures", href: "/pictures", icon: ImageIcon },
-      { label: "Quotes", href: "/quotes", icon: Quote },
-      { label: "Analytics", href: "/analytics", icon: BarChart3, roles: ["owner", "admin", "member"] },
-    ],
-  },
-  {
-    title: "Settings & More",
-    items: [
-      { label: "Settings", href: "/profile", icon: Settings, roles: ["owner", "admin", "member"] },
-      { label: "Categories", href: "/admin/categories", icon: LayoutGrid, roles: ["owner", "admin"] },
-      { label: "Users", href: "/admin/users", icon: Users, roles: ["owner", "admin"] },
-      { label: "Content", href: "/admin/content", icon: Database, roles: ["owner"] },
-    ],
-  },
-];
-
-const ROLE_META: Record<EffectiveRole, { label: string; icon: LucideIcon }> = {
-  owner: { label: "Owner", icon: Crown },
-  admin: { label: "Admin", icon: Shield },
-  member: { label: "Member", icon: User },
-  guest: { label: "Guest", icon: User },
-};
-
-export function RolePill({ role }: { role: EffectiveRole }) {
-  const { label, icon: Icon } = ROLE_META[role];
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-      <Icon size={11} />
-      {label}
-    </span>
-  );
-}
 
 function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -134,8 +74,7 @@ function SidebarContent({
     });
   };
 
-  const isActive = (item: NavEntry) =>
-    item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  const isActive = (item: NavEntry) => isNavActive(item, pathname);
 
   return (
     <div className="flex h-full flex-col">
@@ -156,8 +95,8 @@ function SidebarContent({
 
       {/* Sections */}
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-2 custom-scrollbar">
-        {SECTIONS.map((section) => {
-          const items = section.items.filter((i) => !i.roles || i.roles.includes(role));
+        {NAV_SECTIONS.map((section) => {
+          const items = visibleItems(section, role);
           if (items.length === 0) return null;
           return (
             <div key={section.title}>

@@ -5,7 +5,8 @@ import { addComment, deleteComment, voteComment } from '@/src/lib/actions/commen
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { useSession } from '@/src/lib/auth-client';
 import { Comment } from '@/src/lib/types/types';
-import { Button, Input } from "@heroui/react";
+import { addToast, Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
+import { MODAL_CLASSNAMES } from "@/src/lib/components/ui/form-kit";
 import { formatDistanceToNow } from 'date-fns';
 import React, { useState } from 'react';
 

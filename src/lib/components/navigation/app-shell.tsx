@@ -15,7 +15,8 @@ const LABELS: Record<string, string> = {
   admin: "Admin",
   categories: "Categories",
   users: "Users",
-  content: "Content",
+  content: "Publishing",
+  analytics: "Statistics",
   upload: "Upload",
   edit: "Edit",
 };

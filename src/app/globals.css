@@ -144,6 +144,8 @@ body {
   --color-faint: var(--faint);
   --color-gold: var(--gold);
   --color-theme-accent: var(--theme-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-discord: var(--discord);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -250,6 +252,11 @@ body {
   /* Accent: neutral until a theme is selected via [data-accent] */
   --theme-accent: #23262E;
   --ring: var(--theme-accent);
+  --accent-soft: color-mix(in srgb, var(--theme-accent) 14%, transparent);
+  /* Aura fallback (slate blue) so the hero/login background has color when accent = neutral */
+  --aura-1: #5B7BA6;
+  --aura-2: #6B8FA3;
+  --discord: #5865F2;
 
   --chart-1: var(--theme-accent);
   --chart-2: #3F7D5B;
@@ -326,6 +333,10 @@ html.dark[data-accent="teal"]   { --theme-accent: #44AFAF; --heroui-focus: 180 4
 html.dark[data-accent="wine"]   { --theme-accent: #C25A69; --heroui-focus: 352 48% 58%; }
 html.dark[data-accent="pink"]   { --theme-accent: #DB86A6; --heroui-focus: 336 55% 69%; }
 html.dark[data-accent="violet"] { --theme-accent: #978ADB; --heroui-focus: 250 55% 70%; }
+html[data-accent] {
+  --aura-1: var(--theme-accent);
+  --aura-2: color-mix(in srgb, var(--theme-accent) 60%, #6B8FA3);
+}
 ::selection {
   background: color-mix(in srgb, var(--theme-accent) 30%, transparent);
 }
