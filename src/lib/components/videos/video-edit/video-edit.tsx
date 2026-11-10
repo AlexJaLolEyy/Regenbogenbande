@@ -1,4 +1,5 @@
 "use client";
+import { Info, SquarePen, Upload } from "lucide-react";
 
 import { updateVideoElement } from "@/src/app/(content)/videos/(detail)/[id]/edit/actions";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
@@ -8,12 +9,6 @@ import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
 import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { VideoActionInput } from "@/src/lib/utils/video-utils";
-import {
-    faArrowUpFromBracket,
-    faInfoCircle,
-    faPenToSquare
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Chip, DateInput, Input, Progress, Select, SelectItem, Textarea } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import { useQueryClient } from "@tanstack/react-query";
@@ -125,13 +120,13 @@ export default function VideoEdit({ video }: { video: Video }) {
                         <div className="lg:w-[40%] p-8 lg:p-10 flex flex-col lg:h-175">
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <FontAwesomeIcon icon={faPenToSquare} className="text-2xl text-muted-foreground" />
+                                    <SquarePen size="1em" className="text-2xl text-muted-foreground" />
                                     <h2 className="text-2xl font-bold text-foreground">Video Details</h2>
                                 </div>
 
                                 {!isSessionPending && !canEdit && (
                                     <div className="p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 flex items-center gap-3">
-                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                        <Info size="1em" />
                                         <p className="text-sm">You do not have permission to edit this video.</p>
                                     </div>
                                 )}
@@ -390,7 +385,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                         color="primary"
                                         size="lg"
                                         className="flex-1 font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
-                                        startContent={<FontAwesomeIcon icon={faArrowUpFromBracket} />}
+                                        startContent={<Upload size="1em" />}
                                         onPress={() => handleSubmit(onSubmit)()}
                                         isDisabled={!canEdit || isSessionPending}
                                         isLoading={status.stage === 'saving'}

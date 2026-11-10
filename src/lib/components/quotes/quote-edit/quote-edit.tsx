@@ -1,4 +1,6 @@
 "use client";
+import { computeBubbleLayout } from "../bubble-layout";
+import { GripHorizontal, Info, MessageCircleMore, Plus, Quote as QuoteIcon, Save, Trash2 } from "lucide-react";
 
 import { updateQuoteElement } from "@/src/app/(content)/quotes/(detail)/[id]/edit/actions";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
@@ -8,17 +10,7 @@ import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
 import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { QuoteActionInput } from "@/src/lib/utils/quote-utils";
-import {
-    faCommentDots,
-    faGripLines,
-    faInfoCircle,
-    faPlus,
-    faQuoteRight,
-    faSave,
-    faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Button, Chip, DateInput, Progress, Select, SelectItem, Textarea } from "@heroui/react";
+import { addToast, Button, Chip, DateInput, Progress, Select, SelectItem, Textarea } from "@heroui/react";
 import { fromDate, getLocalTimeZone } from "@internationalized/date";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, Reorder } from "framer-motion";
@@ -133,7 +125,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
         const validMessages = data.messages.filter(msg => (msg.isContext || msg.userId) && msg.message.trim());
 
         if (validMessages.length === 0) {
-            alert("Please add at least one valid message");
+            addToast({ title: "Bitte füge mindestens eine gültige Nachricht hinzu", color: "warning" });
             return;
         }
 
@@ -181,15 +173,14 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                         <div className="lg:w-[45%] bg-muted/50 rounded-2xl m-2 border border-border flex flex-col overflow-hidden relative">
                             <div className="p-6 border-b border-border bg-muted/50 backdrop-blur-md z-10">
                                 <h2 className="text-foreground font-bold flex items-center gap-2">
-                                    <FontAwesomeIcon icon={faQuoteRight} className="text-muted-foreground" /> Preview
+                                    <QuoteIcon size="1em" className="text-muted-foreground" /> Preview
                                 </h2>
                             </div>
 
                             <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar relative max-h-150">
                                 <AnimatePresence initial={false}>
                                     {(() => {
-                                        let side = false;
-                                        let lastUserId: string | null = null;
+                                        const layout = computeBubbleLayout(messages.map((m) => (m.isContext ? null : m.userId)));
                                         return messages.map((msg, idx) => {
                                             const user = getUser(msg.userId);
 
@@ -210,9 +201,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             }
 
                                             // Side flips only when the speaker changes, so consecutive messages from one user stay together.
-                                            if (lastUserId !== null && lastUserId !== msg.userId) side = !side;
-                                            const isRight = side;
-                                            lastUserId = msg.userId;
+                                            const { isRight } = layout[idx];
 
                                             return (
                                                 <motion.div
@@ -248,7 +237,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                 </AnimatePresence>
                                 {messages.length === 0 && (
                                     <div className="h-full flex flex-col items-center justify-center text-faint italic space-y-4">
-                                        <FontAwesomeIcon icon={faCommentDots} className="text-4xl opacity-20" />
+                                        <MessageCircleMore size="1em" className="text-4xl opacity-20" />
                                         <p>Start the conversation...</p>
                                     </div>
                                 )}
@@ -269,7 +258,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
 
                             {!isSessionPending && !canEdit && (
                                 <div className="mb-6 p-4 bg-danger-500/10 border border-danger-500/20 rounded-xl text-danger-500 flex items-center gap-3">
-                                    <FontAwesomeIcon icon={faInfoCircle} />
+                                    <Info size="1em" />
                                     <p className="text-sm">You do not have permission to edit this quote.</p>
                                 </div>
                             )}
@@ -409,7 +398,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                         }`}
                                                 >
                                                     <div className="w-6 flex flex-col items-center justify-center text-faint pt-4 cursor-grab active:cursor-grabbing">
-                                                        <FontAwesomeIcon icon={faGripLines} className="text-sm" />
+                                                        <GripHorizontal size="1em" className="text-sm" />
                                                     </div>
 
                                                     <div className="flex-1 space-y-3">
@@ -468,7 +457,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                         onPress={() => removeMessage(msg.id)}
                                                         className="opacity-40 hover:opacity-100 transition-opacity"
                                                     >
-                                                        <FontAwesomeIcon icon={faTrash} />
+                                                        <Trash2 size="1em" />
                                                     </Button>
                                                 </Reorder.Item>
                                             ))}
@@ -507,7 +496,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             <Button
                                                 variant="flat"
                                                 className="bg-muted text-foreground font-medium h-12 px-6 rounded-2xl"
-                                                startContent={<FontAwesomeIcon icon={faPlus} />}
+                                                startContent={<Plus size="1em" />}
                                                 onPress={() => addMessage(false)}
                                             >
                                                 Add Message
@@ -515,7 +504,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                             <Button
                                                 variant="flat"
                                                 className="bg-muted text-muted-foreground font-medium h-12 px-6 rounded-2xl border border-border hover:bg-muted"
-                                                startContent={<FontAwesomeIcon icon={faInfoCircle} />}
+                                                startContent={<Info size="1em" />}
                                                 onPress={() => addMessage(true)}
                                             >
                                                 Add Context
@@ -525,7 +514,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                         <div className="flex gap-3 flex-1">
                                             <Button
                                                 className="flex-1 bg-primary text-foreground font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
-                                                startContent={<FontAwesomeIcon icon={faSave} />}
+                                                startContent={<Save size="1em" />}
                                                 onPress={() => handleSubmit(onSubmit)()}
                                                 isLoading={status.stage === 'saving'}
                                                 isDisabled={!canEdit || isSessionPending}

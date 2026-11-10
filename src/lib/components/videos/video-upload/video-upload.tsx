@@ -1,4 +1,5 @@
 "use client"
+import { CloudUpload, Film, Info, Link as LinkIcon, Scissors, X } from "lucide-react";
 
 import { createVideo } from "@/src/app/(content)/videos/(detail)/upload/actions";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
@@ -8,15 +9,6 @@ import { useSession } from "@/src/lib/auth-client";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { Category, User, VideoUploadForm } from "@/src/lib/types/types";
 import { formatDuration, formatFileSize } from "@/src/lib/utils/format";
-import {
-  faCloudArrowUp,
-  faFilm,
-  faInfoCircle,
-  faLink,
-  faScissors,
-  faTimes
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Button,
   Checkbox,
@@ -462,8 +454,8 @@ export default function VideoUpload() {
                     tabContent: "text-muted-foreground group-data-[selected=true]:text-foreground font-bold"
                   }}
                 >
-                  <Tab key="file" title={<div className="flex items-center gap-2 px-2"><FontAwesomeIcon icon={faCloudArrowUp} /><span>File Upload</span></div>} />
-                  <Tab key="link" title={<div className="flex items-center gap-2 px-2"><FontAwesomeIcon icon={faLink} /><span>Medal.tv Link</span></div>} />
+                  <Tab key="file" title={<div className="flex items-center gap-2 px-2"><CloudUpload size="1em" /><span>File Upload</span></div>} />
+                  <Tab key="link" title={<div className="flex items-center gap-2 px-2"><LinkIcon size="1em" /><span>Medal.tv Link</span></div>} />
                 </Tabs>
               </div>
 
@@ -484,7 +476,7 @@ export default function VideoUpload() {
                             onClick={clearFileState}
                             className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-danger text-white rounded-full flex items-center justify-center transition-all z-50 backdrop-blur-md border border-border opacity-0 group-hover/preview:opacity-100"
                           >
-                            <FontAwesomeIcon icon={faTimes} />
+                            <X size="1em" />
                           </button>
                         </div>
                       ) : (
@@ -511,13 +503,13 @@ export default function VideoUpload() {
                             onClick={() => setVideoMetadata(prev => ({ ...prev, videoUrl: undefined }))}
                             className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-danger text-white rounded-full flex items-center justify-center transition-all z-50 backdrop-blur-md border border-border"
                           >
-                            <FontAwesomeIcon icon={faTimes} />
+                            <X size="1em" />
                           </button>
                         </div>
                       ) : (
                         <div className="w-full max-w-sm space-y-6 text-center">
                           <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4 border border-border">
-                            <FontAwesomeIcon icon={faLink} className="text-3xl text-foreground" />
+                            <LinkIcon size="1em" className="text-3xl text-foreground" />
                           </div>
                           <h3 className="text-xl font-bold text-foreground">Import from Medal.tv</h3>
                           <div className="flex flex-col gap-3">
@@ -573,7 +565,7 @@ export default function VideoUpload() {
                         size="sm"
                         variant="flat"
                         className="bg-muted text-foreground border border-border px-4 h-9 font-bold"
-                        startContent={<FontAwesomeIcon icon={faScissors} />}
+                        startContent={<Scissors size="1em" />}
                         onPress={() => setIsEditorOpen(true)}
                       >
                         Edit / Trim
@@ -600,7 +592,7 @@ export default function VideoUpload() {
             <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl p-6 flex flex-col justify-center min-h-35">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border text-muted-foreground">
-                  <FontAwesomeIcon icon={faInfoCircle} />
+                  <Info size="1em" />
                 </div>
                 <div className="space-y-1">
                   <h4 className="text-sm font-bold text-foreground">Processing Info</h4>
@@ -636,7 +628,7 @@ export default function VideoUpload() {
             <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-5 md:p-8 lg:p-10 shadow-sm relative group transition-all duration-300 flex flex-col">
 
               <h2 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-2">
-                <FontAwesomeIcon icon={faFilm} className="text-muted-foreground text-sm" />
+                <Film size="1em" className="text-muted-foreground text-sm" />
                 Clip Metadata
               </h2>
 
@@ -895,7 +887,7 @@ export default function VideoUpload() {
                     <Button
                       size="lg"
                       className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
-                      startContent={<FontAwesomeIcon icon={faFilm} />}
+                      startContent={<Film size="1em" />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
                     >

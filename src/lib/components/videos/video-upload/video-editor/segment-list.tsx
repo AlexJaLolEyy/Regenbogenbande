@@ -1,8 +1,7 @@
 "use client";
+import { GripVertical, X } from "lucide-react";
 
 import { formatDuration } from "@/src/lib/utils/format";
-import { faGripVertical, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Reorder } from "framer-motion";
 import type { EditorSegment, VideoClip } from "./types";
 
@@ -52,8 +51,7 @@ export function SegmentList({
           }`}
           onClick={() => onSelect(seg.id)}
         >
-          <FontAwesomeIcon
-            icon={faGripVertical}
+          <GripVertical size="1em"
             className="text-faint text-xs shrink-0"
           />
 
@@ -82,7 +80,7 @@ export function SegmentList({
             className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
             aria-label="Remove segment"
           >
-            <FontAwesomeIcon icon={faTimes} className="text-xs" />
+            <X size="1em" className="text-xs" />
           </button>
         </Reorder.Item>
       ))}

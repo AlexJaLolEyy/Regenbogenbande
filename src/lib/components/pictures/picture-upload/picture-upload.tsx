@@ -1,4 +1,5 @@
 "use client"
+import { CircleArrowUp, Crop, Image as ImageIcon, Info, X } from "lucide-react";
 
 import { createPicture } from "@/src/app/(content)/pictures/(detail)/upload/actions";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
@@ -6,14 +7,6 @@ import { getAllCategories, getAllSelectableParticipants } from "@/src/lib/action
 import { useSession } from "@/src/lib/auth-client";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { formatFileSize } from "@/src/lib/utils/format";
-import {
-  faCircleUp,
-  faCrop,
-  faImage,
-  faInfoCircle,
-  faTimes
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Button,
   Checkbox,
@@ -346,7 +339,7 @@ export default function PictureUpload() {
                           onClick={clearFileState}
                           className="absolute top-4 right-4 w-10 h-10 bg-black/60 hover:bg-danger text-white rounded-full flex items-center justify-center transition z-50 backdrop-blur-md border border-border opacity-0 group-hover/preview:opacity-100"
                         >
-                          <FontAwesomeIcon icon={faTimes} />
+                          <X size="1em" />
                         </button>
                       </div>
 
@@ -367,7 +360,7 @@ export default function PictureUpload() {
                           size="sm"
                           variant="flat"
                           className="bg-muted text-foreground border border-border px-4 h-9 font-bold"
-                          startContent={<FontAwesomeIcon icon={faCrop} />}
+                          startContent={<Crop size="1em" />}
                           onPress={() => setIsCropOpen(true)}
                         >
                           Adjust / Crop
@@ -392,7 +385,7 @@ export default function PictureUpload() {
                         accept="image/*"
                         title="Upload Picture"
                         subtitle="PNG, JPEG, WebP (Max 20MB)"
-                        icon={faImage}
+                        icon={ImageIcon}
                         className="w-full h-full border-none bg-transparent hover:bg-muted transition-colors"
                       />
                     </motion.div>
@@ -404,7 +397,7 @@ export default function PictureUpload() {
             <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl p-6 flex flex-col justify-center min-h-35">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 border border-border text-muted-foreground">
-                  <FontAwesomeIcon icon={faInfoCircle} />
+                  <Info size="1em" />
                 </div>
                 <div className="space-y-1">
                   <h4 className="text-sm font-bold text-foreground">Image Processing</h4>
@@ -436,7 +429,7 @@ export default function PictureUpload() {
             <div className="flex-1 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-5 md:p-5 md:p-8 lg:p-10 shadow-sm relative group transition-all duration-300 flex flex-col">
 
               <h2 className="text-2xl font-bold text-foreground mb-8 flex items-center gap-2">
-                <FontAwesomeIcon icon={faImage} className="text-muted-foreground text-sm" />
+                <ImageIcon size="1em" className="text-muted-foreground text-sm" />
                 Image Metadata
               </h2>
 
@@ -695,7 +688,7 @@ export default function PictureUpload() {
                     <Button
                       size="lg"
                       className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
-                      startContent={<FontAwesomeIcon icon={faCircleUp} />}
+                      startContent={<CircleArrowUp size="1em" />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
                     >

@@ -1,61 +1,56 @@
 "use client";
+import { ArrowRight, Bomb, Crown, Diamond, Flame, Frown, Heart, HeartCrack, Image, Mic, Play, Quote, Search, ShieldHalf, Smartphone } from "lucide-react";
+import { DiscordIcon, type IconComponent } from "@/src/lib/components/ui/discord-icon";
 import { BentoGrid, BentoGridItem } from "@/src/lib/components/home/bento-grid";
 import { Marquee } from "@/src/lib/components/home/infinite-marquee";
 import { GlassCard } from "@/src/lib/components/ui/glass-card";
-import { faDiscord } from "@fortawesome/free-brands-svg-icons";
-import {
-    faArrowRight, faCrown, faDiamond, faExplosion, faFire, faHeart, faHeartBroken, faImage,
-    faMicrophone, faMobileScreen, faPlay, faQuoteRight, faSadTear, faSearch, faShieldHalved,
-    type IconDefinition,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "@/src/lib/auth-client";
 
 const KEYWORDS = [
-    { text: "Wieso hat der ne lilane RPG?", icon: faExplosion },
-    { text: "dAs IsT RaGeBaIt", icon: faFire },
-    { text: "Das war kein voicecrack", icon: faMicrophone },
-    { text: "FF15", icon: faHeartBroken },
-    { text: "Nur noch eine Ark-Season?", icon: faSadTear },
-    { text: "eig bin ich gold", icon: faDiamond },
-    { text: "Bin kein OTP", icon: faCrown },
-    { text: "NUR LIEBE", icon: faHeart },
+    { text: "Wieso hat der ne lilane RPG?", icon: Bomb },
+    { text: "dAs IsT RaGeBaIt", icon: Flame },
+    { text: "Das war kein voicecrack", icon: Mic },
+    { text: "FF15", icon: HeartCrack },
+    { text: "Nur noch eine Ark-Season?", icon: Frown },
+    { text: "eig bin ich gold", icon: Diamond },
+    { text: "Bin kein OTP", icon: Crown },
+    { text: "NUR LIEBE", icon: Heart },
 ];
 
-const ENTRY_CARDS: { href: string; title: string; cta: string; icon: IconDefinition }[] = [
-    { href: "/videos", title: "Clips", cta: "Ansehen", icon: faPlay },
-    { href: "/pictures", title: "Bilder", cta: "Galerie", icon: faImage },
-    { href: "/quotes", title: "Zitate", cta: "Lesen", icon: faQuoteRight },
+const ENTRY_CARDS: { href: string; title: string; cta: string; icon: IconComponent }[] = [
+    { href: "/videos", title: "Clips", cta: "Ansehen", icon: Play },
+    { href: "/pictures", title: "Bilder", cta: "Galerie", icon: Image },
+    { href: "/quotes", title: "Zitate", cta: "Lesen", icon: Quote },
 ];
 
-const IconTile = ({ icon }: { icon: IconDefinition }) => (
+const IconTile = ({ icon: Icon }: { icon: IconComponent }) => (
     <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-muted text-foreground">
-        <FontAwesomeIcon icon={icon} className="text-lg" />
+        <Icon size={18} />
     </div>
 );
 
-const FEATURES: { title: string; description: string; icon: IconDefinition }[] = [
+const FEATURES: { title: string; description: string; icon: IconComponent }[] = [
     {
         title: "Smart Search",
         description: "Finde jeden Moment. Suche nach Spielern, Spielen oder besonderen Momenten.",
-        icon: faSearch,
+        icon: Search,
     },
     {
         title: "Discord Native (Coming Soon?)",
         description: "Unser Bot synchronisiert alles. Was im Chat passiert, bleibt hier.",
-        icon: faDiscord as unknown as IconDefinition,
+        icon: DiscordIcon,
     },
     {
         title: "Überall verfügbar",
         description: "Optimiert für Desktop, Tablet und Mobile. Deine Clips, immer dabei.",
-        icon: faMobileScreen,
+        icon: Smartphone,
     },
     {
         title: "Secure Vault",
         description: "Sicher gespeichert in der Cloud. Für die Ewigkeit archiviert.",
-        icon: faShieldHalved,
+        icon: ShieldHalf,
     },
 ];
 
@@ -108,7 +103,7 @@ export default function Home() {
                                     <div className="flex flex-col text-left gap-1">
                                         <span className="text-xl font-semibold tracking-tight">{card.title}</span>
                                         <span className="flex items-center gap-1 text-sm text-muted-foreground transition-all group-hover:gap-2">
-                                            {card.cta} <FontAwesomeIcon icon={faArrowRight} className="text-[10px]" />
+                                            {card.cta} <ArrowRight size="1em" className="text-[10px]" />
                                         </span>
                                     </div>
                                     <IconTile icon={card.icon} />
@@ -126,7 +121,7 @@ export default function Home() {
                     <Marquee pauseOnHover duration={40} className="py-2">
                         {KEYWORDS.map((item, i) => (
                             <div key={i} className="mx-6 flex items-center gap-3 text-faint font-mono text-lg hover:text-foreground transition-colors cursor-default select-none">
-                                <FontAwesomeIcon icon={item.icon} className="text-sm" />
+                                <item.icon size={14} />
                                 {item.text}
                             </div>
                         ))}

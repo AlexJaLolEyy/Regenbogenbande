@@ -1,8 +1,7 @@
 "use client";
+import { Pause, Play } from "lucide-react";
 
 import { formatDuration } from "@/src/lib/utils/format";
-import { faPause, faPlay } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, Tab, Tabs } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlassDropZone } from "../../../ui/glass-drop-zone";
@@ -76,6 +75,7 @@ export function VideoEditor({
   useEffect(() => {
     const selectedInActive = activeClipSegments.some((s) => s.id === selectedSegmentId);
     if (!selectedInActive && activeClipSegments.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keeps selection valid when the active clip changes
       setSelectedSegmentId(activeClipSegments[0].id);
     }
   }, [activeClipKey, activeClipSegments, selectedSegmentId]);
@@ -84,6 +84,7 @@ export function VideoEditor({
   useEffect(() => {
     const seg = segments[currentSegmentIndex];
     if (seg && seg.clipKey !== activeClipKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- follows playback into another clip
       setActiveClipKey(seg.clipKey);
       setSelectedSegmentId(seg.id);
     }
@@ -196,7 +197,7 @@ export function VideoEditor({
           className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"
         >
           <div className="w-14 h-12 rounded-full bg-black/60 border border-border flex items-center justify-center text-foreground">
-            <FontAwesomeIcon icon={isPlaying ? faPause : faPlay} />
+            {isPlaying ? <Pause size="1em" /> : <Play size="1em" />}
           </div>
         </button>
       </div>

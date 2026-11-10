@@ -1,11 +1,10 @@
 "use client";
+import { ChevronDown, ChevronUp, Reply, Trash2 } from "lucide-react";
 
 import { addComment, deleteComment, voteComment } from '@/src/lib/actions/comments';
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { useSession } from '@/src/lib/auth-client';
 import { Comment } from '@/src/lib/types/types';
-import { faChevronDown, faChevronUp, faReply, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Input } from "@heroui/react";
 import { formatDistanceToNow } from 'date-fns';
 import React, { useState } from 'react';
@@ -65,7 +64,7 @@ const CommentItem = ({
               onClick={() => onDelete(comment.id)}
               className="opacity-0 group-hover:opacity-100 transition text-faint hover:text-danger"
             >
-              <FontAwesomeIcon icon={faTrash} size="sm" />
+              <Trash2 size="0.875em"  />
             </button>
           )}
         </div>
@@ -77,7 +76,7 @@ const CommentItem = ({
               onClick={() => onVote(comment.id, 1, comment.userVote)}
               className={`text-xs transition hover:scale-110 ${comment.userVote === 1 ? 'text-theme-accent' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              <FontAwesomeIcon icon={faChevronUp} />
+              <ChevronUp size="1em" />
             </button>
             <span className="text-xs font-bold text-muted-foreground min-w-3 text-center">
               {comment.upvotes - comment.downvotes}
@@ -86,7 +85,7 @@ const CommentItem = ({
               onClick={() => onVote(comment.id, -1, comment.userVote)}
               className={`text-xs transition hover:scale-110 ${comment.userVote === -1 ? 'text-danger' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              <FontAwesomeIcon icon={faChevronDown} />
+              <ChevronDown size="1em" />
             </button>
           </div>
 
@@ -95,7 +94,7 @@ const CommentItem = ({
               onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
               className="text-xs text-muted-foreground hover:text-foreground font-bold flex items-center gap-1"
             >
-              <FontAwesomeIcon icon={faReply} /> Reply
+              <Reply size="1em" /> Reply
             </button>
           )}
         </div>

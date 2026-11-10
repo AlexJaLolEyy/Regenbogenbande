@@ -1,11 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCloudArrowUp, faFileVideo } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/src/lib/utils";
+import { CloudUpload, FileVideo } from "lucide-react";
+import type { IconComponent } from "@/src/lib/components/ui/discord-icon";
 
-import { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
 interface GlassDropZoneProps {
     onFileSelect: (file: File) => void;
@@ -13,7 +12,7 @@ interface GlassDropZoneProps {
     className?: string;
     title?: string;
     subtitle?: string;
-    icon?: IconDefinition;
+    icon?: IconComponent;
 }
 
 export function GlassDropZone({
@@ -64,6 +63,8 @@ export function GlassDropZone({
         onFileSelect(file);
     };
 
+    const Icon = selectedFileName ? (icon ?? FileVideo) : (icon ?? CloudUpload);
+
     return (
         <div
             onClick={handleClick}
@@ -87,10 +88,7 @@ export function GlassDropZone({
             />
 
             <div className="w-16 h-16 rounded-full flex items-center justify-center border border-border bg-card text-muted-foreground transition-transform duration-300 group-hover:scale-105">
-                <FontAwesomeIcon
-                    icon={selectedFileName ? (icon ?? faFileVideo) : (icon ?? faCloudArrowUp)}
-                    className="text-2xl"
-                />
+                <Icon size={24} />
             </div>
 
             <div className="space-y-1">

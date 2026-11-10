@@ -1,9 +1,8 @@
 "use client";
+import { Download, X } from "lucide-react";
 
 import React from 'react';
 import { Modal, ModalContent, Button } from "@heroui/react";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes, faDownload } from '@fortawesome/free-solid-svg-icons';
 import NextImage from 'next/image';
 
 interface ImageLightboxProps {
@@ -74,8 +73,9 @@ export const ImageLightbox = ({ imageUrl, title, isOpen, onOpenChange }: ImageLi
                 className="bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md border border-white/10"
                 onClick={handleDownload}
                 title="Download Image"
+                aria-label="Download image"
               >
-                <FontAwesomeIcon icon={faDownload} />
+                <Download size="1em" />
               </Button>
               <Button
                 isIconOnly
@@ -83,8 +83,9 @@ export const ImageLightbox = ({ imageUrl, title, isOpen, onOpenChange }: ImageLi
                 className="bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md border border-white/10"
                 onClick={onClose}
                 title="Close"
+                aria-label="Close"
               >
-                <FontAwesomeIcon icon={faTimes} />
+                <X size="1em" />
               </Button>
             </div>
 
