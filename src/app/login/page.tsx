@@ -1,10 +1,13 @@
 "use client"
 
 import { signIn } from "@/src/lib/auth-client"
-import { FireworksBackground } from "@/src/lib/components/home/fireworks-background"
+import { AccentAura } from "@/src/lib/components/backgrounds/accent-aura"
+import { DiscordIcon } from "@/src/lib/components/ui/discord-icon"
+import { DURATION, EASE } from "@/src/lib/motion"
 import { Button } from "@heroui/react"
 import { motion } from "framer-motion"
-import { AlertCircle, LogIn } from "lucide-react"
+import { AlertCircle } from "lucide-react"
+import NextImage from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 
@@ -50,104 +53,66 @@ function LoginContent() {
     }
 
     return (
-        <div>
-            <FireworksBackground className="min-h-screen w-full flex items-center justify-center p-4">
-                {/* Login Card */}
-                <div className="flex items-center justify-center">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="relative z-10 w-full max-w-md px-6"
-                    >
-                        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-4xl p-8 shadow-2xl relative overflow-hidden group">
-                            {/* Subtle glow on hover */}
-                            <div className="absolute inset-0 bg-linear-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="relative flex min-h-screen w-full items-center justify-center p-4">
+            <AccentAura />
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: DURATION.slow, ease: EASE }}
+                className="relative z-10 w-full max-w-md"
+            >
+                <div className="rounded-2xl border border-black/5 bg-card/40 p-8 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08)] backdrop-blur-xl dark:border-white/10">
+                    <div className="mb-8 text-center">
+                        <NextImage src="/rainbow.svg" alt="" width={48} height={48} className="mx-auto mb-4" />
+                        <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Welcome</h1>
+                        <p className="text-sm text-muted-foreground">Sign in to access the Regenbogenbande archive</p>
+                    </div>
 
-                            {/* Decorative gradients */}
-                            <div className="absolute -top-25 -right-25 w-50 h-50 bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
-                            <div className="absolute -bottom-25 -left-25 w-50 h-50 bg-blue-600/20 rounded-full blur-[80px] pointer-events-none" />
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            role="alert"
+                            className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
+                        >
+                            <AlertCircle size={16} />
+                            {error}
+                        </motion.div>
+                    )}
 
-                            {/* Header */}
-                            <div className="text-center mb-8 relative z-10">
-                                <motion.div
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    transition={{ delay: 0.2 }}
-                                    className="w-16 h-16 bg-linear-to-tr from-pink-500 to-violet-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg rotate-3"
-                                >
-                                    <LogIn className="text-white w-8 h-8" />
-                                </motion.div>
-                                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Welcome</h1>
-                                <p className="text-white/60 text-sm">Sign in to access the Regenbogenbande archive</p>
-                            </div>
+                    <div className="flex flex-col gap-4">
+                        <Button
+                            onPress={handleDiscordLogin}
+                            size="lg"
+                            className="h-12 rounded-xl border-none bg-discord font-semibold text-white hover:opacity-90"
+                            isLoading={isLoading}
+                            startContent={!isLoading && <DiscordIcon size={20} />}
+                        >
+                            Continue with Discord
+                        </Button>
 
-                            {/* Error Message */}
-                            {error && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    className="mb-4 bg-danger-500/20 border border-danger-500/50 text-danger-200 px-4 py-3 rounded-xl flex items-center gap-2 text-sm"
-                                >
-                                    <AlertCircle size={16} />
-                                    {error}
-                                </motion.div>
-                            )}
-
-                            {/* Login Buttons */}
-                            <div className="flex flex-col gap-4 relative z-10">
-                                {/* Discord Login Button */}
-                                <Button
-                                    onPress={handleDiscordLogin}
-                                    size="lg"
-                                    className="font-semibold shadow-lg shadow-indigo-500/20 bg-[#5865F2] hover:bg-[#4752C4] text-white border-none"
-                                    isLoading={isLoading}
-                                    startContent={
-                                        !isLoading && (
-                                            <svg
-                                                className="w-5 h-5"
-                                                fill="currentColor"
-                                                viewBox="0 0 24 24"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                            >
-                                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                                            </svg>
-                                        )
-                                    }
-                                >
-                                    Continue with Discord
-                                </Button>
-
-                                {/* Divider */}
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 h-px bg-white/10" />
-                                    <span className="text-white/40 text-sm">or</span>
-                                    <div className="flex-1 h-px bg-white/10" />
-                                </div>
-
-                                {/* Guest Access Button */}
-                                <Button
-                                    onPress={handleGuestAccess}
-                                    variant="bordered"
-                                    size="lg"
-                                    className="font-semibold border-white/20 text-white/70 hover:bg-white/5 hover:text-white"
-                                    isDisabled={isLoading}
-                                >
-                                    Continue as Guest
-                                </Button>
-                            </div>
-
-                            {/* Invite Note */}
-                            <div className="mt-6 text-center">
-                                <p className="text-white/40 text-xs">
-                                    This is an invite-only platform.{" "}
-                                    <span className="text-white/60">Ask an admin if you need access.</span>
-                                </p>
-                            </div>
+                        <div className="flex items-center gap-4">
+                            <div className="h-px flex-1 bg-border" />
+                            <span className="text-sm text-faint">or</span>
+                            <div className="h-px flex-1 bg-border" />
                         </div>
-                    </motion.div>
+
+                        <Button
+                            onPress={handleGuestAccess}
+                            variant="bordered"
+                            size="lg"
+                            className="h-12 rounded-xl border-border font-semibold text-foreground hover:bg-muted"
+                            isDisabled={isLoading}
+                        >
+                            Continue as guest
+                        </Button>
+                    </div>
+
+                    <p className="mt-6 text-center text-xs text-muted-foreground">
+                        This is an invite-only platform. Ask an admin if you need access.
+                    </p>
                 </div>
-            </FireworksBackground>
+            </motion.div>
         </div>
     )
 }
@@ -159,4 +124,3 @@ export default function LoginPage() {
         </Suspense>
     )
 }
-

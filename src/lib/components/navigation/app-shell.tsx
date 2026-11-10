@@ -58,8 +58,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { collapsed, setMobileOpen } = useSidebar();
 
-  // Login and the landing page are standalone: no app chrome.
-  if (pathname === "/" || pathname.startsWith("/login")) return <>{children}</>;
+  // Login, landing page and legal pages are standalone: no app chrome.
+  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/impressum")) return <>{children}</>;
 
 
   return (
