@@ -1,6 +1,6 @@
 "use server"
 
-import { requireContentOwnerOrAdmin } from '@/src/lib/auth-utils';
+import { requireAuth, requireContentOwnerOrAdmin } from '@/src/lib/auth-utils';
 import { updateVideo } from '@/src/lib/db/mutations/videos';
 import { getVideoById } from '@/src/lib/db/selects/videos';
 import { parseVideoActionToBackend, VideoActionInput } from '@/src/lib/utils/video-utils';
@@ -10,7 +10,8 @@ export async function updateVideoElement(video: VideoActionInput) {
     if (!video.id) throw new Error("Video ID is required");
 
     // Fetch existing video to check ownership
-    const existingVideo = await getVideoById(video.id);
+    const session = await requireAuth();
+    const existingVideo = await getVideoById(video.id, session);
     if (!existingVideo) throw new Error("Video not found");
 
     await requireContentOwnerOrAdmin(existingVideo.uploadedBy.id);

@@ -1,23 +1,45 @@
 "use server";
 
-import { requireAdminOrOwner, requireAuth } from "@/src/lib/auth-utils";
+import { getEffectiveRole, getSession, requireAdminOrOwner, requireUploadPermission } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { Comment } from '@/src/lib/types/types';
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
-export async function getComments(contentType: 'video' | 'picture' | 'quote', contentId: string) {
-  const session = await requireAuth().catch(() => null);
+type ContentType = 'video' | 'picture' | 'quote';
+
+function contentKey(contentType: ContentType) {
+  if (contentType !== 'video' && contentType !== 'picture' && contentType !== 'quote') {
+    throw new Error("Invalid content type");
+  }
+  return `${contentType}Id` as 'videoId' | 'pictureId' | 'quoteId';
+}
+
+async function isContentPublic(contentType: ContentType, contentId: string): Promise<boolean> {
+  const select = { isPublic: true } as const;
+  const where = { id: contentId };
+  const row =
+    contentType === 'video' ? await prisma.video.findUnique({ where, select })
+    : contentType === 'picture' ? await prisma.picture.findUnique({ where, select })
+    : await prisma.quote.findUnique({ where, select });
+  return row?.isPublic === true;
+}
+
+export async function getComments(contentType: ContentType, contentId: string) {
+  const session = await getSession();
   const userId = session?.user.id;
+
+  // Guests may only read comments on public content
+  if (getEffectiveRole(session) === 'guest') {
+    const isPublic = await isContentPublic(contentType, contentId);
+    if (!isPublic) return [];
+  }
 
   const comments = await prisma.comment.findMany({
     where: {
-      OR: [
-        { videoId: contentType === 'video' ? contentId : undefined },
-        { pictureId: contentType === 'picture' ? contentId : undefined },
-        { quoteId: contentType === 'quote' ? contentId : undefined },
-      ],
-      parentId: null, // Only fetch top-level comments initially or include replies
+      [contentKey(contentType)]: contentId,
+      parentId: null, // Only top-level comments; replies are included below
     },
+    take: 200,
     include: {
       user: {
         select: {
@@ -100,26 +122,30 @@ export async function addComment(
   content: string,
   parentId?: string
 ) {
-  const session = await requireAuth();
+  const session = await requireUploadPermission();
+
+  const trimmed = content?.trim();
+  if (!trimmed || trimmed.length > 2000) {
+    throw new Error("Invalid comment");
+  }
 
   const comment = await prisma.comment.create({
     data: {
-      content,
+      content: trimmed,
       userId: session.user.id,
-      videoId: contentType === 'video' ? contentId : undefined,
-      pictureId: contentType === 'picture' ? contentId : undefined,
-      quoteId: contentType === 'quote' ? contentId : undefined,
+      [contentKey(contentType)]: contentId,
       parentId: parentId || undefined,
     },
   });
 
   const path = contentType === 'quote' ? `/quotes/${contentId}` : `/${contentType}s/${contentId}`;
   revalidatePath(path);
+  revalidateTag('analytics', 'max');
   return comment;
 }
 
 export async function deleteComment(commentId: string, contentType: 'video' | 'picture' | 'quote', contentId: string) {
-  const session = await requireAuth();
+  const session = await requireUploadPermission();
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
@@ -128,8 +154,8 @@ export async function deleteComment(commentId: string, contentType: 'video' | 'p
 
   if (!comment) throw new Error("Comment not found");
 
-  // Only author or admin can delete
-  if (comment.userId !== session.user.id && session.user.role !== 'admin') {
+  // Only author, admin or owner can delete
+  if (comment.userId !== session.user.id) {
     await requireAdminOrOwner();
   }
 
@@ -147,7 +173,7 @@ export async function voteComment(
   contentType: 'video' | 'picture' | 'quote',
   contentId: string
 ) {
-  const session = await requireAuth();
+  const session = await requireUploadPermission();
   const userId = session.user.id;
 
   if (value !== 1 && value !== -1 && value !== 0) {

@@ -1,6 +1,6 @@
 "use server"
 
-import { requireContentOwnerOrAdmin } from "@/src/lib/auth-utils";
+import { requireAuth, requireContentOwnerOrAdmin } from "@/src/lib/auth-utils";
 import { updateQuote } from "@/src/lib/db/mutations/quotes";
 import { getQuoteById } from "@/src/lib/db/selects/quotes";
 import { parseQuoteActionToBackend, QuoteActionInput } from "@/src/lib/utils/quote-utils";
@@ -9,7 +9,8 @@ import { redirect } from "next/navigation";
 
 export async function updateQuoteElement(id: string, data: QuoteActionInput) {
     try {
-        const existingQuote = await getQuoteById(id);
+        const session = await requireAuth();
+        const existingQuote = await getQuoteById(id, session);
 
         if (!existingQuote) {
             throw new Error("Quote not found");

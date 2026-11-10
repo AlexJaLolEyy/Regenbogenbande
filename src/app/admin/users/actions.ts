@@ -12,6 +12,7 @@ export async function getUsers() {
         prisma.user.findMany({
             where: { isAnonymous: false },
             orderBy: { createdAt: "desc" },
+            take: 500,
             select: {
                 id: true,
                 name: true,
@@ -36,6 +37,7 @@ export async function getInvites() {
 
     const invites = await prisma.invite.findMany({
         orderBy: { createdAt: "desc" },
+        take: 500,
     })
 
     return invites.map(invite => ({
@@ -48,21 +50,41 @@ export async function getInvites() {
     }))
 }
 
-export async function createInvite(discordId: string, discordName: string, role: string = "member") {
+const ASSIGNABLE_ROLES = ["member", "admin"] as const
+
+function parseAssignableRole(role: string): Role | null {
+    return (ASSIGNABLE_ROLES as readonly string[]).includes(role) ? (role as Role) : null
+}
+
+export async function createInvite(discordId: string, discordName: string, requestedRole: string = "member") {
     const session = await requireAdminOrOwner()
+
+    const role = parseAssignableRole(requestedRole)
+    if (!role) {
+        return { success: false, error: "Invalid role" }
+    }
 
     if (!discordId || discordId.length < 17) {
         return { success: false, error: "Invalid Discord ID. It should be a 17-19 digit number." }
     }
 
     try {
+        // An invite must never overwrite the owner (or an existing account's role)
+        const existingUser = await prisma.user.findUnique({
+            where: { discordId },
+            select: { role: true },
+        })
+        if (existingUser && (existingUser.role as string) === "owner") {
+            return { success: false, error: "This Discord ID belongs to the owner" }
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             // 1. Create the invite
             const invite = await tx.invite.create({
                 data: {
                     discordId,
                     discordName: discordName || null,
-                    role: role as Role,
+                    role,
                     createdById: session.user.id,
                 }
             });
@@ -73,12 +95,12 @@ export async function createInvite(discordId: string, discordName: string, role:
                 where: { discordId },
                 update: {
                     name: discordName || `User ${discordId.slice(-4)}`,
-                    role: role as Role,
+                    role,
                 },
                 create: {
                     name: discordName || `User ${discordId.slice(-4)}`,
                     discordId,
-                    role: role as Role,
+                    role,
                     status: "INVITED",
                     image: `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${discordId}&backgroundColor=b6e3f4,c0aede,d1d4f9`
                 }
@@ -108,25 +130,23 @@ export async function deleteInvite(inviteId: string) {
             const user = await prisma.user.findUnique({
                 where: { discordId: invite.discordId },
                 include: {
-                    accounts: true,
-                    uploadedVideos: true,
-                    uploadedPictures: true,
-                    uploadedQuotes: true,
-                    videoParticipants: true,
-                    pictureParticipants: true,
-                    quoteParticipants: true
+                    _count: {
+                        select: {
+                            uploadedVideos: true,
+                            uploadedPictures: true,
+                            uploadedQuotes: true,
+                            videoParticipants: true,
+                            pictureParticipants: true,
+                            quoteParticipants: true,
+                        }
+                    }
                 }
             });
 
             // If the user hasn't logged in yet (no email), we can clean up
             if (user && !user.email) {
                 // Check if user has any contributions before deleting
-                const hasContributions = user.uploadedVideos.length > 0 ||
-                    user.uploadedPictures.length > 0 ||
-                    user.uploadedQuotes.length > 0 ||
-                    user.videoParticipants.length > 0 ||
-                    user.pictureParticipants.length > 0 ||
-                    user.quoteParticipants.length > 0;
+                const hasContributions = Object.values(user._count).some((n) => n > 0);
 
                 if (!hasContributions) {
                     await prisma.user.delete({
@@ -157,9 +177,10 @@ export async function deleteInvite(inviteId: string) {
 export async function updateUserRole(userId: string, newRole: string) {
     const session = await requireAdminOrOwner()
 
-    // Prevent assigning the owner role via UI
-    if (newRole === "owner") {
-        return { success: false, error: "Owner role can only be assigned directly in the database" }
+    // Only member/admin are assignable; owner can only be set directly in the database
+    const parsedRole = parseAssignableRole(newRole)
+    if (!parsedRole) {
+        return { success: false, error: "Invalid role" }
     }
 
     // Prevent modifying a user who is currently an owner
@@ -180,7 +201,7 @@ export async function updateUserRole(userId: string, newRole: string) {
     try {
         const user = await prisma.user.update({
             where: { id: userId },
-            data: { role: newRole as Role }
+            data: { role: parsedRole }
         })
         revalidatePath("/admin/users")
         return { success: true, user }
@@ -208,10 +229,14 @@ export async function deleteUser(userId: string) {
     }
 
     try {
-        await prisma.user.update({
-            where: { id: userId },
-            data: { status: "DISABLED" }
-        })
+        // Disable and revoke all active sessions so access ends immediately
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: userId },
+                data: { status: "DISABLED" }
+            }),
+            prisma.session.deleteMany({ where: { userId } }),
+        ])
         revalidatePath("/admin/users")
         return { success: true }
     } catch (error) {

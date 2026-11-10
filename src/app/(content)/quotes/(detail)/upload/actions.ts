@@ -12,15 +12,13 @@ import { redirect } from 'next/navigation';
 export async function createQuote(data: QuoteUploadForm) {
   const session = await checkUploadPermission();
 
-  // Fallback: If uploadedBy is missing, use session user
-  if (!data.uploadedBy) {
-    data.uploadedBy = {
-      id: session.user.id,
-      username: session.user.name,
-      profilePicture: session.user.image || null,
-      status: 'ACTIVE'
-    };
-  }
+  // Always attribute to the signed-in user (client-supplied uploadedBy is ignored)
+  data.uploadedBy = {
+    id: session.user.id,
+    username: session.user.name,
+    profilePicture: session.user.image || null,
+    status: 'ACTIVE'
+  };
 
   // Parse and convert using extracted utility
   const quoteData = await parseQuoteActionToBackend(data);

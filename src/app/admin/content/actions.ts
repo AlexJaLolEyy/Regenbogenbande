@@ -1,9 +1,9 @@
 "use server"
 
 import { requireAdminOrOwner } from "@/src/lib/auth-utils";
-import { pictureListSelect, PrismaPictureList, transformPicture, transformPictureListItem } from "@/src/lib/db/selects/pictures";
-import { PrismaQuoteList, quoteListSelect, transformQuote, transformQuoteListItem } from "@/src/lib/db/selects/quotes";
-import { PrismaVideoList, transformVideo, transformVideoListItem, videoListSelect } from "@/src/lib/db/selects/videos";
+import { pictureDetailSelect, pictureListSelect, PrismaPictureList, transformPicture, transformPictureListItem } from "@/src/lib/db/selects/pictures";
+import { PrismaQuoteList, quoteDetailSelect, quoteListSelect, transformQuote, transformQuoteListItem } from "@/src/lib/db/selects/quotes";
+import { PrismaVideoList, transformVideo, transformVideoListItem, videoDetailSelect, videoListSelect } from "@/src/lib/db/selects/videos";
 import { prisma } from "@/src/lib/prisma";
 import { Picture, PictureListItem, Quote, QuoteListItem, Video, VideoListItem } from "@/src/lib/types/types";
 import { revalidatePath } from "next/cache";
@@ -78,8 +78,8 @@ export async function toggleVisibility(type: string, id: string, isPublic: boole
         revalidatePath("/admin/content");
         revalidatePath("/"); // Revalidate lists
         return { success: true };
-    } catch (error: any) {
-        return { success: false, error: error.message || "Failed to update visibility" };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Failed to update visibility" };
     }
 }
 
@@ -87,28 +87,20 @@ export async function getContentById(type: string, id: string): Promise<Video | 
     await requireAdminOrOwner();
     try {
         if (type === 'video') {
-            const item = await prisma.video.findUnique({
-                where: { id },
-                include: { uploadedBy: true, category: true, ratings: { select: { value: true } }, participants: { include: { user: true } } }
-            });
-            return item ? transformVideo(item as any) : null;
+            const item = await prisma.video.findUnique({ where: { id }, select: videoDetailSelect });
+            return item ? transformVideo(item) : null;
         }
         if (type === 'picture') {
-            const item = await prisma.picture.findUnique({
-                where: { id },
-                include: { uploadedBy: true, category: true, ratings: { select: { value: true } }, participants: { include: { user: true } } }
-            });
-            return item ? transformPicture(item as any) : null;
+            const item = await prisma.picture.findUnique({ where: { id }, select: pictureDetailSelect });
+            return item ? transformPicture(item) : null;
         }
         if (type === 'quote') {
-            const item = await prisma.quote.findUnique({
-                where: { id },
-                include: { uploadedBy: true, ratings: { select: { value: true } }, participants: { include: { user: true } }, messages: { include: { user: true } } }
-            });
-            return item ? transformQuote(item as any) : null;
+            const item = await prisma.quote.findUnique({ where: { id }, select: quoteDetailSelect });
+            return item ? transformQuote(item) : null;
         }
         return null;
     } catch (error) {
+        console.error("Error fetching content by id:", error);
         return null;
     }
 }

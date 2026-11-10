@@ -3,6 +3,7 @@
 import { checkUploadPermission } from '@/src/lib/auth-utils';
 import { addPicture } from '@/src/lib/db/mutations/pictures';
 import { PictureActionInput, parsePictureActionToBackend } from '@/src/lib/utils/picture-utils';
+import { assertOwnStorageUrl } from '@/src/lib/storage-adapter';
 import { redirect } from 'next/navigation';
 
 /**
@@ -16,15 +17,16 @@ export async function createPicture(picture: PictureActionInput, imagePath: stri
         throw new Error("categoryId is required");
     }
 
-    // Fallback: If uploadedBy is missing, use session user
-    if (!picture.uploadedBy) {
-        picture.uploadedBy = {
-            id: session.user.id,
-            username: session.user.name,
-            profilePicture: session.user.image || null,
-            status: 'ACTIVE'
-        };
-    }
+    assertOwnStorageUrl(imagePath);
+    assertOwnStorageUrl(thumbnailPath, true);
+
+    // Always attribute to the signed-in user (client-supplied uploadedBy is ignored)
+    picture.uploadedBy = {
+        id: session.user.id,
+        username: session.user.name,
+        profilePicture: session.user.image || null,
+        status: 'ACTIVE'
+    };
 
     // Parse and convert using extracted utility
     const pictureData = await parsePictureActionToBackend(picture, imagePath, thumbnailPath);
