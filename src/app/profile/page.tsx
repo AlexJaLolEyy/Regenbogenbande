@@ -4,42 +4,14 @@ import { signOut, useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { AccentId, useAccent } from "@/src/lib/hooks/use-accent";
-import { useChartColors } from "@/src/lib/hooks/use-chart-colors";
-import { queryKeys } from "@/src/lib/queries/query-keys";
 import { cn } from "@/src/lib/utils";
-import { Button, Input, Tab, Tabs } from "@heroui/react";
-import { useQuery } from "@tanstack/react-query";
-import {
-    ArcElement,
-    BarElement,
-    CategoryScale,
-    Chart as ChartJS,
-    Legend,
-    LinearScale,
-    LineElement,
-    PointElement,
-    Title,
-    Tooltip,
-} from 'chart.js';
+import { Button, Input, Skeleton } from "@heroui/react";
 import { motion } from "framer-motion";
-import { Activity, Camera, Crown, LogOut, Monitor, Moon, Settings, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
+import { Camera, Crown, LogOut, Monitor, Moon, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Doughnut, Line } from 'react-chartjs-2';
-import { getUserStats, updateDisplayName, updateProfilePicture } from "./actions";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    ArcElement,
-    Title,
-    Tooltip,
-    Legend
-)
+import { updateDisplayName, updateProfilePicture } from "./actions";
 
 const FIELD = {
     inputWrapper: "bg-muted h-12 rounded-xl border border-border hover:border-foreground/30 transition-colors data-[focus=true]:border-theme-accent",
@@ -77,7 +49,6 @@ export default function ProfilePage() {
     const { data: session, isPending: isSessionPending } = useSession();
     const router = useRouter()
     const { theme, setTheme } = useTheme()
-    const colors = useChartColors()
     const { accent: activeAccent, setAccent } = useAccent()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isLoading, setIsLoading] = useState(false)
@@ -91,21 +62,8 @@ export default function ProfilePage() {
     const displayName = localDisplayName ?? session?.user?.name ?? "";
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true)
     }, [])
-
-    const { data: statsData, isLoading: isStatsLoading } = useQuery({
-        queryKey: queryKeys.user.stats(),
-        queryFn: async () => {
-            const res = await getUserStats();
-            if (!res.success) throw new Error(res.error || "Failed to fetch stats");
-            return res.stats;
-        },
-        enabled: !!session?.user,
-    });
-    const stats = statsData;
-
     useEffect(() => {
         if (!isSessionPending && !session?.user) {
             router.push('/login');
@@ -162,58 +120,20 @@ export default function ProfilePage() {
         })
     }
 
-    if (isSessionPending) return null;
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { color: colors.grid },
-                ticks: { color: colors.tick, font: { size: 10 } },
-            },
-            x: {
-                grid: { display: false },
-                ticks: { color: colors.tick, font: { size: 10 } },
-            }
-        }
-    };
-
-    const activityData = {
-        labels: stats?.monthlyActivity.map((a: any) => a.label) || [],
-        datasets: [{
-            label: 'Uploads',
-            data: stats?.monthlyActivity.map((a: any) => a.count) || [],
-            borderColor: colors.accent,
-            backgroundColor: `color-mix(in srgb, ${colors.accent} 15%, transparent)`,
-            tension: 0.4,
-            fill: true,
-            pointBackgroundColor: colors.accent,
-            pointHoverRadius: 6,
-        }]
-    };
-
-    const distributionColors = [colors.accent, colors.success, colors.warning];
-    const distributionData = {
-        labels: ['Videos', 'Pictures', 'Quotes'],
-        datasets: [{
-            data: [stats?.counts.videos || 0, stats?.counts.pictures || 0, stats?.counts.quotes || 0],
-            backgroundColor: distributionColors,
-            borderColor: colors.grid,
-            borderWidth: 2,
-            hoverOffset: 10
-        }]
-    };
-
-    // Each metric card uses one semantic token color.
-    const metrics = [
-        { label: "Total uploads", value: stats?.counts.total, color: "var(--theme-accent)" },
-        { label: "Total views", value: stats?.views, color: "var(--chart-2)" },
-        { label: "Average rating", value: stats?.ratings.average || "0.0", color: "var(--gold)" },
-        { label: "Ratings given", value: stats?.ratings.count, color: "var(--chart-3)" },
-    ]
+    if (isSessionPending) {
+        return (
+            <div className="w-full text-foreground">
+                <div className="container mx-auto max-w-5xl p-6 pt-8">
+                    <Skeleton className="mb-2 h-9 w-40 rounded-lg" />
+                    <Skeleton className="mb-10 h-4 w-64 rounded" />
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                        <Skeleton className="h-72 rounded-2xl md:col-span-1" />
+                        <Skeleton className="h-72 rounded-2xl md:col-span-2" />
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="w-full text-foreground">
@@ -224,29 +144,8 @@ export default function ProfilePage() {
                     className="mb-10"
                 >
                     <h1 className="mb-1 text-3xl font-semibold tracking-tight">Profile</h1>
-                    <p className="text-sm text-muted-foreground">Manage your account, appearance and statistics</p>
+                    <p className="text-sm text-muted-foreground">Manage your account and appearance</p>
                 </motion.div>
-
-                <Tabs
-                    aria-label="Profile options"
-                    variant="bordered"
-                    className="mb-8 w-fit rounded-xl border border-border bg-card/70 p-1"
-                    classNames={{
-                        tabList: "gap-2 border-0 bg-transparent p-0",
-                        cursor: "bg-primary rounded-lg",
-                        tab: "h-10 px-6 font-medium",
-                        tabContent: "group-data-[selected=true]:text-primary-foreground text-muted-foreground"
-                    }}
-                >
-                    <Tab
-                        key="info"
-                        title={
-                            <div className="flex items-center space-x-2">
-                                <Settings size={16} />
-                                <span>Settings</span>
-                            </div>
-                        }
-                    >
                         <div className="mt-4 grid grid-cols-1 gap-8 md:grid-cols-3">
                             {/* Profile card */}
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="md:col-span-1">
@@ -400,81 +299,6 @@ export default function ProfilePage() {
                                 </Card>
                             </motion.div>
                         </div>
-                    </Tab>
-
-                    <Tab
-                        key="stats"
-                        title={
-                            <div className="flex items-center space-x-2">
-                                <Activity size={16} />
-                                <span>Statistics</span>
-                            </div>
-                        }
-                    >
-                        <div className="mt-4">
-                            {isStatsLoading ? (
-                                <div className="grid animate-pulse grid-cols-2 gap-4 md:grid-cols-4">
-                                    {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-muted" />)}
-                                </div>
-                            ) : stats ? (
-                                <div className="flex flex-col gap-8">
-                                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                                        {metrics.map((m, i) => (
-                                            <motion.div
-                                                key={m.label}
-                                                initial={{ opacity: 0, y: 12 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: i * 0.05 }}
-                                                className="flex flex-col items-center rounded-2xl border border-border bg-card/70 p-6 text-center shadow-sm"
-                                            >
-                                                <p className="mb-2 text-xs text-faint">{m.label}</p>
-                                                <p className="font-mono text-3xl font-semibold tracking-tight" style={{ color: m.color }}>{m.value}</p>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                                            <Card>
-                                                <SectionTitle>Upload activity (6 months)</SectionTitle>
-                                                <div className="h-64">
-                                                    <Line data={activityData} options={chartOptions} />
-                                                </div>
-                                            </Card>
-                                        </motion.div>
-
-                                        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                                            <Card>
-                                                <SectionTitle>Media distribution</SectionTitle>
-                                                <div className="flex h-64 justify-center">
-                                                    <Doughnut
-                                                        data={distributionData}
-                                                        options={{
-                                                            responsive: true,
-                                                            maintainAspectRatio: false,
-                                                            plugins: {
-                                                                legend: {
-                                                                    display: true,
-                                                                    position: 'bottom',
-                                                                    labels: {
-                                                                        color: colors.tick,
-                                                                        font: { size: 11 },
-                                                                        usePointStyle: true,
-                                                                        padding: 20
-                                                                    }
-                                                                }
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            </Card>
-                                        </motion.div>
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    </Tab>
-                </Tabs>
             </div>
         </div>
     )

@@ -52,7 +52,7 @@ const SECTIONS: { title: string; items: NavEntry[] }[] = [
       { label: "Videos", href: "/videos", icon: Video },
       { label: "Pictures", href: "/pictures", icon: ImageIcon },
       { label: "Quotes", href: "/quotes", icon: Quote },
-      { label: "Analytics", href: "/profile", icon: BarChart3, roles: ["owner", "admin", "member"] },
+      { label: "Analytics", href: "/analytics", icon: BarChart3, roles: ["owner", "admin", "member"] },
     ],
   },
   {
@@ -137,9 +137,6 @@ function SidebarContent({
   const isActive = (item: NavEntry) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
-  // The same href can appear twice (Analytics/Settings -> /profile); only mark the first.
-  const seen = new Set<string>();
-
   return (
     <div className="flex h-full flex-col">
       {/* App icon + name */}
@@ -171,9 +168,7 @@ function SidebarContent({
               )}
               <ul className="space-y-1">
                 {items.map((item) => {
-                  const duplicate = seen.has(item.href);
-                  seen.add(item.href);
-                  const active = !duplicate && isActive(item);
+                  const active = isActive(item);
                   const Icon = item.icon;
                   return (
                     <li key={item.label}>
@@ -295,7 +290,6 @@ export function MainSidebar() {
 
   // Close the mobile drawer on route change.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
   }, [pathname, setMobileOpen]);
 

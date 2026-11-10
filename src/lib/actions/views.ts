@@ -1,80 +1,104 @@
 "use server";
 
-import { requireAuth } from "@/src/lib/auth-utils";
+import { getEffectiveRole, getSession } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
+import { createHash } from "crypto";
+import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 
-import { buildViewCacheKey, checkViewRateLimit } from "@/src/lib/services/rate-limiter";
+type ContentType = 'video' | 'picture' | 'quote';
 
-export async function incrementView(
-  contentType: 'video' | 'picture' | 'quote',
-  contentId: string
-) {
-  const session = await requireAuth().catch(() => null);
-  const userId = session?.user.id;
-  const cooldown = 60 * 1000; // 60 seconds
+const DEDUPE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
-  let shouldIncrement = false;
+const PRISMA_TYPE = { video: 'VIDEO', picture: 'PICTURE', quote: 'QUOTE' } as const;
 
-  if (userId) {
-    // Check for logged in user view tracking (database-backed for persistence)
+/** Anonymous viewers are identified by sha256(ip + daily salt), never stored raw. */
+async function guestHash(): Promise<string> {
+  const headerList = await headers();
+  const ip = headerList.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const day = new Date().toISOString().slice(0, 10);
+  const secret = process.env.BETTER_AUTH_SECRET || "";
+  return createHash("sha256").update(`${ip}|${day}|${secret}`).digest("hex");
+}
+
+async function getContentMeta(contentType: ContentType, contentId: string) {
+  const select = { uploadedById: true, isPublic: true } as const;
+  const where = { id: contentId };
+  if (contentType === 'video') return prisma.video.findUnique({ where, select });
+  if (contentType === 'picture') return prisma.picture.findUnique({ where, select });
+  return prisma.quote.findUnique({ where, select });
+}
+
+/**
+ * Records a view once per viewer per content per 30 minutes.
+ * Dedupe lives in the database (works across serverless instances).
+ */
+export async function incrementView(contentType: ContentType, contentId: string) {
+  if (!(contentType in PRISMA_TYPE)) return { success: false };
+
+  const session = await getSession();
+  const role = getEffectiveRole(session);
+  const meta = await getContentMeta(contentType, contentId);
+  if (!meta) return { success: false };
+  if (role === 'guest' && !meta.isPublic) return { success: false };
+
+  // Guests (anonymous sessions) are tracked by hash; real users by id
+  const userId = role === 'guest' ? null : session!.user.id;
+  const viewerHash = userId ? null : await guestHash();
+  const viewerKey = userId ?? viewerHash!;
+  const type = PRISMA_TYPE[contentType];
+  const since = new Date(Date.now() - DEDUPE_WINDOW_MS);
+
+  const counted = await prisma.$transaction(async (tx) => {
+    // Serialize concurrent views by the same viewer on the same content
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${contentId}:${viewerKey}`}))`;
+
+    const recent = await tx.contentView.findFirst({
+      where: {
+        contentType: type,
+        contentId,
+        viewedAt: { gte: since },
+        ...(userId ? { userId } : { viewerHash }),
+      },
+      select: { id: true },
+    });
+    if (recent) return false;
+
+    await tx.contentView.create({
+      data: { contentType: type, contentId, ownerId: meta.uploadedById, userId, viewerHash },
+    });
+
     if (contentType === 'video') {
-      const lastView = await prisma.userVideoView.findUnique({
-        where: { userId_videoId: { userId, videoId: contentId } }
-      });
-      if (!lastView || Date.now() - lastView.viewedAt.getTime() > cooldown) {
-        await prisma.userVideoView.upsert({
+      await tx.video.update({ where: { id: contentId }, data: { views: { increment: 1 } } });
+      if (userId) {
+        await tx.userVideoView.upsert({
           where: { userId_videoId: { userId, videoId: contentId } },
-          update: { viewedAt: new Date() },
-          create: { userId, videoId: contentId }
+          update: { lastViewedAt: new Date() },
+          create: { userId, videoId: contentId },
         });
-        shouldIncrement = true;
       }
     } else if (contentType === 'picture') {
-      const lastView = await prisma.userPictureView.findUnique({
-        where: { userId_pictureId: { userId, pictureId: contentId } }
-      });
-      if (!lastView || Date.now() - lastView.viewedAt.getTime() > cooldown) {
-        await prisma.userPictureView.upsert({
+      await tx.picture.update({ where: { id: contentId }, data: { views: { increment: 1 } } });
+      if (userId) {
+        await tx.userPictureView.upsert({
           where: { userId_pictureId: { userId, pictureId: contentId } },
-          update: { viewedAt: new Date() },
-          create: { userId, pictureId: contentId }
+          update: { lastViewedAt: new Date() },
+          create: { userId, pictureId: contentId },
         });
-        shouldIncrement = true;
       }
-    } else if (contentType === 'quote') {
-      // Quotes don't have a view tracking table, use in-memory best-effort rate limiting
-      const cacheKey = buildViewCacheKey('quote', contentId, userId);
-      const result = checkViewRateLimit(cacheKey, cooldown);
-      shouldIncrement = result.allowed;
+    } else {
+      await tx.quote.update({ where: { id: contentId }, data: { views: { increment: 1 } } });
+      if (userId) {
+        await tx.userQuoteView.upsert({
+          where: { userId_quoteId: { userId, quoteId: contentId } },
+          update: { lastViewedAt: new Date() },
+          create: { userId, quoteId: contentId },
+        });
+      }
     }
-  } else {
-    // Anonymous view tracking by IP (in-memory best-effort rate limiting)
-    const headerList = await headers();
-    const ip = headerList.get("x-forwarded-for") || "unknown";
-    const cacheKey = buildViewCacheKey(contentType, contentId, ip);
-    const result = checkViewRateLimit(cacheKey, cooldown);
-    shouldIncrement = result.allowed;
-  }
+    return true;
+  });
 
-  if (shouldIncrement) {
-    if (contentType === 'video') {
-      await prisma.video.update({
-        where: { id: contentId },
-        data: { views: { increment: 1 } }
-      });
-    } else if (contentType === 'picture') {
-      await prisma.picture.update({
-        where: { id: contentId },
-        data: { views: { increment: 1 } }
-      });
-    } else if (contentType === 'quote') {
-      await prisma.quote.update({
-        where: { id: contentId },
-        data: { views: { increment: 1 } }
-      });
-    }
-  }
-
+  if (counted) revalidateTag('analytics', 'max');
   return { success: true };
 }
