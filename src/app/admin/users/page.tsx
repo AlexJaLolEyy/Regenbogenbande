@@ -23,6 +23,7 @@ import {
     TableHeader,
     TableRow,
     Tabs,
+    SortDescriptor,
     Tooltip,
     useDisclosure,
     User as UserCell
@@ -76,7 +77,7 @@ export default function AdminUsersPage() {
         return () => clearTimeout(timer)
     }, [filterValue])
 
-    const [sortDescriptor, setSortDescriptor] = useState<{ column: string, direction: 'ascending' | 'descending' }>({
+    const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
         column: "createdAt",
         direction: "descending",
     })
@@ -138,8 +139,8 @@ export default function AdminUsersPage() {
         }
 
         return filteredUsers.sort((a, b) => {
-            const first = a[sortDescriptor.column as keyof User] as any
-            const second = b[sortDescriptor.column as keyof User] as any
+            const first = a[sortDescriptor.column as keyof User] ?? ""
+            const second = b[sortDescriptor.column as keyof User] ?? ""
             const cmp = first < second ? -1 : first > second ? 1 : 0
 
             return sortDescriptor.direction === "descending" ? -cmp : cmp
@@ -268,7 +269,7 @@ export default function AdminUsersPage() {
                             color="primary"
                             variant="bordered"
                             selectedKey={activeTab}
-                            onSelectionChange={(key) => setActiveTab(key as any)}
+                            onSelectionChange={(key) => setActiveTab(key as "users" | "invites")}
                             className="p-1 bg-muted backdrop-blur-md rounded-2xl border border-border w-fit"
                             classNames={{
                                 tabList: "gap-2 border-0 bg-transparent p-0",
@@ -331,8 +332,8 @@ export default function AdminUsersPage() {
                                         aria-label="Users table"
                                         removeWrapper
                                         className="bg-transparent"
-                                        sortDescriptor={sortDescriptor as any}
-                                        onSortChange={(desc) => setSortDescriptor(desc as any)}
+                                        sortDescriptor={sortDescriptor}
+                                        onSortChange={(desc) => setSortDescriptor(desc)}
                                     >
                                         <TableHeader>
                                             <TableColumn key="name" allowsSorting className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pl-8">USER</TableColumn>

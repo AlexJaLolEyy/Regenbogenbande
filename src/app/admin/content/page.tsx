@@ -1,7 +1,7 @@
 "use client"
 
 import { queryKeys } from "@/src/lib/queries/query-keys";
-import { Picture, PictureListItem, Quote, Video, VideoListItem } from "@/src/lib/types/types";
+import { Picture, PictureListItem, Quote, QuoteListItem, QuoteMessage, Video, VideoListItem } from "@/src/lib/types/types";
 import {
     Button,
     Input,
@@ -90,10 +90,14 @@ export default function ContentAdminPage() {
         }
     };
 
-    const renderQuotePreview = (quote: any) => {
+    const renderQuotePreview = (quote: { messages?: QuoteMessage[] }) => {
         if (!quote.messages || quote.messages.length === 0) return "Empty Quote";
-        return quote.messages.map((m: any) => m.message).join(" | ").substring(0, 50) + "...";
+        return quote.messages.map((m) => m.message).join(" | ").substring(0, 50) + "...";
     };
+
+    // Quotes have no title; everything else does
+    const titleOf = (item: Video | Picture | Quote | VideoListItem | PictureListItem | QuoteListItem) =>
+        'title' in item ? item.title : renderQuotePreview(item);
 
     return (
         <div className="w-full">
@@ -160,7 +164,7 @@ export default function ContentAdminPage() {
                                                 )}
                                             </div>
                                             <div className="grow min-w-0">
-                                                <p className="font-bold truncate text-foreground">{(item as any).title || renderQuotePreview(item)}</p>
+                                                <p className="font-bold truncate text-foreground">{titleOf(item)}</p>
                                                 <p className="text-[11px] font-bold text-muted-foreground">by {item.uploadedBy?.username} • {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : 'N/A'}</p>
                                             </div>
                                             <Button
@@ -244,11 +248,11 @@ export default function ContentAdminPage() {
                                             )}
                                             {activeTab === 'quote' && (
                                                 <div className="p-4 text-xs italic h-full flex items-center justify-center text-center text-muted-foreground">
-                                                    &quot;{renderQuotePreview(previewItem)}&quot;
+                                                    &quot;{"messages" in previewItem ? renderQuotePreview(previewItem) : ""}&quot;
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="font-semibold truncate text-foreground uppercase tracking-tight text-lg">{(previewItem as any).title || "Quote"}</p>
+                                        <p className="font-semibold truncate text-foreground uppercase tracking-tight text-lg">{"title" in previewItem ? previewItem.title : "Quote"}</p>
                                         <p className="text-[11px] font-bold text-muted-foreground mb-6">Uploaded by {previewItem.uploadedBy?.username}</p>
 
                                         <Button

@@ -22,6 +22,7 @@ import { motion } from "framer-motion";
 import { Edit2, Plus, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import type { Category } from "@/src/lib/types/types";
 import { createCategory, editCategory, fetchCategories, removeCategory } from "./actions";
 
 export default function CategoriesAdminPage() {
@@ -30,8 +31,8 @@ export default function CategoriesAdminPage() {
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onOpenChange: onDeleteOpenChange } = useDisclosure();
 
-    const [editingCategory, setEditingCategory] = useState<any>(null);
-    const [categoryToDelete, setCategoryToDelete] = useState<any>(null);
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
     const [name, setName] = useState("");
     const [iconUrl, setIconUrl] = useState("");
     const [error, setError] = useState("");
@@ -55,7 +56,7 @@ export default function CategoriesAdminPage() {
 
     const filteredCategories = useMemo(() => {
         if (!debouncedFilterValue) return categories;
-        return categories.filter((cat: any) =>
+        return categories.filter((cat) =>
             cat.name.toLowerCase().includes(debouncedFilterValue.toLowerCase()) ||
             cat.id.toLowerCase().includes(debouncedFilterValue.toLowerCase())
         );
@@ -74,7 +75,7 @@ export default function CategoriesAdminPage() {
         onOpen();
     };
 
-    const handleOpenEdit = (category: any) => {
+    const handleOpenEdit = (category: Category) => {
         setEditingCategory(category);
         setName(category.name);
         setIconUrl(category.iconUrl || "");
@@ -199,7 +200,7 @@ export default function CategoriesAdminPage() {
 
                     <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm">
                         <Table aria-label="Categories table" removeWrapper className="bg-transparent"><TableHeader><TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pl-8">ICON</TableColumn><TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">NAME</TableColumn><TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">ID</TableColumn><TableColumn align="end" className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pr-8">ACTIONS</TableColumn></TableHeader><TableBody isLoading={isLoading} emptyContent={"No categories found"}>
-                            {filteredCategories.map((category: any) => (
+                            {filteredCategories.map((category) => (
                                 <TableRow key={category.id} className="border-b border-border last:border-0 hover:bg-muted transition-colors">
                                     <TableCell className="pl-8 py-4">
                                         {category.iconUrl ? (
