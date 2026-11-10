@@ -36,3 +36,25 @@ yarn-error.log*
 next-env.d.ts
 
 *storybook.log
+
+# Local uploads (development mode)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Environment files
+.env*
+
+# just for dev
+/public/compression-test
+/public/image-compression-test
+*.mp4
+*.jpg
+/src/generated
+
+# alt designs
+/src/lib/components/backgrounds
+/src/app/new-design-approach/
+
+/components*
+/src/lib/components/home
+!.env.example

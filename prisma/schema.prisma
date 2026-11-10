@@ -15,12 +15,22 @@ datasource db {
 // ROLE ENUM (for better-auth)
 // ============================================
 // Note: 'guest' is runtime-only (anonymous sessions, no DB user)
-// Note: 'owner' is application-level check via OWNER_USER_ID env var
+// Note: 'owner' is a real DB role (set directly in the database, never via the UI)
 
 enum Role {
   owner
   admin
   member
+}
+
+// ============================================
+// CONTENT TYPE ENUM (polymorphic analytics events)
+// ============================================
+
+enum ContentType {
+  VIDEO
+  PICTURE
+  QUOTE
 }
 
 // ============================================
@@ -92,6 +102,10 @@ model User {
   // Seen/unseen tracking
   videoViews   UserVideoView[]
   pictureViews UserPictureView[]
+  quoteViews   UserQuoteView[]
+
+  // Invites created by this user (admin/owner)
+  createdInvites Invite[] @relation("InviteCreator")
 
   // better-auth relations
   accounts Account[]
@@ -124,6 +138,8 @@ model Video {
   category   Category @relation(fields: [categoryId], references: [id])
 
   // Timestamps
+  // uploadedAt = when it was uploaded (use for activity analytics)
+  // createdAt  = when the moment happened (user/Medal supplied; use for "on this day")
   uploadedAt DateTime @default(now())
   createdAt  DateTime
 
@@ -133,8 +149,12 @@ model Video {
   userViews    UserVideoView[]
   comments     Comment[]
 
-  // Metadata (stored directly, not in separate table for simplicity)
+  // Lifetime view counter (older views have no ContentView events)
   views Int @default(0)
+
+  // Denormalized rating aggregates, kept in sync inside rateMedia
+  ratingAvg   Float?
+  ratingCount Int    @default(0)
 
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
@@ -150,6 +170,10 @@ model Video {
   @@index([createdAt])
   @@index([categoryId])
   @@index([isPublic])
+  @@index([isPublic, createdAt])
+  @@index([views])
+  @@index([publishedAt])
+  @@index([categoryId, createdAt])
   @@map("videos")
 }
 
@@ -181,6 +205,10 @@ model Picture {
 
   views Int @default(0)
 
+  // Denormalized rating aggregates, kept in sync inside rateMedia
+  ratingAvg   Float?
+  ratingCount Int    @default(0)
+
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
   publishedAt DateTime? // When content was published (null = never)
@@ -193,6 +221,10 @@ model Picture {
   @@index([createdAt])
   @@index([categoryId])
   @@index([isPublic])
+  @@index([isPublic, createdAt])
+  @@index([views])
+  @@index([publishedAt])
+  @@index([categoryId, createdAt])
   @@map("pictures")
 }
 
@@ -213,8 +245,13 @@ model Quote {
   ratings      Rating[]
   messages     QuoteMessage[]
   comments     Comment[]
+  userViews    UserQuoteView[]
 
   views Int @default(0)
+
+  // Denormalized rating aggregates, kept in sync inside rateMedia
+  ratingAvg   Float?
+  ratingCount Int    @default(0)
 
   // Visibility (curation system)
   isPublic    Boolean   @default(false) // Content is private by default
@@ -226,6 +263,9 @@ model Quote {
   @@index([uploadedById])
   @@index([createdAt])
   @@index([isPublic])
+  @@index([isPublic, createdAt])
+  @@index([views])
+  @@index([publishedAt])
   @@map("quotes")
 }
 
@@ -284,6 +324,7 @@ model Rating {
   @@index([videoId])
   @@index([pictureId])
   @@index([quoteId])
+  @@index([userId, createdAt])
   @@map("ratings")
 }
 
@@ -323,6 +364,7 @@ model Comment {
   @@index([quoteId])
   @@index([userId])
   @@index([parentId])
+  @@index([userId, createdAt])
   @@map("comments")
 }
 
@@ -417,7 +459,8 @@ model UserVideoView {
   videoId String
   video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
-  viewedAt DateTime @default(now())
+  viewedAt     DateTime @default(now()) // first view
+  lastViewedAt DateTime @default(now())
 
   @@unique([userId, videoId])
   @@index([userId])
@@ -438,12 +481,57 @@ model UserPictureView {
   pictureId String
   picture   Picture @relation(fields: [pictureId], references: [id], onDelete: Cascade)
 
-  viewedAt DateTime @default(now())
+  viewedAt     DateTime @default(now()) // first view
+  lastViewedAt DateTime @default(now())
 
   @@unique([userId, pictureId])
   @@index([userId])
   @@index([pictureId])
   @@map("user_picture_views")
+}
+
+// ============================================
+// USER QUOTE VIEW (seen/unseen tracking)
+// ============================================
+
+model UserQuoteView {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  viewedAt     DateTime @default(now()) // first view
+  lastViewedAt DateTime @default(now())
+
+  @@unique([userId, quoteId])
+  @@index([userId])
+  @@index([quoteId])
+  @@map("user_quote_views")
+}
+
+// ============================================
+// CONTENT VIEW (analytics event log)
+// ============================================
+// One row per deduplicated view. Polymorphic by design (no FK on contentId)
+// to keep writes cheap. Lifetime totals stay in the iews counters.
+
+model ContentView {
+  id          String      @id @default(cuid())
+  contentType ContentType
+  contentId   String
+  ownerId     String // uploader, denormalized for "views received"
+  userId      String? // null for guests
+  viewerHash  String? // sha256(ip + daily salt) for guests
+  viewedAt    DateTime    @default(now())
+
+  @@index([contentType, viewedAt])
+  @@index([contentId, viewedAt])
+  @@index([ownerId, viewedAt])
+  @@index([userId, viewedAt])
+  @@map("content_views")
 }
 
 // ============================================
@@ -519,9 +607,12 @@ model Invite {
   discordName String? // Display name (for admin reference)
   role        Role      @default(member) // Role to assign on first login
   usedAt      DateTime? // When they first logged in
+  image       String? // Avatar (column already exists in the database)
   createdById String? // Admin who created invite
+  createdBy   User?     @relation("InviteCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
+  @@index([createdById])
   @@map("invites")
 }
