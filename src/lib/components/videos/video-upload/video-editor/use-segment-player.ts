@@ -110,7 +110,7 @@ export function useSegmentPlayer(
         video.currentTime = segment.end;
       }
     }
-  }, [getSegment, isPlaying, onPlayheadChange, seekToSegment, videoRef]);
+  }, [getSegment, isPlaying, onPlayheadChange, seekToSegment, segments.length, videoRef]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -120,6 +120,8 @@ export function useSegmentPlayer(
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
   }, [handleTimeUpdate, videoRef]);
 
+  // Re-sync the <video> element whenever the segment list changes (external system)
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (segments.length === 0) return;
     if (segmentIndexRef.current >= segments.length) {
@@ -128,6 +130,7 @@ export function useSegmentPlayer(
     }
     void seekToSegment(segmentIndexRef.current);
   }, [segments, seekToSegment]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     isPlaying,
