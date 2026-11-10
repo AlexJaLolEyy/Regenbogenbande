@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main, alternative-design]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+        env:
+          # prisma.config.ts only needs a URL to load; no connection is made
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+      - run: bunx tsc --noEmit
+      - run: bunx eslint .
+      - run: bun run test
