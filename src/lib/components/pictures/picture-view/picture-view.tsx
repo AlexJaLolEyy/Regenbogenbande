@@ -1,11 +1,13 @@
 "use client";
 
 import { incrementView } from '@/src/lib/actions/views';
+import { queryKeys } from '@/src/lib/queries/query-keys';
+import { useQueryClient } from '@tanstack/react-query';
 import { Comment, Picture } from '@/src/lib/types/types';
 import { Button } from "@heroui/react";
 import { Maximize2 } from 'lucide-react';
 import NextImage from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CommentsSection } from '../../shared/comments-section';
 import { ImageLightbox } from '../../shared/image-lightbox';
 import { RatingModal } from '../../shared/rating-modal';
@@ -16,9 +18,18 @@ export default function PictureView({ picture, initialComments = [] }: { picture
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
+    const viewIncrementedRef = useRef(false);
+
+    const queryClient = useQueryClient();
     useEffect(() => {
-        incrementView('picture', picture.id);
-    }, [picture.id]);
+        if (!viewIncrementedRef.current) {
+            viewIncrementedRef.current = true;
+            incrementView('picture', picture.id).then(() => {
+                // lists show a "New" badge, refresh them so it disappears
+                queryClient.invalidateQueries({ queryKey: queryKeys.pictures.lists() });
+            });
+        }
+    }, [picture.id, queryClient]);
 
     return (
         <ViewPage backHref="/pictures">

@@ -1,11 +1,14 @@
 "use client";
 
+import { computeBubbleLayout } from "../bubble-layout";
 import { incrementView } from '@/src/lib/actions/views';
+import { queryKeys } from '@/src/lib/queries/query-keys';
+import { useQueryClient } from '@tanstack/react-query';
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { cn } from '@/src/lib/utils';
 import { Comment, Quote } from '@/src/lib/types/types';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CommentsSection } from '../../shared/comments-section';
 import { RatingModal } from '../../shared/rating-modal';
 import { ActionBar, InfoCard, MetaRow, Stage, TitleRow, ViewPage } from '../../shared/view-parts';
@@ -13,14 +16,22 @@ import { ActionBar, InfoCard, MetaRow, Stage, TitleRow, ViewPage } from '../../s
 export default function QuoteView({ quote, initialComments = [] }: { quote: Quote, initialComments?: Comment[] }) {
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
+    const viewIncrementedRef = useRef(false);
+
+    const queryClient = useQueryClient();
     useEffect(() => {
-        incrementView('quote', quote.id);
-    }, [quote.id]);
+        if (!viewIncrementedRef.current) {
+            viewIncrementedRef.current = true;
+            incrementView('quote', quote.id).then(() => {
+                // lists show a "New" badge, refresh them so it disappears
+                queryClient.invalidateQueries({ queryKey: queryKeys.quotes.lists() });
+            });
+        }
+    }, [quote.id, queryClient]);
 
     // Bubble side flips only when the speaker changes, so consecutive
     // messages from the same user stay on the same side.
-    let side = false;
-    let lastUserId: string | null = null;
+    const layout = computeBubbleLayout(quote.messages.map((m) => (m.isContext ? null : m.user.id)), true);
 
     return (
         <ViewPage backHref="/quotes">
@@ -29,7 +40,6 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                     <div className="max-h-[75vh] flex-1 space-y-2 overflow-y-auto p-8 custom-scrollbar md:p-12">
                         {quote.messages.map((msg, idx) => {
                             if (msg.isContext) {
-                                lastUserId = null;
                                 return (
                                     <div key={msg.id ?? idx} className="flex w-full justify-center py-3">
                                         <div className="max-w-[85%] rounded-full border border-border bg-muted px-6 py-2 text-center text-xs text-muted-foreground">
@@ -39,10 +49,7 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
                                 );
                             }
 
-                            const sameAsPrev = lastUserId === msg.user.id;
-                            if (lastUserId !== null && !sameAsPrev) side = !side;
-                            const isRight = side;
-                            lastUserId = msg.user.id;
+                            const { isRight, sameAsPrev } = layout[idx];
 
                             return (
                                 <motion.div

@@ -8,7 +8,7 @@ import { CardMeta, MediaCard, MediaPill, ParticipantStack } from '../../ui/media
 export default function PictureComponent({ picture, mode = 'grid' }: { picture: PictureListItem, mode?: 'grid' | 'masonry' }) {
   return (
     <Link href={`/pictures/${picture.id}`} className={cn("block rounded-2xl focus-visible:outline-2 outline-theme-accent", mode === 'grid' ? "h-full" : "h-auto")}>
-      <MediaCard className={cn("flex flex-col", mode === 'grid' ? "h-full" : "h-auto break-inside-avoid mb-6")}>
+      <MediaCard isNew={picture.isSeen === false} className={cn("flex flex-col", mode === 'grid' ? "h-full" : "h-auto break-inside-avoid mb-6")}>
         {/* Image */}
         <div
           className={cn(

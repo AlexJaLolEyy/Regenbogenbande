@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
-import { DateRange, FilterState, SortOption } from "@/src/lib/types/filters";
-import { Select, SelectItem } from "@heroui/react";
-import { Calendar, Filter, Image as ImageIcon, ListFilter, Plus, Quote, RotateCcw, Search, Video, type LucideIcon } from "lucide-react";
+import { useSession } from "@/src/lib/auth-client";
+import { canUpload, getEffectiveRole, isGuest } from "@/src/lib/auth-utils-shared";
+import { DateRange, DEFAULT_FILTERS, FilterState, SortOption } from "@/src/lib/types/filters";
+import { Button, Drawer, DrawerBody, DrawerContent, DrawerFooter, DrawerHeader, Select, SelectItem, useDisclosure } from "@heroui/react";
+import { Calendar, Eye, Filter, Image as ImageIcon, ListFilter, Plus, Quote, RotateCcw, Search, SlidersHorizontal, Users, Video, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -26,21 +28,26 @@ const selectClassNames = {
 
 /**
  * Horizontal filter block shown above every media list:
- * search, sort, category, timeframe, reset and the upload action.
+ * search, sort, category, person, timeframe, unseen toggle, reset and the upload action.
+ * On small screens the filters move into a bottom drawer.
  */
 export const FilterBar = ({
     contentType,
     filters,
     onFiltersChange,
     categories,
+    people = [],
 }: {
     contentType: "video" | "picture" | "quote";
     filters: FilterState;
     onFiltersChange: (filters: FilterState) => void;
     categories: { id: string; name: string; iconUrl?: string | null }[];
+    /** Users that are tagged in at least one item of this type */
+    people?: { id: string; name: string }[];
 }) => {
     const [localSearch, setLocalSearch] = useState(filters.search);
     const [prevSearch, setPrevSearch] = useState(filters.search);
+    const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
     // Keep the input in sync when filters change from outside (e.g. reset)
     if (filters.search !== prevSearch) {
@@ -55,8 +62,130 @@ export const FilterBar = ({
         return () => clearTimeout(timer);
     }, [localSearch, onFiltersChange, filters]);
 
+    const { data: session, isPending } = useSession();
+    const mayUpload = canUpload(getEffectiveRole(session));
+    const showUnseen = !isPending && !isGuest(session);
     const upload = UPLOAD_ACTIONS[contentType];
     const UploadIcon = upload.icon;
+    const showCategory = contentType !== "quote"; // quotes have no category
+
+    const activeCount =
+        (filters.sort !== DEFAULT_FILTERS.sort ? 1 : 0) +
+        (filters.categoryId ? 1 : 0) +
+        (filters.dateRange !== DEFAULT_FILTERS.dateRange ? 1 : 0) +
+        (filters.participantId ? 1 : 0) +
+        (filters.unseenOnly ? 1 : 0);
+
+    const reset = () =>
+        onFiltersChange({ ...DEFAULT_FILTERS });
+
+    const controls = (className: { sort: string; category: string; person: string; date: string }) => (
+        <>
+            <Select
+                aria-label="Sort by"
+                selectedKeys={new Set([filters.sort])}
+                onSelectionChange={(keys) => {
+                    const sort = Array.from(keys)[0] as SortOption | undefined;
+                    if (sort) onFiltersChange({ ...filters, sort });
+                }}
+                classNames={selectClassNames}
+                className={className.sort}
+                startContent={<ListFilter size={14} className="text-faint" />}
+                disallowEmptySelection
+            >
+                {SORT_OPTIONS.map((s) => (
+                    <SelectItem key={s} textValue={label(s)}>{label(s)}</SelectItem>
+                ))}
+            </Select>
+
+            {showCategory && (
+                <Select
+                    aria-label="Category"
+                    placeholder="All categories"
+                    selectedKeys={filters.categoryId ? new Set([filters.categoryId]) : new Set()}
+                    onSelectionChange={(keys) => {
+                        const id = Array.from(keys)[0] as string | undefined;
+                        onFiltersChange({ ...filters, categoryId: id === "all" ? null : id || null });
+                    }}
+                    classNames={selectClassNames}
+                    className={className.category}
+                    startContent={<Filter size={14} className="text-faint" />}
+                >
+                    {[
+                        <SelectItem key="all" textValue="All categories">All categories</SelectItem>,
+                        ...categories.map((category) => (
+                            <SelectItem key={category.id} textValue={category.name}>
+                                <div className="flex items-center gap-2">
+                                    {category.iconUrl && (
+                                        <div className="relative h-4 w-4 opacity-70">
+                                            <Image src={category.iconUrl} alt={category.name} fill className="object-contain" />
+                                        </div>
+                                    )}
+                                    {category.name}
+                                </div>
+                            </SelectItem>
+                        )),
+                    ]}
+                </Select>
+            )}
+
+            {people.length > 0 && (
+                <Select
+                    aria-label="Person"
+                    placeholder="Everyone"
+                    selectedKeys={filters.participantId ? new Set([filters.participantId]) : new Set()}
+                    onSelectionChange={(keys) => {
+                        const id = Array.from(keys)[0] as string | undefined;
+                        onFiltersChange({ ...filters, participantId: id === "all" ? null : id || null });
+                    }}
+                    classNames={selectClassNames}
+                    className={className.person}
+                    startContent={<Users size={14} className="text-faint" />}
+                >
+                    {[
+                        <SelectItem key="all" textValue="Everyone">Everyone</SelectItem>,
+                        ...people.map((person) => (
+                            <SelectItem key={person.id} textValue={person.name}>{person.name}</SelectItem>
+                        )),
+                    ]}
+                </Select>
+            )}
+
+            <Select
+                aria-label="Timeframe"
+                placeholder="Timeframe"
+                selectedKeys={new Set([filters.dateRange])}
+                onSelectionChange={(keys) => {
+                    const dateRange = Array.from(keys)[0] as DateRange | undefined;
+                    if (dateRange) onFiltersChange({ ...filters, dateRange });
+                }}
+                classNames={selectClassNames}
+                className={className.date}
+                startContent={<Calendar size={14} className="text-faint" />}
+                disallowEmptySelection
+            >
+                {DATE_OPTIONS.map((d) => (
+                    <SelectItem key={d} textValue={label(d)}>{label(d)}</SelectItem>
+                ))}
+            </Select>
+
+            {showUnseen && (
+                <button
+                    type="button"
+                    aria-pressed={filters.unseenOnly}
+                    onClick={() => onFiltersChange({ ...filters, unseenOnly: !filters.unseenOnly })}
+                    className={`flex h-10 items-center gap-2 rounded-xl border px-3 text-sm transition-colors ${
+                        filters.unseenOnly
+                            ? "border-transparent bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                >
+                    <Eye size={14} />
+                    Unseen only
+                </button>
+            )}
+        </>
+    );
 
     return (
         <div className="flex shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-border bg-card/70 p-3 shadow-sm backdrop-blur-md">
@@ -72,87 +201,74 @@ export const FilterBar = ({
                 />
             </div>
 
-            <Select
-                aria-label="Sort by"
-                selectedKeys={new Set([filters.sort])}
-                onSelectionChange={(keys) => {
-                    const sort = Array.from(keys)[0] as SortOption | undefined;
-                    if (sort) onFiltersChange({ ...filters, sort });
-                }}
-                classNames={selectClassNames}
-                className="w-full sm:w-40"
-                startContent={<ListFilter size={14} className="text-faint" />}
-                disallowEmptySelection
-            >
-                {SORT_OPTIONS.map((s) => (
-                    <SelectItem key={s} textValue={label(s)}>{label(s)}</SelectItem>
-                ))}
-            </Select>
+            {/* Desktop: inline filters */}
+            <div className="contents max-sm:hidden">
+                {controls({ sort: "w-40", category: "w-48", person: "w-44", date: "w-44" })}
+                <button
+                    type="button"
+                    onClick={reset}
+                    className="flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                    <RotateCcw size={14} />
+                    Reset
+                </button>
+            </div>
 
-            <Select
-                aria-label="Category"
-                placeholder="All categories"
-                selectedKeys={filters.categoryId ? new Set([filters.categoryId]) : new Set()}
-                onSelectionChange={(keys) => {
-                    const id = Array.from(keys)[0] as string | undefined;
-                    onFiltersChange({ ...filters, categoryId: id === "all" ? null : id || null });
-                }}
-                classNames={selectClassNames}
-                className="w-full sm:w-48"
-                startContent={<Filter size={14} className="text-faint" />}
-            >
-                {[
-                    <SelectItem key="all" textValue="All categories">All categories</SelectItem>,
-                    ...categories.map((category) => (
-                        <SelectItem key={category.id} textValue={category.name}>
-                            <div className="flex items-center gap-2">
-                                {category.iconUrl && (
-                                    <div className="relative h-4 w-4 opacity-70">
-                                        <Image src={category.iconUrl} alt={category.name} fill className="object-contain" />
-                                    </div>
-                                )}
-                                {category.name}
-                            </div>
-                        </SelectItem>
-                    )),
-                ]}
-            </Select>
-
-            <Select
-                aria-label="Timeframe"
-                placeholder="Timeframe"
-                selectedKeys={new Set([filters.dateRange])}
-                onSelectionChange={(keys) => {
-                    const dateRange = Array.from(keys)[0] as DateRange | undefined;
-                    if (dateRange) onFiltersChange({ ...filters, dateRange });
-                }}
-                classNames={selectClassNames}
-                className="w-full sm:w-44"
-                startContent={<Calendar size={14} className="text-faint" />}
-                disallowEmptySelection
-            >
-                {DATE_OPTIONS.map((d) => (
-                    <SelectItem key={d} textValue={label(d)}>{label(d)}</SelectItem>
-                ))}
-            </Select>
-
+            {/* Mobile: filters live in a drawer */}
             <button
                 type="button"
-                onClick={() => onFiltersChange({ ...filters, search: "", sort: "newest", categoryId: null, dateRange: "all" })}
-                className="flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                onClick={onOpen}
+                className="relative flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
             >
-                <RotateCcw size={14} />
-                Reset
+                <SlidersHorizontal size={14} />
+                Filters
+                {activeCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        {activeCount}
+                    </span>
+                )}
             </button>
 
-            <Link
-                href={upload.href}
-                className="flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 max-sm:w-full"
-            >
-                <Plus size={16} />
-                <UploadIcon size={16} />
-                {upload.label}
-            </Link>
+            {!isPending && (
+                mayUpload ? (
+                    <Link
+                        href={upload.href}
+                        className="flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 max-sm:flex-1"
+                    >
+                        <Plus size={16} />
+                        <UploadIcon size={16} />
+                        {upload.label}
+                    </Link>
+                ) : (
+                    <Link
+                        href="/login"
+                        className="flex h-10 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-sm:flex-1"
+                    >
+                        Sign in to upload
+                    </Link>
+                )
+            )}
+
+            <Drawer isOpen={isOpen} onOpenChange={onOpenChange} placement="bottom" size="lg">
+                <DrawerContent>
+                    {(onClose) => (
+                        <>
+                            <DrawerHeader>Filters</DrawerHeader>
+                            <DrawerBody className="gap-3">
+                                {controls({ sort: "w-full", category: "w-full", person: "w-full", date: "w-full" })}
+                            </DrawerBody>
+                            <DrawerFooter>
+                                <Button variant="light" onPress={reset} startContent={<RotateCcw size={14} />}>
+                                    Reset
+                                </Button>
+                                <Button color="primary" onPress={onClose}>
+                                    Show results
+                                </Button>
+                            </DrawerFooter>
+                        </>
+                    )}
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 };

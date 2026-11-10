@@ -1,5 +1,6 @@
 'use client'
 
+import { computeBubbleLayout } from "../bubble-layout";
 import { cn } from '@/src/lib/utils';
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { formatDate } from '@/src/lib/utils/format';
@@ -16,18 +17,17 @@ export default function QuoteComponent({ quote }: { quote: QuoteListItem }) {
 
   // Bubble side flips only when the speaker changes, so consecutive
   // messages from the same user stay bound to the same side.
-  let side = false; // false = left, true = right
-  let lastUserId: string | null = null;
+  const layout = computeBubbleLayout(displayMessages.map((m) => (m.isContext ? null : m.user.id)));
 
   return (
     <Link href={`/quotes/${quote.id}`} className="mb-6 block h-full rounded-2xl focus-visible:outline-2 outline-theme-accent">
-      <MediaCard className="flex break-inside-avoid flex-col">
+      <MediaCard isNew={quote.isSeen === false} className="flex break-inside-avoid flex-col">
         <div className="flex items-start justify-between px-5 pb-2 pt-5">
           <QuoteIcon size={22} className="text-faint" />
         </div>
 
         <div className="flex-1 space-y-3 px-5 pb-4">
-          {displayMessages.map((msg) => {
+          {displayMessages.map((msg, idx) => {
             if (msg.isContext) {
               return (
                 <div key={msg.id} className="flex w-full justify-center px-2">
@@ -38,10 +38,7 @@ export default function QuoteComponent({ quote }: { quote: QuoteListItem }) {
               );
             }
 
-            if (lastUserId !== null && lastUserId !== msg.user.id) side = !side;
-            const isRight = side;
-            const sameAsPrev = lastUserId === msg.user.id;
-            lastUserId = msg.user.id;
+            const { isRight, sameAsPrev } = layout[idx];
 
             return (
               <div key={msg.id} className={cn('flex gap-3', isRight && 'flex-row-reverse', sameAsPrev && '-mt-1.5')}>

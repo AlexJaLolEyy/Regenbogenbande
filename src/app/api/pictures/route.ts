@@ -7,23 +7,25 @@ export async function GET(request: NextRequest) {
   const session = await getSession();
   const { searchParams } = new URL(request.url);
 
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const limit = parseInt(searchParams.get('limit') || '20', 10);
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20));
   const search = searchParams.get('search') || undefined;
   const sort = (searchParams.get('sort') as SortOption) || undefined;
   const categoryId = searchParams.get('categoryId') || undefined;
   const dateRange = (searchParams.get('dateRange') as DateRange) || undefined;
+  const participantId = searchParams.get('participantId') || undefined;
+  const unseenOnly = searchParams.get('unseenOnly') === '1';
 
   try {
-    const pictures = await getPicturesForList(session, {
+    const result = await getPicturesForList(session, {
       page,
       limit,
       search,
       sort,
       categoryId,
-      dateRange,
+      dateRange, participantId, unseenOnly,
     });
-    return NextResponse.json(pictures);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('API Error fetching pictures:', error);
     return NextResponse.json({ error: 'Failed to fetch pictures' }, { status: 500 });

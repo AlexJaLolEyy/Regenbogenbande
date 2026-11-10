@@ -1,25 +1,24 @@
 "use client";
 
-import { useVideos } from '@/src/lib/queries/use-videos';
+import { useVideos, VIDEOS_PER_PAGE } from '@/src/lib/queries/use-videos';
 import { DEFAULT_FILTERS, FilterState } from '@/src/lib/types/filters';
-import { Pagination } from "@heroui/react";
 import { useState } from "react";
+import type { PagedList } from "@/src/lib/queries/use-paged-list";
 import type { VideoListItem } from "../../../types/types";
 import { AnimatedGridItem } from "../../motion/animated-grid-item";
 import { FilterBar } from "../../navigation/filter-bar";
 import { CardSkeleton, EmptyState, LIST_GRID, ListPanel } from '../../ui/media-card';
+import { ListPagination } from '../../ui/list-pagination';
 import { PageShell } from '../../ui/page-shell';
 import VideoComponent from "../video/video";
 
-const PAGE_SIZE = 15;
-
 export default function VideoList({
-  initialVideos,
-  initialTotal,
-  categories
+  initial,
+  categories,
+  people,
 }: {
-  initialVideos: VideoListItem[],
-  initialTotal: number,
+  initial: PagedList<VideoListItem>,
+  people: { id: string; name: string }[],
   categories: { id: string; name: string, iconUrl?: string | null }[]
 }) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -29,11 +28,10 @@ export default function VideoList({
     data,
     isFetching,
     isLoading: isInitialLoading,
-  } = useVideos(filters, page, { items: initialVideos, total: initialTotal });
+  } = useVideos(filters, page, initial);
 
   const videos = data?.items ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
   const loading = isInitialLoading || isFetching;
 
   // Reset page when filters change
@@ -50,24 +48,15 @@ export default function VideoList({
           filters={filters}
           onFiltersChange={handleFiltersChange}
           categories={categories}
+          people={people}
         />
-        <ListPanel
+        <ListPanel scrollResetKey={page}
           title="Videos"
-          footer={totalPages > 1 && (
-            <Pagination
-              total={totalPages}
-              page={page}
-              onChange={setPage}
-              showControls
-              loop
-              variant="flat"
-              classNames={{ cursor: "bg-primary text-primary-foreground font-semibold" }}
-            />
-          )}
+          footer={total > VIDEOS_PER_PAGE && <ListPagination page={page} total={total} pageSize={VIDEOS_PER_PAGE} onChange={setPage} />}
         >
           <div className={LIST_GRID}>
             {loading && videos.length === 0 ? (
-              Array.from({ length: PAGE_SIZE }).map((_, i) => <CardSkeleton key={i} />)
+              Array.from({ length: VIDEOS_PER_PAGE }).map((_, i) => <CardSkeleton key={i} />)
             ) : (
               videos.map((video: VideoListItem, idx: number) => (
                 <AnimatedGridItem key={video.id} delay={idx * 0.05}>

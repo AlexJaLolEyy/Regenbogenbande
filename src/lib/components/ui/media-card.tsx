@@ -22,9 +22,12 @@ export const CARD_HOVER_SCALE = 1.02;
 export const MediaCard = ({
     children,
     className,
+    isNew,
 }: {
     children: React.ReactNode;
     className?: string;
+    /** Shows a small "New" badge for content the current user has not seen yet */
+    isNew?: boolean;
 }) => (
     <motion.div
         whileHover={{ scale: CARD_HOVER_SCALE }}
@@ -34,6 +37,12 @@ export const MediaCard = ({
             className
         )}
     >
+        {isNew && (
+            <span className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-theme-accent" />
+                New
+            </span>
+        )}
         {children}
     </motion.div>
 );
@@ -137,16 +146,25 @@ export const ListPanel = ({
     subtitle,
     headerRight,
     footer,
+    scrollResetKey,
     children,
 }: {
     title: string;
     subtitle?: string;
     headerRight?: React.ReactNode;
     footer?: React.ReactNode;
+    /** When this value changes (e.g. the page number) the list scrolls back to the top */
+    scrollResetKey?: unknown;
     children: React.ReactNode;
-}) => (
+}) => {
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        scrollRef.current?.scrollTo({ top: 0 });
+    }, [scrollResetKey]);
+
+    return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface/80 shadow-sm">
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide md:p-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scrollbar-hide md:p-6">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4 pl-1">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{title}</h1>
@@ -162,7 +180,8 @@ export const ListPanel = ({
             </div>
         )}
     </div>
-);
+    );
+};
 
 export const EmptyState = ({ title, hint }: { title: string; hint?: string }) => (
     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">

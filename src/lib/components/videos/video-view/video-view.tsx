@@ -1,6 +1,8 @@
 "use client";
 
 import { incrementView } from '@/src/lib/actions/views';
+import { queryKeys } from '@/src/lib/queries/query-keys';
+import { useQueryClient } from '@tanstack/react-query';
 import { Comment, Video } from '@/src/lib/types/types';
 import NextImage from 'next/image';
 import { useEffect, useRef, useState } from 'react';
@@ -20,12 +22,16 @@ export default function VideoView({ video, initialComments = [] }: { video: Vide
         return () => clearTimeout(timer);
     }, []);
 
+    const queryClient = useQueryClient();
     useEffect(() => {
         if (!viewIncrementedRef.current) {
             viewIncrementedRef.current = true;
-            incrementView('video', video.id);
+            incrementView('video', video.id).then(() => {
+                // lists show a "New" badge, refresh them so it disappears
+                queryClient.invalidateQueries({ queryKey: queryKeys.videos.lists() });
+            });
         }
-    }, [video.id]);
+    }, [video.id, queryClient]);
 
     return (
         <ViewPage backHref="/videos">

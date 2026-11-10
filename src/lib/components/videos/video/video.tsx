@@ -8,7 +8,7 @@ import { CardMeta, MediaCard, MediaPill, ParticipantStack } from '../../ui/media
 export default function VideoComponent({ video }: { video: VideoListItem }) {
   return (
     <Link href={`/videos/${video.id}`} className="block rounded-2xl focus-visible:outline-2 outline-theme-accent">
-      <MediaCard>
+      <MediaCard isNew={video.isSeen === false}>
         {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden bg-black">
           <Image
