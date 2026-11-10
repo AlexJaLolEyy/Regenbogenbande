@@ -1,68 +1,48 @@
-import { checkOwnerOrAdmin, checkUploadPermission, requireOwner } from "@/src/lib/auth-utils";
+import { checkOwnerOrAdmin, checkUploadPermission, getEffectiveRole, requireOwner } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
-import { deleteFile } from "@/src/lib/storage-adapter";
+import { revalidateTag } from "next/cache";
+import { deleteFile, extractStorageKey } from "@/src/lib/storage-adapter";
 import { Picture } from "@/src/lib/types/types";
+import { filterExistingUserIds } from "../shared";
 import { pictureDetailSelect, PrismaPictureDetail, transformPicture } from "../selects/pictures";
-
-function extractKey(url: string) {
-    if (!url) return null;
-    if (url.includes("/uploads/")) {
-        return url.split("/uploads/")[1];
-    }
-    return null;
-}
 
 export async function addPicture(picture: Picture): Promise<Picture> {
     try {
-        await checkUploadPermission();
+        const session = await checkUploadPermission();
+        // Only the owner can publish; everyone else's uploads start private.
+        const isOwner = getEffectiveRole(session) === "owner";
+        const participantIds = await filterExistingUserIds(picture.participants.map((p) => p.id));
 
-        if (!picture.uploadedBy?.id) {
-            throw new Error("uploadedBy is required");
-        }
+        const createdPicture = await prisma.$transaction(async (tx) => {
+            const created = await tx.picture.create({
+                data: {
+                    title: picture.title,
+                    description: picture.description || null,
+                    imageUrl: picture.imageUrl,
+                    thumbnailUrl: picture.thumbnailUrl,
+                    // Always the signed-in user, never a client-supplied ID
+                    uploadedById: session.user.id,
+                    categoryId: picture.category.id,
+                    uploadedAt: picture.uploadedAt,
+                    createdAt: picture.createdAt,
+                    views: 0,
+                    isPublic: isOwner ? (picture.isPublic ?? false) : false,
+                    publishedAt: isOwner && picture.isPublic ? (picture.publishedAt ?? new Date()) : null,
+                },
+                select: { id: true },
+            });
 
-        const uploader = await prisma.user.upsert({
-            where: { id: picture.uploadedBy.id },
-            update: {
-                name: picture.uploadedBy.username,
-                image: picture.uploadedBy.profilePicture,
-            },
-            create: {
-                id: picture.uploadedBy.id,
-                name: picture.uploadedBy.username,
-                image: picture.uploadedBy.profilePicture,
-            },
-        });
+            if (participantIds.length > 0) {
+                await tx.pictureParticipant.createMany({
+                    data: participantIds.map((userId) => ({ pictureId: created.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
 
-        const createdPicture = await prisma.picture.create({
-            data: {
-                ...(picture.id ? { id: picture.id } : {}),
-                title: picture.title,
-                description: picture.description || null,
-                imageUrl: picture.imageUrl,
-                thumbnailUrl: picture.thumbnailUrl,
-                uploadedById: uploader.id,
-                categoryId: picture.category.id,
-                uploadedAt: picture.uploadedAt,
-                createdAt: picture.createdAt,
-                views: picture.views || 0,
-                isPublic: picture.isPublic ?? false,
-                publishedAt: picture.publishedAt,
-            },
-            select: pictureDetailSelect,
+            return tx.picture.findUniqueOrThrow({ where: { id: created.id }, select: pictureDetailSelect });
         }) as PrismaPictureDetail;
 
-        for (const participant of picture.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
-            });
-
-            await prisma.pictureParticipant.create({
-                data: { pictureId: createdPicture.id, userId: participant.id },
-            });
-        }
-
+        revalidateTag('analytics', 'max');
         return transformPicture(createdPicture);
     } catch (error) {
         console.error('Error adding picture:', error);
@@ -72,39 +52,41 @@ export async function addPicture(picture: Picture): Promise<Picture> {
 
 export async function updatePicture(picture: Picture): Promise<Picture> {
     try {
-        if (!picture.uploadedBy?.id) throw new Error("uploadedBy is required");
-        await checkOwnerOrAdmin(picture.uploadedBy.id);
-
-        const updatedPicture = await prisma.picture.update({
+        // Ownership comes from the database, not from the client payload
+        const existing = await prisma.picture.findUnique({
             where: { id: picture.id },
-            data: {
-                title: picture.title,
-                description: picture.description || null,
-                imageUrl: picture.imageUrl,
-                thumbnailUrl: picture.thumbnailUrl,
-                categoryId: picture.category.id,
-                uploadedAt: picture.uploadedAt,
-                createdAt: picture.createdAt,
-                views: picture.views || 0,
-                isPublic: picture.isPublic ?? false,
-                publishedAt: picture.publishedAt,
-            },
-            select: pictureDetailSelect,
+            select: { uploadedById: true },
+        });
+        if (!existing) throw new Error("Picture not found");
+        await checkOwnerOrAdmin(existing.uploadedById);
+
+        const participantIds = await filterExistingUserIds(picture.participants.map((p) => p.id));
+
+        // isPublic / publishedAt / views are intentionally not editable here
+        const updatedPicture = await prisma.$transaction(async (tx) => {
+            await tx.picture.update({
+                where: { id: picture.id },
+                data: {
+                    title: picture.title,
+                    description: picture.description || null,
+                    imageUrl: picture.imageUrl,
+                    thumbnailUrl: picture.thumbnailUrl,
+                    categoryId: picture.category.id,
+                    uploadedAt: picture.uploadedAt,
+                    createdAt: picture.createdAt,
+                },
+            });
+
+            await tx.pictureParticipant.deleteMany({ where: { pictureId: picture.id } });
+            if (participantIds.length > 0) {
+                await tx.pictureParticipant.createMany({
+                    data: participantIds.map((userId) => ({ pictureId: picture.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return tx.picture.findUniqueOrThrow({ where: { id: picture.id }, select: pictureDetailSelect });
         }) as PrismaPictureDetail;
-
-        await prisma.pictureParticipant.deleteMany({ where: { pictureId: picture.id } });
-
-        for (const participant of picture.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
-            });
-
-            await prisma.pictureParticipant.create({
-                data: { pictureId: picture.id, userId: participant.id },
-            });
-        }
 
         return transformPicture(updatedPicture);
     } catch (error) {
@@ -117,18 +99,19 @@ export async function deletePicture(pictureId: string): Promise<void> {
     try {
         const picture = await prisma.picture.findUnique({
             where: { id: pictureId },
-            include: { uploadedBy: true }
+            select: { uploadedById: true, imageUrl: true, thumbnailUrl: true },
         });
 
         if (!picture) throw new Error("Picture not found");
         await checkOwnerOrAdmin(picture.uploadedById);
 
-        const imageKey = extractKey(picture.imageUrl);
-        const thumbKey = extractKey(picture.thumbnailUrl);
-        if (imageKey) await deleteFile(imageKey);
-        if (thumbKey) await deleteFile(thumbKey);
-
         await prisma.picture.delete({ where: { id: pictureId } });
+        revalidateTag('analytics', 'max');
+
+        // Best effort: a failed storage delete must not resurrect the DB row
+        for (const key of [extractStorageKey(picture.imageUrl), extractStorageKey(picture.thumbnailUrl)]) {
+            if (key) await deleteFile(key).catch((e) => console.error('Failed to delete R2 object', key, e));
+        }
     } catch (error) {
         console.error('Error deleting picture:', error);
         throw error;
@@ -153,7 +136,7 @@ export async function unpublishPicture(pictureId: string): Promise<void> {
         await requireOwner();
         await prisma.picture.update({
             where: { id: pictureId },
-            data: { isPublic: false },
+            data: { isPublic: false, publishedAt: null },
         });
     } catch (error) {
         console.error('Error unpublishing picture:', error);

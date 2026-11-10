@@ -3,13 +3,14 @@ import { Session } from "@/src/lib/auth";
 import { getEffectiveRole } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { Video, VideoListItem } from "@/src/lib/types/types";
-import { getDateRangeFilter, getSortOrder } from '@/src/lib/utils/date-filters';
+import { getDateRangeFilter } from '@/src/lib/utils/date-filters';
 import {
-    calculateAvgRating,
     categorySelect,
     FetchOptions,
+    buildListQuery,
     transformUser,
-    userSelect
+    userSelect,
+    type PagedResult,
 } from "../shared";
 
 export const videoListSelect = {
@@ -28,11 +29,8 @@ export const videoListSelect = {
             user: { select: userSelect }
         }
     },
-    ratings: {
-        select: {
-            value: true
-        }
-    }
+    ratingAvg: true,
+    ratingCount: true,
 } as const;
 
 export const videoDetailSelect = {
@@ -63,7 +61,7 @@ export function transformVideo(prismaVideo: PrismaVideoDetail): Video {
         } : { id: '', name: '', iconUrl: null },
         isPublic: prismaVideo.isPublic ?? false,
         publishedAt: prismaVideo.publishedAt ? new Date(prismaVideo.publishedAt) : null,
-        averageRating: calculateAvgRating(prismaVideo.ratings),
+        averageRating: prismaVideo.ratingAvg ?? undefined,
     };
 }
 
@@ -82,15 +80,15 @@ export function transformVideoListItem(prismaVideo: PrismaVideoList): VideoListI
             name: prismaVideo.category.name,
             iconUrl: prismaVideo.category.iconUrl || null,
         } : { id: '', name: '', iconUrl: null },
-        averageRating: calculateAvgRating(prismaVideo.ratings),
+        averageRating: prismaVideo.ratingAvg ?? undefined,
         isPublic: prismaVideo.isPublic ?? false,
         publishedAt: prismaVideo.publishedAt ? new Date(prismaVideo.publishedAt) : null,
     };
 }
 
-export async function getVideosForList(session?: Session | null, options?: FetchOptions): Promise<VideoListItem[]> {
+export async function getVideosForList(session?: Session | null, options?: FetchOptions): Promise<PagedResult<VideoListItem>> {
     try {
-        const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+        const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange, participantId, unseenOnly } = options || {};
         const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
 
     const where: Prisma.VideoWhereInput = {};
@@ -111,19 +109,43 @@ export async function getVideosForList(session?: Session | null, options?: Fetch
         where.createdAt = getDateRangeFilter(dateRange);
     }
 
-        const orderBy = getSortOrder(sort);
+        const viewerId = effectiveRole === "guest" ? null : session?.user?.id ?? null;
+
+        if (participantId) {
+            where.participants = { some: { userId: participantId } };
+        }
+
+        if (unseenOnly && viewerId) {
+            where.userViews = { none: { userId: viewerId } };
+            where.uploadedById = { not: viewerId };
+        }
+
+        const total = await prisma.video.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.video.findMany({ where: w, select: { id: true } }));
 
         const videos = await prisma.video.findMany({
-            where,
+            where: q.where as typeof where,
             select: videoListSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         });
-        return videos.map(transformVideoListItem);
+        const items = q.reorder(videos).map(transformVideoListItem);
+        if (viewerId && items.length > 0) {
+            const seen = new Set(
+                (
+                    await prisma.userVideoView.findMany({
+                        where: { userId: viewerId, videoId: { in: items.map((i) => i.id) } },
+                        select: { videoId: true },
+                    })
+                ).map((v) => v.videoId)
+            );
+            for (const item of items) item.isSeen = item.uploadedBy.id === viewerId || seen.has(item.id);
+        }
+        return { items, total };
     } catch (error) {
         console.error('Error fetching videos for list:', error);
-        return [];
+        return { items: [], total: 0 };
     }
 }
 
@@ -150,26 +172,32 @@ export async function getAllVideos(session?: Session | null, options?: FetchOpti
             where.createdAt = getDateRangeFilter(dateRange);
         }
 
-        const orderBy = getSortOrder(sort);
+        const total = await prisma.video.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.video.findMany({ where: w, select: { id: true } }));
 
         const videos = await prisma.video.findMany({
-            where,
+            where: q.where as typeof where,
             select: videoDetailSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         });
-        return videos.map(transformVideo);
+        return q.reorder(videos).map(transformVideo);
     } catch (error) {
         console.error('Error fetching videos:', error);
         return [];
     }
 }
 
-export async function getVideoById(id: string): Promise<Video | null> {
+/** Guests only get public videos; pass the session (or null) so the rule is always applied. */
+export async function getVideoById(id: string, session: Session | null): Promise<Video | null> {
     try {
-        const video = await prisma.video.findUnique({
-            where: { id },
+        const where: Prisma.VideoWhereInput = { id };
+        if (getEffectiveRole(session) === "guest") {
+            where.isPublic = true;
+        }
+        const video = await prisma.video.findFirst({
+            where,
             select: videoDetailSelect,
         });
         return video ? transformVideo(video as PrismaVideoDetail) : null;

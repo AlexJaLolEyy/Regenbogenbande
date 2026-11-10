@@ -1,6 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { User } from "@/src/lib/types/types";
-import { transformUser } from "../shared";
+import { transformUser, userSelect } from "../shared";
 
 export async function getAllUsers(): Promise<User[]> {
     try {
@@ -8,6 +8,7 @@ export async function getAllUsers(): Promise<User[]> {
             where: {
                 status: { not: 'DISABLED' }
             },
+            select: userSelect,
             orderBy: {
                 createdAt: 'desc',
             },
@@ -26,6 +27,7 @@ export async function getAllSelectableParticipants(): Promise<User[]> {
                 isAnonymous: false,
                 status: { in: ['INVITED', 'ACTIVE'] }
             },
+            select: userSelect,
             orderBy: { createdAt: 'desc' },
         });
 
@@ -40,6 +42,7 @@ export async function getUserById(id: string): Promise<User | null> {
     try {
         const user = await prisma.user.findUnique({
             where: { id },
+            select: userSelect,
         });
         return user ? transformUser(user) : null;
     } catch (error) {

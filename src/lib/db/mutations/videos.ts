@@ -1,68 +1,48 @@
-import { checkOwnerOrAdmin, checkUploadPermission, requireOwner } from "@/src/lib/auth-utils";
+import { checkOwnerOrAdmin, checkUploadPermission, getEffectiveRole, requireOwner } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
-import { deleteFile } from "@/src/lib/storage-adapter";
+import { revalidateTag } from "next/cache";
+import { deleteFile, extractStorageKey } from "@/src/lib/storage-adapter";
 import { Video } from "@/src/lib/types/types";
+import { filterExistingUserIds } from "../shared";
 import { PrismaVideoDetail, transformVideo, videoDetailSelect } from "../selects/videos";
-
-function extractKey(url: string) {
-    if (!url) return null;
-    if (url.includes("/uploads/")) {
-        return url.split("/uploads/")[1];
-    }
-    return null;
-}
 
 export async function addVideo(video: Video): Promise<Video> {
     try {
-        await checkUploadPermission();
+        const session = await checkUploadPermission();
+        // Only the owner can publish; everyone else's uploads start private.
+        const isOwner = getEffectiveRole(session) === "owner";
+        const participantIds = await filterExistingUserIds(video.participants.map((p) => p.id));
 
-        if (!video.uploadedBy?.id) {
-            throw new Error("uploadedBy is required");
-        }
-
-        const uploader = await prisma.user.upsert({
-            where: { id: video.uploadedBy.id },
-            update: {
-                name: video.uploadedBy.username,
-                image: video.uploadedBy.profilePicture,
-            },
-            create: {
-                id: video.uploadedBy.id,
-                name: video.uploadedBy.username,
-                image: video.uploadedBy.profilePicture,
-            },
-        });
-
-        const createdVideo = await prisma.video.create({
-            data: {
-                ...(video.id ? { id: video.id } : {}),
-                title: video.title,
-                description: video.description || null,
-                videoUrl: video.videoUrl,
-                thumbnailUrl: video.thumbnailUrl,
-                uploadedById: uploader.id,
-                categoryId: video.category.id,
-                uploadedAt: video.uploadedAt,
-                createdAt: video.createdAt,
-                views: video.views || 0,
-                isPublic: video.isPublic ?? false,
-                publishedAt: video.publishedAt,
-            },
-            select: videoDetailSelect,
-        });
-
-        for (const participant of video.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
+        const createdVideo = await prisma.$transaction(async (tx) => {
+            const created = await tx.video.create({
+                data: {
+                    title: video.title,
+                    description: video.description || null,
+                    videoUrl: video.videoUrl,
+                    thumbnailUrl: video.thumbnailUrl,
+                    // Always the signed-in user, never a client-supplied ID
+                    uploadedById: session.user.id,
+                    categoryId: video.category.id,
+                    uploadedAt: video.uploadedAt,
+                    createdAt: video.createdAt,
+                    views: 0,
+                    isPublic: isOwner ? (video.isPublic ?? false) : false,
+                    publishedAt: isOwner && video.isPublic ? (video.publishedAt ?? new Date()) : null,
+                },
+                select: { id: true },
             });
 
-            await prisma.videoParticipant.create({
-                data: { videoId: createdVideo.id, userId: participant.id },
-            });
-        }
+            if (participantIds.length > 0) {
+                await tx.videoParticipant.createMany({
+                    data: participantIds.map((userId) => ({ videoId: created.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
 
+            return tx.video.findUniqueOrThrow({ where: { id: created.id }, select: videoDetailSelect });
+        });
+
+        revalidateTag('analytics', 'max');
         return transformVideo(createdVideo as PrismaVideoDetail);
     } catch (error) {
         console.error('Error adding video:', error);
@@ -72,39 +52,41 @@ export async function addVideo(video: Video): Promise<Video> {
 
 export async function updateVideo(video: Video): Promise<Video> {
     try {
-        if (!video.uploadedBy?.id) throw new Error("uploadedBy is required");
-        await checkOwnerOrAdmin(video.uploadedBy.id);
-
-        const updatedVideo = await prisma.video.update({
+        // Ownership comes from the database, not from the client payload
+        const existing = await prisma.video.findUnique({
             where: { id: video.id },
-            data: {
-                title: video.title,
-                description: video.description || null,
-                videoUrl: video.videoUrl,
-                thumbnailUrl: video.thumbnailUrl,
-                categoryId: video.category.id,
-                uploadedAt: video.uploadedAt,
-                createdAt: video.createdAt,
-                views: video.views || 0,
-                isPublic: video.isPublic ?? false,
-                publishedAt: video.publishedAt,
-            },
-            select: videoDetailSelect,
+            select: { uploadedById: true },
         });
+        if (!existing) throw new Error("Video not found");
+        await checkOwnerOrAdmin(existing.uploadedById);
 
-        await prisma.videoParticipant.deleteMany({ where: { videoId: video.id } });
+        const participantIds = await filterExistingUserIds(video.participants.map((p) => p.id));
 
-        for (const participant of video.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
+        // isPublic / publishedAt / views are intentionally not editable here
+        const updatedVideo = await prisma.$transaction(async (tx) => {
+            await tx.video.update({
+                where: { id: video.id },
+                data: {
+                    title: video.title,
+                    description: video.description || null,
+                    videoUrl: video.videoUrl,
+                    thumbnailUrl: video.thumbnailUrl,
+                    categoryId: video.category.id,
+                    uploadedAt: video.uploadedAt,
+                    createdAt: video.createdAt,
+                },
             });
 
-            await prisma.videoParticipant.create({
-                data: { videoId: video.id, userId: participant.id },
-            });
-        }
+            await tx.videoParticipant.deleteMany({ where: { videoId: video.id } });
+            if (participantIds.length > 0) {
+                await tx.videoParticipant.createMany({
+                    data: participantIds.map((userId) => ({ videoId: video.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return tx.video.findUniqueOrThrow({ where: { id: video.id }, select: videoDetailSelect });
+        });
 
         return transformVideo(updatedVideo as PrismaVideoDetail);
     } catch (error) {
@@ -117,18 +99,19 @@ export async function deleteVideo(videoId: string): Promise<void> {
     try {
         const video = await prisma.video.findUnique({
             where: { id: videoId },
-            include: { uploadedBy: true }
+            select: { uploadedById: true, videoUrl: true, thumbnailUrl: true },
         });
 
         if (!video) throw new Error("Video not found");
         await checkOwnerOrAdmin(video.uploadedById);
 
-        const videoKey = extractKey(video.videoUrl);
-        const thumbKey = extractKey(video.thumbnailUrl);
-        if (videoKey) await deleteFile(videoKey);
-        if (thumbKey) await deleteFile(thumbKey);
-
         await prisma.video.delete({ where: { id: videoId } });
+        revalidateTag('analytics', 'max');
+
+        // Best effort: a failed storage delete must not resurrect the DB row
+        for (const key of [extractStorageKey(video.videoUrl), extractStorageKey(video.thumbnailUrl)]) {
+            if (key) await deleteFile(key).catch((e) => console.error('Failed to delete R2 object', key, e));
+        }
     } catch (error) {
         console.error('Error deleting video:', error);
         throw error;
@@ -153,7 +136,7 @@ export async function unpublishVideo(videoId: string): Promise<void> {
         await requireOwner();
         await prisma.video.update({
             where: { id: videoId },
-            data: { isPublic: false },
+            data: { isPublic: false, publishedAt: null },
         });
     } catch (error) {
         console.error('Error unpublishing video:', error);

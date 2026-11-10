@@ -133,6 +133,7 @@ export interface QuoteListItem {
   messages: QuoteMessage[];
   views: number;
   averageRating?: number;
+  isSeen?: boolean;
   isPublic?: boolean;
   publishedAt?: Date | null;
 }

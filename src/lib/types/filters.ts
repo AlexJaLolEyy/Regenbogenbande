@@ -6,11 +6,17 @@ export interface FilterState {
   sort: SortOption;
   categoryId: string | null;
   dateRange: DateRange;
+  /** Only content this user is tagged in */
+  participantId: string | null;
+  /** Only content the current user has not seen yet */
+  unseenOnly: boolean;
 }
 
 export const DEFAULT_FILTERS: FilterState = {
   search: '',
   sort: 'newest',
   categoryId: null,
-  dateRange: 'all'
+  dateRange: 'all',
+  participantId: null,
+  unseenOnly: false,
 };

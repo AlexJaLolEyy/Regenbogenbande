@@ -1,71 +1,67 @@
-import { checkOwnerOrAdmin, checkUploadPermission, requireOwner } from "@/src/lib/auth-utils";
+import { checkOwnerOrAdmin, checkUploadPermission, getEffectiveRole, requireOwner } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
+import { revalidateTag } from "next/cache";
 import { Quote } from "@/src/lib/types/types";
+import { filterExistingUserIds } from "../shared";
 import { PrismaQuoteDetail, quoteDetailSelect, transformQuote } from "../selects/quotes";
+
+/** Keeps only participants / message authors that are real users. */
+async function resolveQuoteUsers(quote: Quote) {
+    const validIds = new Set(
+        await filterExistingUserIds([
+            ...quote.participants.map((p) => p.id),
+            ...quote.messages.map((m) => m.user.id),
+        ])
+    );
+    return {
+        participantIds: Array.from(new Set(quote.participants.map((p) => p.id))).filter((id) => validIds.has(id)),
+        messages: quote.messages.filter((m) => validIds.has(m.user.id)),
+    };
+}
 
 export async function addQuote(quote: Quote): Promise<Quote> {
     try {
-        await checkUploadPermission();
+        const session = await checkUploadPermission();
+        // Only the owner can publish; everyone else's uploads start private.
+        const isOwner = getEffectiveRole(session) === "owner";
+        const { participantIds, messages } = await resolveQuoteUsers(quote);
 
-        if (!quote.uploadedBy?.id) {
-            throw new Error("uploadedBy is required");
-        }
+        const createdQuote = await prisma.$transaction(async (tx) => {
+            const created = await tx.quote.create({
+                data: {
+                    // Always the signed-in user, never a client-supplied ID
+                    uploadedById: session.user.id,
+                    uploadedAt: quote.uploadedAt,
+                    createdAt: quote.createdAt,
+                    views: 0,
+                    isPublic: isOwner ? (quote.isPublic ?? false) : false,
+                    publishedAt: isOwner && quote.isPublic ? (quote.publishedAt ?? new Date()) : null,
+                },
+                select: { id: true },
+            });
 
-        const uploader = await prisma.user.upsert({
-            where: { id: quote.uploadedBy.id },
-            update: {
-                name: quote.uploadedBy.username,
-                image: quote.uploadedBy.profilePicture,
-            },
-            create: {
-                id: quote.uploadedBy.id,
-                name: quote.uploadedBy.username,
-                image: quote.uploadedBy.profilePicture,
-            },
-        });
+            if (messages.length > 0) {
+                await tx.quoteMessage.createMany({
+                    data: messages.map((msg) => ({
+                        quoteId: created.id,
+                        message: msg.message,
+                        userId: msg.user.id,
+                        isContext: msg.isContext ?? false,
+                    })),
+                });
+            }
 
-        const createdQuote = await prisma.quote.create({
-            data: {
-                ...(quote.id ? { id: quote.id } : {}),
-                uploadedById: uploader.id,
-                uploadedAt: quote.uploadedAt,
-                createdAt: quote.createdAt,
-                views: quote.views || 0,
-                isPublic: quote.isPublic ?? false,
-                publishedAt: quote.publishedAt,
-            },
-            select: quoteDetailSelect,
+            if (participantIds.length > 0) {
+                await tx.quoteParticipant.createMany({
+                    data: participantIds.map((userId) => ({ quoteId: created.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return tx.quote.findUniqueOrThrow({ where: { id: created.id }, select: quoteDetailSelect });
         }) as PrismaQuoteDetail;
 
-        for (const msg of quote.messages) {
-            const author = await prisma.user.upsert({
-                where: { id: msg.user.id },
-                update: { name: msg.user.username, image: msg.user.profilePicture },
-                create: { id: msg.user.id, name: msg.user.username, image: msg.user.profilePicture },
-            });
-
-            await prisma.quoteMessage.create({
-                data: {
-                    quoteId: createdQuote.id,
-                    message: msg.message,
-                    userId: author.id,
-                    isContext: msg.isContext ?? false,
-                },
-            });
-        }
-
-        for (const participant of quote.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
-            });
-
-            await prisma.quoteParticipant.create({
-                data: { quoteId: createdQuote.id, userId: participant.id },
-            });
-        }
-
+        revalidateTag('analytics', 'max');
         return transformQuote(createdQuote);
     } catch (error) {
         console.error('Error adding quote:', error);
@@ -75,51 +71,48 @@ export async function addQuote(quote: Quote): Promise<Quote> {
 
 export async function updateQuote(quote: Quote): Promise<Quote> {
     try {
-        if (!quote.uploadedBy?.id) throw new Error("uploadedBy is required");
-        await checkOwnerOrAdmin(quote.uploadedBy.id);
-
-        const updatedQuote = await prisma.quote.update({
+        // Ownership comes from the database, not from the client payload
+        const existing = await prisma.quote.findUnique({
             where: { id: quote.id },
-            data: {
-                uploadedAt: quote.uploadedAt,
-                createdAt: quote.createdAt,
-                views: quote.views || 0,
-                isPublic: quote.isPublic ?? false,
-                publishedAt: quote.publishedAt,
-            },
-            select: quoteDetailSelect,
-        }) as PrismaQuoteDetail;
+            select: { uploadedById: true },
+        });
+        if (!existing) throw new Error("Quote not found");
+        await checkOwnerOrAdmin(existing.uploadedById);
 
-        await prisma.quoteMessage.deleteMany({ where: { quoteId: quote.id } });
-        for (const msg of quote.messages) {
-            const author = await prisma.user.upsert({
-                where: { id: msg.user.id },
-                update: { name: msg.user.username, image: msg.user.profilePicture },
-                create: { id: msg.user.id, name: msg.user.username, image: msg.user.profilePicture },
-            });
+        const { participantIds, messages } = await resolveQuoteUsers(quote);
 
-            await prisma.quoteMessage.create({
+        // isPublic / publishedAt / views are intentionally not editable here
+        const updatedQuote = await prisma.$transaction(async (tx) => {
+            await tx.quote.update({
+                where: { id: quote.id },
                 data: {
-                    quoteId: quote.id,
-                    message: msg.message,
-                    userId: author.id,
-                    isContext: msg.isContext ?? false,
+                    uploadedAt: quote.uploadedAt,
+                    createdAt: quote.createdAt,
                 },
             });
-        }
 
-        await prisma.quoteParticipant.deleteMany({ where: { quoteId: quote.id } });
-        for (const participant of quote.participants) {
-            await prisma.user.upsert({
-                where: { id: participant.id },
-                update: { name: participant.username, image: participant.profilePicture },
-                create: { id: participant.id, name: participant.username, image: participant.profilePicture },
-            });
+            await tx.quoteMessage.deleteMany({ where: { quoteId: quote.id } });
+            if (messages.length > 0) {
+                await tx.quoteMessage.createMany({
+                    data: messages.map((msg) => ({
+                        quoteId: quote.id,
+                        message: msg.message,
+                        userId: msg.user.id,
+                        isContext: msg.isContext ?? false,
+                    })),
+                });
+            }
 
-            await prisma.quoteParticipant.create({
-                data: { quoteId: quote.id, userId: participant.id },
-            });
-        }
+            await tx.quoteParticipant.deleteMany({ where: { quoteId: quote.id } });
+            if (participantIds.length > 0) {
+                await tx.quoteParticipant.createMany({
+                    data: participantIds.map((userId) => ({ quoteId: quote.id, userId })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return tx.quote.findUniqueOrThrow({ where: { id: quote.id }, select: quoteDetailSelect });
+        }) as PrismaQuoteDetail;
 
         return transformQuote(updatedQuote);
     } catch (error) {
@@ -132,13 +125,14 @@ export async function deleteQuote(quoteId: string): Promise<void> {
     try {
         const quote = await prisma.quote.findUnique({
             where: { id: quoteId },
-            include: { uploadedBy: true }
+            select: { uploadedById: true },
         });
 
         if (!quote) throw new Error("Quote not found");
         await checkOwnerOrAdmin(quote.uploadedById);
 
         await prisma.quote.delete({ where: { id: quoteId } });
+        revalidateTag('analytics', 'max');
     } catch (error) {
         console.error('Error deleting quote:', error);
         throw error;
@@ -163,7 +157,7 @@ export async function unpublishQuote(quoteId: string): Promise<void> {
         await requireOwner();
         await prisma.quote.update({
             where: { id: quoteId },
-            data: { isPublic: false },
+            data: { isPublic: false, publishedAt: null },
         });
     } catch (error) {
         console.error('Error unpublishing quote:', error);

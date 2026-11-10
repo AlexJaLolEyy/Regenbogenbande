@@ -3,13 +3,14 @@ import { Session } from "@/src/lib/auth";
 import { getEffectiveRole } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { Quote, QuoteListItem, QuoteMessage } from "@/src/lib/types/types";
-import { getDateRangeFilter, getSortOrder } from '@/src/lib/utils/date-filters';
+import { getDateRangeFilter } from '@/src/lib/utils/date-filters';
 import {
-    calculateAvgRating,
     FetchOptions,
+    buildListQuery,
     PrismaUser,
     transformUser,
-    userSelect
+    userSelect,
+    type PagedResult,
 } from "../shared";
 
 export const quoteListSelect = {
@@ -32,7 +33,8 @@ export const quoteListSelect = {
         orderBy: { createdAt: 'asc' as const },
         take: 5,
     },
-    ratings: { select: { value: true } },
+    ratingAvg: true,
+    ratingCount: true,
 } as const;
 
 export const quoteDetailSelect = {
@@ -72,7 +74,7 @@ export function transformQuote(prismaQuote: PrismaQuoteDetail): Quote {
         views: prismaQuote.views || 0,
         isPublic: prismaQuote.isPublic ?? false,
         publishedAt: prismaQuote.publishedAt ? new Date(prismaQuote.publishedAt) : null,
-        averageRating: calculateAvgRating(prismaQuote.ratings),
+        averageRating: prismaQuote.ratingAvg ?? undefined,
     };
 }
 
@@ -85,15 +87,15 @@ export function transformQuoteListItem(prismaQuote: PrismaQuoteList): QuoteListI
         uploadedAt: new Date(prismaQuote.uploadedAt),
         createdAt: new Date(prismaQuote.createdAt),
         views: prismaQuote.views || 0,
-        averageRating: calculateAvgRating(prismaQuote.ratings),
+        averageRating: prismaQuote.ratingAvg ?? undefined,
         isPublic: prismaQuote.isPublic ?? false,
         publishedAt: prismaQuote.publishedAt ? new Date(prismaQuote.publishedAt) : null,
     };
 }
 
-export async function getQuotesForList(session?: Session | null, options?: FetchOptions): Promise<QuoteListItem[]> {
+export async function getQuotesForList(session?: Session | null, options?: FetchOptions): Promise<PagedResult<QuoteListItem>> {
     try {
-        const { page = 1, limit = 20, search, sort = 'newest', dateRange } = options || {};
+        const { page = 1, limit = 20, search, sort = 'newest', dateRange, participantId, unseenOnly } = options || {};
         const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
 
         const where: Prisma.QuoteWhereInput = {};
@@ -110,19 +112,43 @@ export async function getQuotesForList(session?: Session | null, options?: Fetch
             where.createdAt = getDateRangeFilter(dateRange);
         }
 
-        const orderBy = getSortOrder(sort);
+        const viewerId = effectiveRole === "guest" ? null : session?.user?.id ?? null;
+
+        if (participantId) {
+            where.participants = { some: { userId: participantId } };
+        }
+
+        if (unseenOnly && viewerId) {
+            where.userViews = { none: { userId: viewerId } };
+            where.uploadedById = { not: viewerId };
+        }
+
+        const total = await prisma.quote.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.quote.findMany({ where: w, select: { id: true } }));
 
         const quotes = await prisma.quote.findMany({
-            where,
+            where: q.where as typeof where,
             select: quoteListSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         }) as PrismaQuoteList[];
-        return quotes.map(transformQuoteListItem);
+        const items = q.reorder(quotes).map(transformQuoteListItem);
+        if (viewerId && items.length > 0) {
+            const seen = new Set(
+                (
+                    await prisma.userQuoteView.findMany({
+                        where: { userId: viewerId, quoteId: { in: items.map((i) => i.id) } },
+                        select: { quoteId: true },
+                    })
+                ).map((v) => v.quoteId)
+            );
+            for (const item of items) item.isSeen = item.uploadedBy.id === viewerId || seen.has(item.id);
+        }
+        return { items, total };
     } catch (error) {
         console.error('Error fetching quotes for list:', error);
-        return [];
+        return { items: [], total: 0 };
     }
 }
 
@@ -145,26 +171,32 @@ export async function getAllQuotes(session?: Session | null, options?: FetchOpti
             where.createdAt = getDateRangeFilter(dateRange);
         }
 
-        const orderBy = getSortOrder(sort);
+        const total = await prisma.quote.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.quote.findMany({ where: w, select: { id: true } }));
 
         const quotes = await prisma.quote.findMany({
-            where,
+            where: q.where as typeof where,
             select: quoteDetailSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         }) as PrismaQuoteDetail[];
-        return quotes.map(transformQuote);
+        return q.reorder(quotes).map(transformQuote);
     } catch (error) {
         console.error('Error fetching quotes:', error);
         return [];
     }
 }
 
-export async function getQuoteById(id: string): Promise<Quote | null> {
+/** Guests only get public quotes; pass the session (or null) so the rule is always applied. */
+export async function getQuoteById(id: string, session: Session | null): Promise<Quote | null> {
     try {
-        const quote = await prisma.quote.findUnique({
-            where: { id: String(id) },
+        const where: Prisma.QuoteWhereInput = { id: String(id) };
+        if (getEffectiveRole(session) === "guest") {
+            where.isPublic = true;
+        }
+        const quote = await prisma.quote.findFirst({
+            where,
             select: quoteDetailSelect,
         });
 

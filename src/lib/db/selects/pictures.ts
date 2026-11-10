@@ -3,13 +3,14 @@ import { Session } from "@/src/lib/auth";
 import { getEffectiveRole } from "@/src/lib/auth-utils";
 import { prisma } from "@/src/lib/prisma";
 import { Picture, PictureListItem } from "@/src/lib/types/types";
-import { getDateRangeFilter, getSortOrder } from '@/src/lib/utils/date-filters';
+import { getDateRangeFilter } from '@/src/lib/utils/date-filters';
 import {
-    calculateAvgRating,
     categorySelect,
     FetchOptions,
+    buildListQuery,
     transformUser,
-    userSelect
+    userSelect,
+    type PagedResult,
 } from "../shared";
 
 export const pictureListSelect = {
@@ -25,7 +26,8 @@ export const pictureListSelect = {
     uploadedBy: { select: userSelect },
     category: { select: categorySelect },
     participants: { select: { user: { select: userSelect } } },
-    ratings: { select: { value: true } },
+    ratingAvg: true,
+    ratingCount: true,
 } as const;
 
 export const pictureDetailSelect = {
@@ -55,7 +57,7 @@ export function transformPicture(prismaPicture: PrismaPictureDetail): Picture {
         } : { id: '', name: '', iconUrl: null },
         isPublic: prismaPicture.isPublic ?? false,
         publishedAt: prismaPicture.publishedAt ? new Date(prismaPicture.publishedAt) : null,
-        averageRating: calculateAvgRating(prismaPicture.ratings),
+        averageRating: prismaPicture.ratingAvg ?? undefined,
     };
 }
 
@@ -74,15 +76,15 @@ export function transformPictureListItem(prismaPicture: PrismaPictureList): Pict
             name: prismaPicture.category.name,
             iconUrl: prismaPicture.category.iconUrl || null,
         } : { id: '', name: '', iconUrl: null },
-        averageRating: calculateAvgRating(prismaPicture.ratings),
+        averageRating: prismaPicture.ratingAvg ?? undefined,
         isPublic: prismaPicture.isPublic ?? false,
         publishedAt: prismaPicture.publishedAt ? new Date(prismaPicture.publishedAt) : null,
     };
 }
 
-export async function getPicturesForList(session?: Session | null, options?: FetchOptions): Promise<PictureListItem[]> {
+export async function getPicturesForList(session?: Session | null, options?: FetchOptions): Promise<PagedResult<PictureListItem>> {
     try {
-        const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange } = options || {};
+        const { page = 1, limit = 20, search, sort = 'newest', categoryId, dateRange, participantId, unseenOnly } = options || {};
         const effectiveRole = session !== undefined ? getEffectiveRole(session) : "guest";
 
         const where: Prisma.PictureWhereInput = {};
@@ -103,19 +105,43 @@ export async function getPicturesForList(session?: Session | null, options?: Fet
             where.createdAt = getDateRangeFilter(dateRange);
         }
 
-        const orderBy = getSortOrder(sort);
+        const viewerId = effectiveRole === "guest" ? null : session?.user?.id ?? null;
+
+        if (participantId) {
+            where.participants = { some: { userId: participantId } };
+        }
+
+        if (unseenOnly && viewerId) {
+            where.userViews = { none: { userId: viewerId } };
+            where.uploadedById = { not: viewerId };
+        }
+
+        const total = await prisma.picture.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.picture.findMany({ where: w, select: { id: true } }));
 
         const pictures = await prisma.picture.findMany({
-            where,
+            where: q.where as typeof where,
             select: pictureListSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         });
-        return pictures.map(transformPictureListItem);
+        const items = q.reorder(pictures).map(transformPictureListItem);
+        if (viewerId && items.length > 0) {
+            const seen = new Set(
+                (
+                    await prisma.userPictureView.findMany({
+                        where: { userId: viewerId, pictureId: { in: items.map((i) => i.id) } },
+                        select: { pictureId: true },
+                    })
+                ).map((v) => v.pictureId)
+            );
+            for (const item of items) item.isSeen = item.uploadedBy.id === viewerId || seen.has(item.id);
+        }
+        return { items, total };
     } catch (error) {
         console.error('Error fetching pictures for list:', error);
-        return [];
+        return { items: [], total: 0 };
     }
 }
 
@@ -142,26 +168,32 @@ export async function getAllPictures(session?: Session | null, options?: FetchOp
             where.createdAt = getDateRangeFilter(dateRange);
         }
 
-        const orderBy = getSortOrder(sort);
+        const total = await prisma.picture.count({ where });
+        const q = await buildListQuery(sort, where, page, limit, (w) => prisma.picture.findMany({ where: w, select: { id: true } }));
 
         const pictures = await prisma.picture.findMany({
-            where,
+            where: q.where as typeof where,
             select: pictureDetailSelect,
-            orderBy,
-            skip: (page - 1) * limit,
-            take: limit,
+            orderBy: q.orderBy,
+            skip: q.skip,
+            take: q.take,
         }) as PrismaPictureDetail[];
-        return pictures.map(transformPicture);
+        return q.reorder(pictures).map(transformPicture);
     } catch (error) {
         console.error('Error fetching pictures:', error);
         return [];
     }
 }
 
-export async function getPictureById(id: string): Promise<Picture | null> {
+/** Guests only get public pictures; pass the session (or null) so the rule is always applied. */
+export async function getPictureById(id: string, session: Session | null): Promise<Picture | null> {
     try {
-        const picture = await prisma.picture.findUnique({
-            where: { id: String(id) },
+        const where: Prisma.PictureWhereInput = { id: String(id) };
+        if (getEffectiveRole(session) === "guest") {
+            where.isPublic = true;
+        }
+        const picture = await prisma.picture.findFirst({
+            where,
             select: pictureDetailSelect,
         });
 
