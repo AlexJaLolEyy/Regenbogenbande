@@ -3,7 +3,7 @@
 import { cn } from "@/src/lib/utils";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { formatDate } from "@/src/lib/utils/format";
-import { AvatarGroup, Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@heroui/react";
+import { addToast, AvatarGroup, Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@heroui/react";
 import { Eye, MoreVertical, Pencil, Share2, Star, X } from "lucide-react";
 import NextImage from "next/image";
 import Link from "next/link";
@@ -85,7 +85,7 @@ export const ActionBar = ({
 }) => {
     const handleShare = async () => {
         await navigator.clipboard.writeText(window.location.href);
-        alert("Link copied to clipboard!");
+        addToast({ title: "Link kopiert", color: "success" });
     };
     const plural = `${type}s`;
     const label = type.charAt(0).toUpperCase() + type.slice(1);

@@ -3,6 +3,7 @@
 import { deletePicture, deleteQuote, deleteVideo } from '@/src/lib/actions/delete-actions';
 import { useSession } from '@/src/lib/auth-client';
 import {
+    addToast,
     Button,
     Modal,
     ModalBody,
@@ -15,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getEffectiveRole } from '../../auth-utils-shared';
+import { canDelete, getEffectiveRole } from '../../auth-utils-shared';
 import { queryKeys } from '../../queries/query-keys';
 
 interface DeleteButtonProps {
@@ -38,15 +39,14 @@ export function DeleteButton({ id, type, ownerId, redirectUrl }: DeleteButtonPro
         setMounted(true);
     }, []);
 
-    // Check permissions: Admin or Owner
-    const isAdmin = role === 'admin';
-    const isOwner = session?.user?.id === ownerId;
+    // Same rule as the server (owner/admin anything, members only their own)
+    const allowed = canDelete(role, session?.user?.id === ownerId);
 
     if (!mounted) {
         return null;
     }
 
-    if (!isAdmin && !isOwner) {
+    if (!allowed) {
         return null;
     }
 
@@ -70,7 +70,7 @@ export function DeleteButton({ id, type, ownerId, redirectUrl }: DeleteButtonPro
             router.refresh();
         } catch (error) {
             console.error('Delete failed:', error);
-            alert('Failed to delete item. Please try again.');
+            addToast({ title: 'Löschen fehlgeschlagen', description: 'Bitte versuch es nochmal.', color: 'danger' });
         } finally {
             setIsDeleting(false);
         }
