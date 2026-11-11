@@ -2,23 +2,20 @@
 
 import { cn } from "@/src/lib/utils";
 import React from "react";
-import { AuroraBackground } from "../home/aurora-background";
 
 interface PageShellProps {
     children: React.ReactNode;
-    /** "default" = neutral tokened background; "aurora" = decorative (marketing only). */
-    variant?: "default" | "aurora";
+    /** "default" = fixed-height shell (lists manage their own scroll); "scroll" = normal page flow for detail and form pages. */
+    variant?: "default" | "scroll";
     className?: string;
 }
 
 export const PageShell = ({ children, variant = "default", className }: PageShellProps) => {
-    if (variant === "aurora") {
+    if (variant === "scroll") {
         return (
-            <AuroraBackground className={cn("min-h-screen", className)}>
-                <div className="relative z-10 w-full h-full">
-                    {children}
-                </div>
-            </AuroraBackground>
+            <div className={cn("relative min-h-[calc(100vh-3rem)] w-full bg-background text-foreground", className)}>
+                {children}
+            </div>
         );
     }
 

@@ -8,6 +8,7 @@ import { Comment } from '@/src/lib/types/types';
 import { addToast, Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react";
 import { MODAL_CLASSNAMES } from "@/src/lib/components/ui/form-kit";
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 interface CommentItemProps {
@@ -63,7 +64,8 @@ const CommentItem = ({
           {mounted && (session?.user.id === comment.user.id || session?.user.role === 'admin') && (
             <button
               onClick={() => onDelete(comment.id)}
-              className="opacity-0 group-hover:opacity-100 transition text-faint hover:text-danger"
+              aria-label="Delete comment"
+              className="opacity-0 transition text-faint hover:text-danger focus-visible:opacity-100 focus-visible:outline-2 outline-theme-accent group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
             >
               <Trash2 size="0.875em"  />
             </button>
@@ -116,7 +118,7 @@ const CommentItem = ({
                 <Button size="sm" variant="light" onClick={() => setReplyingTo(null)}>Cancel</Button>
                 <Button
                   size="sm"
-                  className="bg-muted text-foreground rounded-full font-medium"
+                  className="bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90"
                   isLoading={isSubmitting}
                   onClick={handleReplySubmit}
                 >
@@ -224,7 +226,7 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
             <div className="flex justify-end mt-2">
               <Button
                 size="sm"
-                className="bg-muted text-foreground rounded-full font-medium"
+                className="bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90"
                 isLoading={isSubmitting}
                 onClick={() => handleAddComment()}
               >
@@ -238,7 +240,9 @@ export const CommentsSection = ({ contentType, contentId, initialComments }: Com
 
     return (
       <div className="mb-8 p-4 bg-muted rounded-xl text-center border border-dashed border-border">
-        <p className="text-muted-foreground text-sm">Please log in to leave a comment</p>
+        <p className="text-muted-foreground text-sm">
+          <Link href="/login" className="font-medium text-foreground underline underline-offset-2 hover:text-theme-accent">Sign in</Link> to leave a comment
+        </p>
       </div>
     );
   };

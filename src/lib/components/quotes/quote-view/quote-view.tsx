@@ -38,6 +38,9 @@ export default function QuoteView({ quote, initialComments = [] }: { quote: Quot
             <div className="space-y-6 xl:col-span-3">
                 <Stage className="flex min-h-[60vh] flex-col">
                     <div className="max-h-[75vh] flex-1 space-y-2 overflow-y-auto p-8 custom-scrollbar md:p-12">
+                        {quote.messages.length === 0 && (
+                            <p className="py-16 text-center text-sm text-muted-foreground">This quote has no messages yet.</p>
+                        )}
                         {quote.messages.map((msg, idx) => {
                             if (msg.isContext) {
                                 return (

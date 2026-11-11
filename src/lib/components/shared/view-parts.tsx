@@ -2,31 +2,57 @@
 
 import { cn } from "@/src/lib/utils";
 import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
-import { formatDate } from "@/src/lib/utils/format";
+import { formatDate, relativeDate } from "@/src/lib/utils/format";
 import { addToast, AvatarGroup, Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@heroui/react";
-import { Eye, MoreVertical, Pencil, Share2, Star, X } from "lucide-react";
-import NextImage from "next/image";
+import { ArrowLeft, Eye, MoreVertical, Pencil, Share2, Star } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React from "react";
+import { CategoryBadge } from "../ui/category-badge";
 import type { Category, User } from "../../types/types";
 import { DeleteButton } from "../ui/delete-button";
 import { PageShell } from "../ui/page-shell";
 
-/** Page wrapper shared by all three detail views. */
-export const ViewPage = ({ backHref, children }: { backHref: string; children: React.ReactNode }) => (
-    <PageShell variant="aurora">
-        <div className="relative z-10 w-full px-4 pb-8 pt-8 md:px-8">
-            <Link
-                href={backHref}
-                aria-label="Back to list"
-                className="fixed right-8 top-16 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-elevated/90 text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:text-foreground"
-            >
-                <X size={18} />
-            </Link>
-            <div className="mx-auto grid max-w-450 grid-cols-1 items-start gap-8 xl:grid-cols-4">{children}</div>
-        </div>
-    </PageShell>
-);
+const BACK_LABELS: Record<string, string> = {
+    "/videos": "Back to Videos",
+    "/pictures": "Back to Pictures",
+    "/quotes": "Back to Quotes",
+};
+
+/** Page wrapper shared by all three detail views. Esc goes back to the list. */
+export const ViewPage = ({ backHref, children }: { backHref: string; children: React.ReactNode }) => {
+    const router = useRouter();
+    React.useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== "Escape" || e.defaultPrevented) return;
+            const el = e.target as HTMLElement | null;
+            if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
+            // Let open dialogs / menus handle Esc themselves.
+            if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return;
+            router.push(backHref);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [router, backHref]);
+
+    return (
+        <PageShell variant="scroll">
+            <div className="w-full px-4 pb-8 pt-6 md:px-8">
+                <div className="mx-auto max-w-450">
+                    <Link
+                        href={backHref}
+                        className="mb-4 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 outline-theme-accent"
+                    >
+                        <ArrowLeft size={16} />
+                        {BACK_LABELS[backHref] ?? "Back"}
+                        <kbd className="ml-1 hidden rounded border border-border px-1 text-[11px] text-faint md:inline">Esc</kbd>
+                    </Link>
+                    <div className="grid grid-cols-1 items-start gap-8 xl:grid-cols-4">{children}</div>
+                </div>
+            </div>
+        </PageShell>
+    );
+};
 
 /** Media/stage surface (player, image, chat). */
 export const Stage = ({ className, children }: { className?: string; children: React.ReactNode }) => (
@@ -85,7 +111,7 @@ export const ActionBar = ({
 }) => {
     const handleShare = async () => {
         await navigator.clipboard.writeText(window.location.href);
-        addToast({ title: "Link kopiert", color: "success" });
+        addToast({ title: "Link copied", color: "success" });
     };
     const plural = `${type}s`;
     const label = type.charAt(0).toUpperCase() + type.slice(1);
@@ -157,13 +183,8 @@ export const MetaRow = ({
             </div>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {category?.name && (
-                    <span className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1">
-                        {category.iconUrl && <NextImage src={category.iconUrl} alt="" width={12} height={12} className="opacity-70" />}
-                        {category.name}
-                    </span>
-                )}
-                <span className="rounded-lg border border-border px-2.5 py-1">{formatDate(date)}</span>
+                {category?.name && <CategoryBadge category={category} />}
+                <span className="rounded-lg border border-border px-2.5 py-1" title={formatDate(date)}>{relativeDate(date)}</span>
             </div>
         </div>
 

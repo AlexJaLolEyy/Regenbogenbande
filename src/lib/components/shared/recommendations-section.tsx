@@ -2,6 +2,7 @@
 
 import { getPictureRecommendations, getVideoRecommendations } from '@/src/lib/actions/recommendations';
 import { Button } from "@heroui/react";
+import { MediaPill } from '../ui/media-card';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -88,21 +89,21 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
               className="flex gap-3 group cursor-pointer hover:bg-muted p-2 rounded-xl transition border border-transparent hover:border-border"
             >
               <div className="w-32 aspect-video bg-muted rounded-lg overflow-hidden relative shrink-0">
-                {item.thumbnailUrl ? (
+                {(item.thumbnailUrl || item.imageUrl) ? (
                   <NextImage
                     alt={item.title}
-                    src={item.thumbnailUrl}
+                    src={(item.thumbnailUrl || item.imageUrl)!}
                     fill
                     className="object-cover group-hover:scale-105 transition duration-500"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted">
-                    <span className="text-[10px] text-faint">No Image</span>
+                    <span className="text-[11px] text-faint">No image</span>
                   </div>
                 )}
-                <div className="absolute bottom-1 right-1 bg-black/80 px-1 py-0.5 rounded text-[8px] font-mono text-white uppercase z-10">
+                <MediaPill className="absolute bottom-1 right-1 z-10 px-1.5 py-0.5">
                   {contentType === 'video' ? 'Video' : 'Image'}
-                </div>
+                </MediaPill>
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-sm text-foreground leading-tight mb-1 truncate group-hover:text-foreground max-w-full">
@@ -110,7 +111,7 @@ export const RecommendationsSection = ({ contentType, currentId, categoryId }: R
                 </h4>
                 <p className="text-xs text-muted-foreground">{item.uploadedBy.username || 'Anonymous'}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-[10px] text-faint">{item.views} views</p>
+                  <p className="text-[11px] text-faint">{item.views} views</p>
                 </div>
               </div>
             </Link>

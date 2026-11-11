@@ -61,7 +61,7 @@ export default function PictureView({ picture, initialComments = [] }: { picture
                         />
                     </div>
 
-                    <div className="absolute right-4 top-4 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <div className="absolute right-4 top-4 z-20 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
                         <Button
                             isIconOnly
                             size="sm"
