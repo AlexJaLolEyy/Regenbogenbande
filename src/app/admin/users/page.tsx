@@ -1,9 +1,15 @@
 "use client"
 
 import { useSession } from "@/src/lib/auth-client"
+import type { EffectiveRole } from "@/src/lib/auth-utils-shared"
+import { RolePill } from "@/src/lib/components/navigation/role-pill"
+import { MODAL_CLASSNAMES } from "@/src/lib/components/ui/form-kit"
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar"
+import { cn } from "@/src/lib/utils"
+import { formatDate } from "@/src/lib/utils/format"
 import {
+    addToast,
     Button,
-    Chip,
     Dropdown,
     DropdownItem,
     DropdownMenu,
@@ -14,7 +20,9 @@ import {
     ModalContent,
     ModalFooter,
     ModalHeader,
-    Select, SelectItem,
+    Select,
+    SelectItem,
+    SortDescriptor,
     Tab,
     Table,
     TableBody,
@@ -23,17 +31,15 @@ import {
     TableHeader,
     TableRow,
     Tabs,
-    SortDescriptor,
     Tooltip,
     useDisclosure,
-    User as UserCell
 } from "@heroui/react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Crown, Fingerprint, Lock, Mail, MoreVertical, Search, ShieldCheck, Trash2, User, UserPlus, Users } from "lucide-react"
+import { Lock, Mail, MoreVertical, Search, ShieldCheck, Trash2, User, UserPlus, Users } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { createInvite, deleteInvite, deleteUser, getInvites, getUsers, updateUserRole } from "./actions"
 
-type User = {
+type AdminUser = {
     id: string
     name: string
     email: string | null
@@ -59,21 +65,52 @@ const roles = [
     { label: "Member", value: "member" },
 ]
 
+const ROLE_FILTERS = [{ label: "All", value: "all" }, ...roles]
+
+const tableHead = "bg-transparent py-4 text-[11px] font-medium text-muted-foreground"
+
+const asRole = (role: string | null): EffectiveRole =>
+    role === "owner" || role === "admin" ? role : "member"
+
+/** Status as a colored dot + label: Active = success, Invited = warning, Disabled = faint. */
+function StatusDot({ status }: { status: string }) {
+    const tone =
+        status === "ACTIVE" ? "bg-success" : status === "INVITED" ? "bg-warning" : "bg-faint"
+    const label = status.charAt(0) + status.slice(1).toLowerCase()
+    return (
+        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <span className={cn("h-2 w-2 rounded-full", tone)} />
+            {label}
+        </span>
+    )
+}
+
+function Identity({ user }: { user: AdminUser }) {
+    return (
+        <div className="flex min-w-0 items-center gap-3">
+            <UserAvatar src={user.image || undefined} name={user.name?.[0]} className="h-9 w-9 shrink-0" />
+            <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email || "No email linked"}</span>
+            </div>
+        </div>
+    )
+}
+
 export default function AdminUsersPage() {
-    const [users, setUsers] = useState<User[]>([])
+    const [users, setUsers] = useState<AdminUser[]>([])
     const [anonymousCount, setAnonymousCount] = useState(0)
     const [invites, setInvites] = useState<Invite[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<"users" | "invites">("users")
+    const [roleFilter, setRoleFilter] = useState("all")
 
-    // Search with Debounce
+    // Search with debounce
     const [filterValue, setFilterValue] = useState("")
     const [debouncedFilterValue, setDebouncedFilterValue] = useState("")
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedFilterValue(filterValue)
-        }, 500)
+        const timer = setTimeout(() => setDebouncedFilterValue(filterValue), 500)
         return () => clearTimeout(timer)
     }, [filterValue])
 
@@ -83,29 +120,22 @@ export default function AdminUsersPage() {
     })
     const { isOpen, onOpen, onOpenChange } = useDisclosure()
 
-    // Create Invite Form State
+    // Create invite form state
     const [newDiscordId, setNewDiscordId] = useState("")
     const [newDiscordName, setNewDiscordName] = useState("")
     const [newRole, setNewRole] = useState("member")
-    const [createResult, setCreateResult] = useState<{ success: boolean, error?: string } | null>(null)
+    const [createResult, setCreateResult] = useState<{ success: boolean; error?: string } | null>(null)
     const [isCreating, setIsCreating] = useState(false)
 
-    // Delete User State
+    // Delete user state
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onOpenChange: onDeleteOpenChange } = useDisclosure()
     const [userToDelete, setUserToDelete] = useState<string | null>(null)
 
-    // Delete Invite State
+    // Delete invite state
     const { isOpen: isDeleteInviteOpen, onOpen: onDeleteInviteOpen, onOpenChange: onDeleteInviteOpenChange } = useDisclosure()
     const [inviteToDelete, setInviteToDelete] = useState<string | null>(null)
 
-    // Alert State
-    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onOpenChange: onAlertOpenChange } = useDisclosure()
-    const [alertMessage, setAlertMessage] = useState("")
-
-    const showAlert = (message: string) => {
-        setAlertMessage(message)
-        onAlertOpen()
-    }
+    const showError = (title: string) => addToast({ title, color: "danger" })
 
     const { data: session } = useSession()
 
@@ -113,12 +143,13 @@ export default function AdminUsersPage() {
         setIsLoading(true)
         try {
             const [usersResult, invitesData] = await Promise.all([getUsers(), getInvites()])
-            const { realUsers, anonymousCount } = usersResult as { realUsers: User[], anonymousCount: number }
+            const { realUsers, anonymousCount } = usersResult as { realUsers: AdminUser[]; anonymousCount: number }
             setUsers(realUsers)
             setAnonymousCount(anonymousCount)
             setInvites(invitesData as Invite[])
         } catch (error) {
             console.error("Failed to load data", error)
+            showError("Could not load users")
         } finally {
             setIsLoading(false)
         }
@@ -128,24 +159,32 @@ export default function AdminUsersPage() {
         loadData()
     }, [])
 
+    const roleCounts = useMemo(() => {
+        const counts: Record<string, number> = { all: users.length, owner: 0, admin: 0, member: 0 }
+        for (const u of users) counts[asRole(u.role)]++
+        return counts
+    }, [users])
+
     const sortedUsers = useMemo(() => {
-        let filteredUsers = [...users]
+        let filtered = [...users]
+        if (roleFilter !== "all") filtered = filtered.filter((u) => asRole(u.role) === roleFilter)
         if (debouncedFilterValue) {
-            filteredUsers = filteredUsers.filter((user) =>
-                user.name.toLowerCase().includes(debouncedFilterValue.toLowerCase()) ||
-                user.email?.toLowerCase().includes(debouncedFilterValue.toLowerCase()) ||
-                user.discordId?.includes(debouncedFilterValue)
+            const q = debouncedFilterValue.toLowerCase()
+            filtered = filtered.filter(
+                (user) =>
+                    user.name.toLowerCase().includes(q) ||
+                    user.email?.toLowerCase().includes(q) ||
+                    user.discordId?.includes(debouncedFilterValue)
             )
         }
 
-        return filteredUsers.sort((a, b) => {
-            const first = a[sortDescriptor.column as keyof User] ?? ""
-            const second = b[sortDescriptor.column as keyof User] ?? ""
+        return filtered.sort((a, b) => {
+            const first = a[sortDescriptor.column as keyof AdminUser] ?? ""
+            const second = b[sortDescriptor.column as keyof AdminUser] ?? ""
             const cmp = first < second ? -1 : first > second ? 1 : 0
-
             return sortDescriptor.direction === "descending" ? -cmp : cmp
         })
-    }, [users, debouncedFilterValue, sortDescriptor])
+    }, [users, roleFilter, debouncedFilterValue, sortDescriptor])
 
     const handleCreateInvite = async () => {
         setIsCreating(true)
@@ -177,29 +216,30 @@ export default function AdminUsersPage() {
                 loadData()
                 onDeleteInviteOpenChange()
             } else {
-                showAlert(res.error || "Failed to delete invite")
+                showError(res.error || "Failed to delete invite")
             }
         } catch (error) {
             console.error("Failed to delete invite", error)
+            showError("Failed to delete invite")
         } finally {
             setIsLoading(false)
             setInviteToDelete(null)
         }
     }
 
-    const handleRoleChange = async (userId: string, newRole: string) => {
-        if (!newRole) return
-        if (session?.user?.id === userId && newRole !== "admin") {
-            showAlert("You cannot remove your own admin status! Ask another admin to do it if necessary.")
+    const handleRoleChange = async (userId: string, nextRole: string) => {
+        if (!nextRole) return
+        if (session?.user?.id === userId && nextRole !== "admin") {
+            showError("You cannot remove your own admin status. Ask another admin to do it.")
             return
         }
-        await updateUserRole(userId, newRole)
+        await updateUserRole(userId, nextRole)
         loadData()
     }
 
     const handleDeleteUser = async (userId: string) => {
         if (session?.user?.id === userId) {
-            showAlert("You cannot delete your own account.")
+            showError("You cannot delete your own account.")
             return
         }
         setUserToDelete(userId)
@@ -216,439 +256,297 @@ export default function AdminUsersPage() {
                 loadData()
                 onDeleteOpenChange()
             } else {
-                showAlert(res.error || "Failed to delete user")
+                showError(res.error || "Failed to delete user")
             }
         } catch (error) {
             console.error("Failed to delete user", error)
+            showError("Failed to delete user")
         } finally {
             setIsLoading(false)
             setUserToDelete(null)
         }
     }
 
+    const renderActions = (user: AdminUser) => {
+        if (user.role === "owner") {
+            return (
+                <Tooltip content="The owner cannot be changed" closeDelay={0}>
+                    <span className="flex h-8 w-8 items-center justify-center text-faint"><Lock size={16} /></span>
+                </Tooltip>
+            )
+        }
+        if (session?.user?.id === user.id) {
+            return <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">You</span>
+        }
+        return (
+            <>
+                <Dropdown placement="bottom-end">
+                    <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" aria-label="Change role" className="rounded-xl text-muted-foreground hover:text-foreground">
+                            <MoreVertical size={16} />
+                        </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Role actions" variant="flat">
+                        <DropdownItem key="promote" className={user.role === "admin" ? "hidden" : ""} onPress={() => handleRoleChange(user.id, "admin")} startContent={<ShieldCheck size={14} />}>
+                            Promote to admin
+                        </DropdownItem>
+                        <DropdownItem key="demote" className={user.role === "member" ? "hidden" : ""} onPress={() => handleRoleChange(user.id, "member")} startContent={<User size={14} />}>
+                            Demote to member
+                        </DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+                <Tooltip color="danger" content="Remove access" closeDelay={0}>
+                    <Button isIconOnly size="sm" variant="light" color="danger" aria-label="Remove access" className="rounded-xl hover:bg-danger/10" onPress={() => handleDeleteUser(user.id)}>
+                        <Trash2 size={18} />
+                    </Button>
+                </Tooltip>
+            </>
+        )
+    }
+
     return (
         <div className="w-full">
-            {/* Custom Prismatic Background */}
-            
-            <div className="relative z-10">
+            <div className="relative z-10 px-4 pt-6 md:px-8">
                 <motion.div
-                    initial={{ opacity: 0, y: -20 }}
+                    initial={{ opacity: 0, y: -12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12"
+                    className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end"
                 >
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-1.5 bg-muted rounded-xl border border-border">
-                                <Users className="text-foreground" size={20} />
-                            </div>
-                            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-                                Team <span className="text-foreground">Access</span>
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <p className="text-muted-foreground font-medium">Manage permissions and orbital entry invites</p>
-                        </div>
+                        <h1 className="mb-1 flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                            <Users size={22} className="text-muted-foreground" />
+                            Users
+                        </h1>
+                        <p className="text-sm text-muted-foreground">Manage who has access and what they can do.</p>
                     </div>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <Button
-                            onPress={() => { setCreateResult(null); setNewRole("member"); onOpen(); }}
-                            className="bg-primary text-primary-foreground font-medium h-11 px-6 rounded-xl hover:opacity-90"
-                            startContent={<UserPlus size={20} />}
-                        >
-                            New Invite
-                        </Button>
-                    </div>
+                    <Button
+                        onPress={() => { setCreateResult(null); setNewRole("member"); onOpen(); }}
+                        className="h-11 rounded-xl bg-primary px-6 font-medium text-primary-foreground hover:opacity-90"
+                        startContent={<UserPlus size={18} />}
+                    >
+                        New invite
+                    </Button>
                 </motion.div>
 
-                <div className="w-full">
-                    {/* Header Row: Tabs on Left, Guests on Right */}
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-                        <Tabs
-                            aria-label="User Management Tabs"
-                            color="primary"
-                            variant="bordered"
-                            selectedKey={activeTab}
-                            onSelectionChange={(key) => setActiveTab(key as "users" | "invites")}
-                            className="p-1 bg-muted backdrop-blur-md rounded-2xl border border-border w-fit"
-                            classNames={{
-                                tabList: "gap-2 border-0 bg-transparent p-0",
-                                cursor: "bg-primary text-primary-foreground rounded-xl",
-                                tab: "h-11 px-8 font-semibold transition-all",
-                                tabContent: "text-muted-foreground group-data-[selected=true]:text-primary-foreground"
-                            }}
-                        >
-                            <Tab key="users" title={
-                                <div className="flex items-center gap-2">
-                                    <span>Active Users</span>
-                                    <Chip size="sm" variant="flat" className="bg-muted text-muted-foreground group-data-[selected=true]:bg-primary-foreground/20 group-data-[selected=true]:text-primary-foreground">{users.length}</Chip>
-                                </div>
-                            } />
-                            <Tab key="invites" title={
-                                <div className="flex items-center gap-2">
-                                    <span>Invites</span>
-                                    {invites.length > 0 && <Chip size="sm" color="warning" variant="flat" className="font-bold">{invites.length}</Chip>}
-                                </div>
-                            } />
-                        </Tabs>
-
-                        <div className="flex items-center gap-3 h-12 px-6 bg-muted rounded-2xl border border-border backdrop-blur-md">
-                            <Fingerprint size={16} className="text-foreground mr-1" />
-                            <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Guest Appearances</span>
-                            <div className="h-4 w-px bg-muted mx-2" />
-                            <span className="text-sm font-semibold text-foreground">{anonymousCount}</span>
-                        </div>
-                    </div>
-
-                    {/* Content Row: Table Area */}
-                    <AnimatePresence mode="wait">
-                        {activeTab === "users" ? (
-                            <motion.div
-                                key="users-table"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-4"
-                            >
-                                <div className="flex justify-between items-center gap-4">
-                                    <Input
-                                        isClearable
-                                        className="w-full sm:max-w-[44%]"
-                                        placeholder="Search by name, email or ID..."
-                                        startContent={<Search size={18} className="text-muted-foreground" />}
-                                        value={filterValue}
-                                        onClear={() => setFilterValue("")}
-                                        onValueChange={setFilterValue}
-                                        variant="bordered"
-                                        classNames={{
-                                            inputWrapper: "bg-muted border-border hover:border-border focus-within:border-theme-accent! rounded-2xl transition-all"
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm">
-                                    <Table
-                                        aria-label="Users table"
-                                        removeWrapper
-                                        className="bg-transparent"
-                                        sortDescriptor={sortDescriptor}
-                                        onSortChange={(desc) => setSortDescriptor(desc)}
-                                    >
-                                        <TableHeader>
-                                            <TableColumn key="name" allowsSorting className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pl-8">USER</TableColumn>
-                                            <TableColumn key="discordId" className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">DISCORD ID</TableColumn>
-                                            <TableColumn key="role" allowsSorting className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">ROLE</TableColumn>
-                                            <TableColumn key="status" allowsSorting className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">STATUS</TableColumn>
-                                            <TableColumn key="createdAt" allowsSorting className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">JOINED</TableColumn>
-                                            <TableColumn align="end" className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pr-8">ACTIONS</TableColumn>
-                                        </TableHeader>
-                                        <TableBody
-                                            isLoading={isLoading}
-                                            items={sortedUsers}
-                                            emptyContent={<div className="py-20 text-muted-foreground font-medium">No users found matching your criteria</div>}
-                                        >
-                                            {(user) => (
-                                                <TableRow key={user.id} className="border-b border-border last:border-0 hover:bg-muted transition-colors">
-                                                    <TableCell className="pl-8">
-                                                        <UserCell
-                                                            name={<span className="font-bold text-foreground">{user.name}</span>}
-                                                            description={<span className="text-muted-foreground font-medium">{user.email || "No email linked"}</span>}
-                                                            avatarProps={{
-                                                                imgProps: { referrerPolicy: "no-referrer" },
-                                                                src: user.image || `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${user.id}&backgroundColor=b6e3f4,c0aede,d1d4f9`,
-                                                                name: user.name[0],
-                                                                size: "md",
-                                                                isBordered: true,
-                                                                className: "ring-border"
-                                                            }}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2 group">
-                                                            <code className="text-[11px] font-mono text-muted-foreground bg-muted px-2.5 py-1.5 rounded-xl border border-border group-hover:border-border transition-colors cursor-help">
-                                                                {user.discordId || "N/A"}
-                                                            </code>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            {user.role === 'owner' ? (
-                                                                <div className="flex items-center gap-2 text-warning bg-warning/10 px-3 py-1.5 rounded-xl border border-warning/20">
-                                                                    <Crown size={14} />
-                                                                    <span className="text-xs font-medium">Owner</span>
-                                                                </div>
-                                                            ) : user.role === 'admin' ? (
-                                                                <div className="flex items-center gap-2 text-foreground bg-muted px-3 py-1.5 rounded-xl border border-border">
-                                                                    <ShieldCheck size={14} />
-                                                                    <span className="text-xs font-medium">Admin</span>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center gap-2 text-muted-foreground bg-muted px-3 py-1.5 rounded-xl border border-border">
-                                                                    <User size={14} />
-                                                                    <span className="text-xs font-medium">Member</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            size="sm"
-                                                            variant="dot"
-                                                            color={user.status === "ACTIVE" ? "success" : user.status === "INVITED" ? "warning" : "danger"}
-                                                            className="border-border font-bold"
-                                                        >
-                                                            {user.status}
-                                                        </Chip>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="text-sm font-medium text-muted-foreground">
-                                                            {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="pr-8">
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            {user.role === 'owner' ? (
-                                                                <div className="w-8 h-8 flex items-center justify-center text-warning/40">
-                                                                    <Lock size={16} />
-                                                                </div>
-                                                            ) : session?.user?.id === user.id ? (
-                                                                <Chip size="sm" variant="bordered" className="text-xs font-medium border-border bg-muted">You</Chip>
-                                                            ) : (
-                                                                <>
-                                                                    <Dropdown placement="bottom-end">
-                                                                        <DropdownTrigger>
-                                                                            <Button isIconOnly size="sm" variant="light" className="text-muted-foreground hover:text-foreground rounded-xl">
-                                                                                <MoreVertical size={16} />
-                                                                            </Button>
-                                                                        </DropdownTrigger>
-                                                                        <DropdownMenu aria-label="Role Actions" variant="flat">
-                                                                            <DropdownItem
-                                                                                key="promote"
-                                                                                className={user.role === 'admin' ? "hidden" : ""}
-                                                                                onPress={() => handleRoleChange(user.id, "admin")}
-                                                                                startContent={<ShieldCheck size={14} />}
-                                                                            >
-                                                                                Promote to Admin
-                                                                            </DropdownItem>
-                                                                            <DropdownItem
-                                                                                key="demote"
-                                                                                className={user.role === 'member' ? "hidden" : ""}
-                                                                                onPress={() => handleRoleChange(user.id, "member")}
-                                                                                startContent={<User size={14} />}
-                                                                            >
-                                                                                Demote to Member
-                                                                            </DropdownItem>
-                                                                        </DropdownMenu>
-                                                                    </Dropdown>
-
-                                                                    <Tooltip color="danger" content="Remove Access" closeDelay={0}>
-                                                                        <Button
-                                                                            isIconOnly
-                                                                            size="sm"
-                                                                            variant="light"
-                                                                            color="danger"
-                                                                            className="hover:bg-danger/10 rounded-xl transition-all"
-                                                                            onPress={() => handleDeleteUser(user.id)}
-                                                                        >
-                                                                            <Trash2 size={20} />
-                                                                        </Button>
-                                                                    </Tooltip>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="invites-table"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-4"
-                            >
-                                <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm">
-                                    <Table aria-label="Invites table" removeWrapper className="bg-transparent">
-                                        <TableHeader>
-                                            <TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pl-8">DISCORD ENTITY</TableColumn>
-                                            <TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">ROLE ASSIGNMENT</TableColumn>
-                                            <TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">STATUS</TableColumn>
-                                            <TableColumn className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6">CREATED</TableColumn>
-                                            <TableColumn align="end" className="bg-transparent text-muted-foreground font-semibold text-[10px] py-6 pr-8">ACTIONS</TableColumn>
-                                        </TableHeader>
-                                        <TableBody isLoading={isLoading} items={invites} emptyContent={<div className="py-20 text-muted-foreground font-medium">No pending invites at the moment</div>}>
-                                            {(invite) => (
-                                                <TableRow key={invite.id} className="border-b border-border last:border-0 hover:bg-muted transition-colors">
-                                                    <TableCell className="pl-8">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground border border-border">
-                                                                <Mail size={18} />
-                                                            </div>
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <span className="font-bold text-foreground leading-none">{invite.discordName || "Unnamed User"}</span>
-                                                                <code className="text-[10px] font-mono text-muted-foreground opacity-50">{invite.discordId}</code>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip size="sm" variant="flat" className="bg-muted text-muted-foreground font-bold text-[10px]">
-                                                            {invite.role}
-                                                        </Chip>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip size="sm" color="warning" variant="dot" className="font-bold">Pending</Chip>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="text-sm font-medium text-muted-foreground">
-                                                            {new Date(invite.createdAt).toLocaleDateString()}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="pr-8">
-                                                        <div className="flex items-center justify-end">
-                                                            <Button
-                                                                isIconOnly
-                                                                size="sm"
-                                                                variant="light"
-                                                                color="danger"
-                                                                className="hover:bg-danger/10 rounded-xl transition-all"
-                                                                onPress={() => handleDeleteInvite(invite.id)}
-                                                            >
-                                                                <Trash2 size={20} />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                    <Tabs
+                        aria-label="User management"
+                        variant="underlined"
+                        selectedKey={activeTab}
+                        onSelectionChange={(key) => setActiveTab(key as "users" | "invites")}
+                        classNames={{
+                            tabList: "gap-4 border-b border-divider p-0",
+                            cursor: "w-full bg-theme-accent",
+                            tab: "h-11 px-1",
+                            tabContent: "text-muted-foreground group-data-[selected=true]:text-foreground group-data-[selected=true]:font-medium",
+                        }}
+                    >
+                        <Tab key="users" title={`Active · ${users.length}`} />
+                        <Tab key="invites" title={`Invites · ${invites.length}`} />
+                    </Tabs>
+                    <span className="text-xs text-muted-foreground">Guest sessions so far: <span className="font-medium text-foreground">{anonymousCount}</span></span>
                 </div>
+
+                <AnimatePresence mode="wait">
+                    {activeTab === "users" ? (
+                        <motion.div key="users" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <Input
+                                    isClearable
+                                    className="w-full sm:max-w-sm"
+                                    placeholder="Search by name, email or ID..."
+                                    aria-label="Search users"
+                                    startContent={<Search size={16} className="text-muted-foreground" />}
+                                    value={filterValue}
+                                    onClear={() => setFilterValue("")}
+                                    onValueChange={setFilterValue}
+                                    variant="bordered"
+                                    classNames={{ inputWrapper: "bg-muted border-border hover:border-foreground/30 focus-within:border-theme-accent! rounded-xl" }}
+                                />
+                                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by role">
+                                    {ROLE_FILTERS.map((r) => (
+                                        <button
+                                            key={r.value}
+                                            type="button"
+                                            aria-pressed={roleFilter === r.value}
+                                            onClick={() => setRoleFilter(r.value)}
+                                            className={cn(
+                                                "rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-2 outline-theme-accent",
+                                                roleFilter === r.value
+                                                    ? "border-transparent bg-accent-soft font-medium text-theme-accent"
+                                                    : "border-border text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            {r.label} · {roleCounts[r.value] ?? 0}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Mobile: stacked cards */}
+                            <div className="space-y-3 md:hidden">
+                                {sortedUsers.map((user) => (
+                                    <div key={user.id} className="space-y-3 rounded-2xl border border-border bg-card/70 p-4">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <Identity user={user} />
+                                            <div className="flex shrink-0 items-center">{renderActions(user)}</div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <RolePill role={asRole(user.role)} />
+                                            <StatusDot status={user.status} />
+                                            <span className="text-xs text-faint">Joined {formatDate(user.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {!isLoading && sortedUsers.length === 0 && (
+                                    <p className="py-12 text-center text-sm text-muted-foreground">No users match your filters.</p>
+                                )}
+                            </div>
+
+                            {/* Desktop: table */}
+                            <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card/70 shadow-sm backdrop-blur-md md:block">
+                                <Table aria-label="Users" removeWrapper className="bg-transparent" sortDescriptor={sortDescriptor} onSortChange={setSortDescriptor}>
+                                    <TableHeader>
+                                        <TableColumn key="name" allowsSorting className={cn(tableHead, "pl-6")}>User</TableColumn>
+                                        <TableColumn key="discordId" className={tableHead}>Discord ID</TableColumn>
+                                        <TableColumn key="role" allowsSorting className={tableHead}>Role</TableColumn>
+                                        <TableColumn key="status" allowsSorting className={tableHead}>Status</TableColumn>
+                                        <TableColumn key="createdAt" allowsSorting className={tableHead}>Joined</TableColumn>
+                                        <TableColumn align="end" className={cn(tableHead, "pr-6")}>Actions</TableColumn>
+                                    </TableHeader>
+                                    <TableBody
+                                        isLoading={isLoading}
+                                        items={sortedUsers}
+                                        emptyContent={<div className="py-16 text-sm text-muted-foreground">No users match your filters.</div>}
+                                    >
+                                        {(user) => (
+                                            <TableRow key={user.id} className="border-b border-border transition-colors last:border-0 hover:bg-muted/50">
+                                                <TableCell className="pl-6"><Identity user={user} /></TableCell>
+                                                <TableCell>
+                                                    <code className="rounded-lg border border-border bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground">{user.discordId || "N/A"}</code>
+                                                </TableCell>
+                                                <TableCell><RolePill role={asRole(user.role)} /></TableCell>
+                                                <TableCell><StatusDot status={user.status} /></TableCell>
+                                                <TableCell><span className="text-sm text-muted-foreground">{formatDate(user.createdAt)}</span></TableCell>
+                                                <TableCell className="pr-6"><div className="flex items-center justify-end gap-1">{renderActions(user)}</div></TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="invites" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                            <div className="overflow-x-auto rounded-2xl border border-border bg-card/70 shadow-sm backdrop-blur-md">
+                                <Table aria-label="Invites" removeWrapper className="bg-transparent">
+                                    <TableHeader>
+                                        <TableColumn className={cn(tableHead, "pl-6")}>Person</TableColumn>
+                                        <TableColumn className={tableHead}>Role</TableColumn>
+                                        <TableColumn className={tableHead}>Status</TableColumn>
+                                        <TableColumn className={tableHead}>Created</TableColumn>
+                                        <TableColumn align="end" className={cn(tableHead, "pr-6")}>Actions</TableColumn>
+                                    </TableHeader>
+                                    <TableBody isLoading={isLoading} items={invites} emptyContent={<div className="py-16 text-sm text-muted-foreground">No pending invites.</div>}>
+                                        {(invite) => (
+                                            <TableRow key={invite.id} className="border-b border-border transition-colors last:border-0 hover:bg-muted/50">
+                                                <TableCell className="pl-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
+                                                            <Mail size={16} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-medium text-foreground">{invite.discordName || "Unnamed"}</span>
+                                                            <code className="font-mono text-[11px] text-muted-foreground">{invite.discordId}</code>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell><RolePill role={asRole(invite.role)} /></TableCell>
+                                                <TableCell><StatusDot status="INVITED" /></TableCell>
+                                                <TableCell><span className="text-sm text-muted-foreground">{formatDate(invite.createdAt)}</span></TableCell>
+                                                <TableCell className="pr-6">
+                                                    <div className="flex items-center justify-end">
+                                                        <Button isIconOnly size="sm" variant="light" color="danger" aria-label="Delete invite" className="rounded-xl hover:bg-danger/10" onPress={() => handleDeleteInvite(invite.id)}>
+                                                            <Trash2 size={18} />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* Create Invite Modal */}
-            <Modal
-                isOpen={isOpen}
-                onOpenChange={onOpenChange}
-                backdrop="blur"
-                classNames={{
-                    base: "bg-elevated border border-border rounded-2xl shadow-lg",
-                    header: "text-2xl font-semibold tracking-tight pt-8 px-8 pb-4 border-b border-border",
-                    body: "px-8 py-8 gap-6",
-                    footer: "px-8 pb-8 pt-4",
-                    closeButton: "top-4 right-4 hover:bg-muted transition-colors p-2 rounded-xl"
-                }}
-            >
+            {/* Create invite */}
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} backdrop="blur" classNames={MODAL_CLASSNAMES}>
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="flex flex-row gap-2 items-center justify-center whitespace-nowrap">
-                                Generate <span className="text-foreground">Invite</span>
-                            </ModalHeader>
-                            <ModalBody>
+                            <ModalHeader>Create invite</ModalHeader>
+                            <ModalBody className="gap-4 py-6">
                                 {createResult?.success ? (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="bg-muted p-8 rounded-2xl border border-border text-center"
-                                    >
-                                        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-2xl mx-auto mb-4">
-                                            <UserPlus size={32} className="text-foreground" />
-                                        </div>
-                                        <p className="text-foreground font-semibold text-xl mb-2">Invite Ready!</p>
-                                        <p className="text-sm text-muted-foreground font-medium">
-                                            The entity can now perform orbital entry using Discord credentials.
-                                        </p>
-                                    </motion.div>
+                                    <div className="rounded-2xl border border-border bg-muted p-8 text-center">
+                                        <UserPlus size={28} className="mx-auto mb-3 text-theme-accent" />
+                                        <p className="mb-1 text-lg font-semibold text-foreground">Invite created</p>
+                                        <p className="text-sm text-muted-foreground">This person can now sign in with Discord.</p>
+                                    </div>
                                 ) : (
-                                    <div className="space-y-6">
+                                    <>
                                         {createResult?.error && (
-                                            <div className="bg-danger/10 border border-danger/20 p-3 rounded-xl text-danger text-xs font-bold text-center">
+                                            <div role="alert" className="rounded-xl border border-danger/20 bg-danger/10 p-3 text-center text-xs font-medium text-danger">
                                                 {createResult.error}
                                             </div>
                                         )}
                                         <Input
                                             autoFocus
-                                            label="Discord User ID"
-                                            placeholder="e.g., 123456789012345678"
-                                            variant="flat"
+                                            label="Discord user ID"
+                                            placeholder="e.g. 123456789012345678"
+                                            variant="bordered"
                                             value={newDiscordId}
                                             onValueChange={setNewDiscordId}
-                                            classNames={{
-                                                inputWrapper: "bg-muted h-14 rounded-2xl border border-border hover:border-border transition-all",
-                                                label: "text-muted-foreground font-bold",
-                                                input: "font-mono"
-                                            }}
-                                            description="Developer Mode → Right-click User → Copy ID"
+                                            classNames={{ inputWrapper: "bg-muted border-border h-12 focus-within:border-theme-accent!", input: "font-mono" }}
+                                            description="Enable Developer Mode in Discord, right-click the user, then Copy ID."
                                         />
                                         <Input
-                                            label="Alias / Reference (optional)"
-                                            placeholder="e.g., John #1234"
-                                            variant="flat"
+                                            label="Name (optional)"
+                                            placeholder="e.g. John"
+                                            variant="bordered"
                                             value={newDiscordName}
                                             onValueChange={setNewDiscordName}
-                                            classNames={{
-                                                inputWrapper: "bg-muted h-14 rounded-2xl border border-border hover:border-border transition-all",
-                                                label: "text-muted-foreground font-bold"
-                                            }}
+                                            classNames={{ inputWrapper: "bg-muted border-border h-12 focus-within:border-theme-accent!" }}
                                         />
-                                        <div className="space-y-2">
-                                            <p className="text-sm font-bold text-muted-foreground ml-1">Assigned Role</p>
-                                            <Select
-                                                selectedKeys={new Set([newRole])}
-                                                variant="flat"
-                                                onSelectionChange={(keys) => {
-                                                    const selected = Array.from(keys)[0] as string
-                                                    if (selected) setNewRole(selected)
-                                                }}
-                                                classNames={{
-                                                    trigger: "bg-muted h-14 rounded-2xl border border-border hover:border-border transition-all"
-                                                }}
-                                            >
-                                                {roles.filter(r => r.value !== "owner").map((role) => (
-                                                    <SelectItem key={role.value} textValue={role.label}>
-                                                        {role.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </Select>
-                                        </div>
-                                    </div>
+                                        <Select
+                                            label="Role"
+                                            variant="bordered"
+                                            selectedKeys={new Set([newRole])}
+                                            onSelectionChange={(keys) => {
+                                                const selected = Array.from(keys)[0] as string
+                                                if (selected) setNewRole(selected)
+                                            }}
+                                            classNames={{ trigger: "bg-muted border-border h-12" }}
+                                        >
+                                            {roles.filter((r) => r.value !== "owner").map((role) => (
+                                                <SelectItem key={role.value} textValue={role.label}>{role.label}</SelectItem>
+                                            ))}
+                                        </Select>
+                                    </>
                                 )}
                             </ModalBody>
-                            <ModalFooter className="flex-col gap-3">
+                            <ModalFooter>
                                 {createResult?.success ? (
-                                    <Button
-                                        fullWidth
-                                        className="font-medium h-12 rounded-xl bg-primary text-primary-foreground"
-                                        onPress={() => { setCreateResult(null); onClose(); }}
-                                    >
-                                        DONE
+                                    <Button fullWidth className="h-11 rounded-xl bg-primary font-medium text-primary-foreground" onPress={() => { setCreateResult(null); onClose(); }}>
+                                        Done
                                     </Button>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-3 w-full">
-                                        <Button
-                                            variant="flat"
-                                            className="h-12 rounded-2xl font-bold bg-muted border border-border"
-                                            onPress={onClose}
-                                        >
-                                            CANCEL
+                                    <>
+                                        <Button variant="light" className="h-11 rounded-xl" onPress={onClose}>Cancel</Button>
+                                        <Button className="h-11 rounded-xl bg-primary px-6 font-medium text-primary-foreground" onPress={handleCreateInvite} isLoading={isCreating}>
+                                            Create invite
                                         </Button>
-                                        <Button
-                                            className="h-12 rounded-2xl font-semibold bg-primary text-primary-foreground"
-                                            onPress={handleCreateInvite}
-                                            isLoading={isCreating}
-                                        >
-                                            EXECUTE
-                                        </Button>
-                                    </div>
+                                    </>
                                 )}
                             </ModalFooter>
                         </>
@@ -656,103 +554,41 @@ export default function AdminUsersPage() {
                 </ModalContent>
             </Modal>
 
-            {/* Delete User Modal */}
-            <Modal
-                isOpen={isDeleteOpen}
-                onOpenChange={onDeleteOpenChange}
-                backdrop="blur"
-                classNames={{
-                    base: "bg-elevated border border-border rounded-2xl",
-                }}
-            >
+            {/* Remove user */}
+            <Modal isOpen={isDeleteOpen} onOpenChange={onDeleteOpenChange} backdrop="blur" classNames={MODAL_CLASSNAMES}>
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="flex flex-row gap-2 items-center whitespace-nowrap pt-8 px-8 pb-4 border-b border-border">
-                                Revoke <span className="text-danger">Access</span>
-                            </ModalHeader>
-                            <ModalBody className="px-8 py-6">
-                                <p className="text-muted-foreground">Are you sure you want to prune this user from the orbital core? This action is permanent.</p>
+                            <ModalHeader>Remove user?</ModalHeader>
+                            <ModalBody className="py-6">
+                                <p className="text-sm text-muted-foreground">This user will lose access immediately. This cannot be undone.</p>
                             </ModalBody>
-                            <ModalFooter className="px-8 pb-8">
-                                <div className="grid grid-cols-2 gap-3 w-full">
-                                    <Button variant="flat" className="h-12 rounded-xl font-bold bg-muted border border-border" onPress={onClose}>CANCEL</Button>
-                                    <Button
-                                        color="danger"
-                                        className="h-12 rounded-xl font-bold"
-                                        onPress={confirmDeleteUser}
-                                        isLoading={isLoading}
-                                    >
-                                        CONFIRM
-                                    </Button>
-                                </div>
+                            <ModalFooter>
+                                <Button variant="light" className="h-11 rounded-xl" onPress={onClose}>Cancel</Button>
+                                <Button color="danger" className="h-11 rounded-xl font-medium" onPress={confirmDeleteUser} isLoading={isLoading}>Remove</Button>
                             </ModalFooter>
                         </>
                     )}
                 </ModalContent>
             </Modal>
 
-            {/* Delete Invite Modal */}
-            <Modal
-                isOpen={isDeleteInviteOpen}
-                onOpenChange={onDeleteInviteOpenChange}
-                backdrop="blur"
-                classNames={{
-                    base: "bg-elevated border border-border rounded-2xl",
-                }}
-            >
+            {/* Delete invite */}
+            <Modal isOpen={isDeleteInviteOpen} onOpenChange={onDeleteInviteOpenChange} backdrop="blur" classNames={MODAL_CLASSNAMES}>
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="flex flex-row gap-2 items-center whitespace-nowrap pt-8 px-8 pb-4 border-b border-border">
-                                Revoke <span className="text-danger">Invite</span>
-                            </ModalHeader>
-                            <ModalBody className="px-8 py-6">
-                                <p className="text-muted-foreground">Are you sure you want to retract this invitation? The entity will no longer be able to log in.</p>
+                            <ModalHeader>Delete invite?</ModalHeader>
+                            <ModalBody className="py-6">
+                                <p className="text-sm text-muted-foreground">This person will no longer be able to sign in with this invite.</p>
                             </ModalBody>
-                            <ModalFooter className="px-8 pb-8">
-                                <div className="grid grid-cols-2 gap-3 w-full">
-                                    <Button variant="flat" className="h-12 rounded-xl font-bold bg-muted border border-border" onPress={onClose}>CANCEL</Button>
-                                    <Button
-                                        color="danger"
-                                        className="h-12 rounded-xl font-bold"
-                                        onPress={confirmDeleteInvite}
-                                        isLoading={isLoading}
-                                    >
-                                        RETRACT
-                                    </Button>
-                                </div>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
-
-            {/* Alert Modal */}
-            <Modal
-                isOpen={isAlertOpen}
-                onOpenChange={onAlertOpenChange}
-                backdrop="blur"
-                classNames={{
-                    base: "bg-elevated border border-border rounded-2xl",
-                }}
-            >
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader className="flex flex-col gap-1 text-warning font-semibold pt-8 px-8">Restriction Enforced</ModalHeader>
-                            <ModalBody className="px-8 pb-8">
-                                <p className="text-muted-foreground font-medium">{alertMessage}</p>
-                            </ModalBody>
-                            <ModalFooter className="px-8 pb-8">
-                                <Button className="bg-muted rounded-xl font-bold w-full" onPress={onClose}>
-                                    ACKNOWLEDGE
-                                </Button>
+                            <ModalFooter>
+                                <Button variant="light" className="h-11 rounded-xl" onPress={onClose}>Cancel</Button>
+                                <Button color="danger" className="h-11 rounded-xl font-medium" onPress={confirmDeleteInvite} isLoading={isLoading}>Delete</Button>
                             </ModalFooter>
                         </>
                     )}
                 </ModalContent>
             </Modal>
         </div>
-    );
+    )
 }
