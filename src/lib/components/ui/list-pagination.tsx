@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Pagination } from "@heroui/react";
 
@@ -24,7 +24,7 @@ export function ListPagination({
             showControls
             loop
             variant="flat"
-            classNames={{ cursor: "bg-primary text-primary-foreground font-semibold" }}
+            classNames={{ cursor: "bg-accent-soft shadow-none", item: "data-[active=true]:text-theme-accent data-[active=true]:font-semibold" }}
         />
     );
 }

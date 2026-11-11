@@ -70,7 +70,7 @@ export function DeleteButton({ id, type, ownerId, redirectUrl }: DeleteButtonPro
             router.refresh();
         } catch (error) {
             console.error('Delete failed:', error);
-            addToast({ title: 'Löschen fehlgeschlagen', description: 'Bitte versuch es nochmal.', color: 'danger' });
+            addToast({ title: 'Could not delete', description: 'Please try again.', color: 'danger' });
         } finally {
             setIsDeleting(false);
         }

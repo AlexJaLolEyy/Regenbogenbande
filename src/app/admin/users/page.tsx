@@ -157,6 +157,7 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         loadData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const roleCounts = useMemo(() => {

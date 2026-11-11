@@ -451,7 +451,7 @@ export default function VideoUpload() {
                   }}
                   classNames={{
                     tabList: "bg-muted border border-border backdrop-blur-md p-1",
-                    cursor: "bg-primary",
+                    cursor: "bg-accent-soft shadow-none",
                     tabContent: "text-muted-foreground group-data-[selected=true]:text-foreground font-bold"
                   }}
                 >

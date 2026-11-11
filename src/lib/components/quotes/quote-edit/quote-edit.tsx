@@ -126,7 +126,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
         const validMessages = data.messages.filter(msg => (msg.isContext || msg.userId) && msg.message.trim());
 
         if (validMessages.length === 0) {
-            addToast({ title: "Bitte füge mindestens eine gültige Nachricht hinzu", color: "warning" });
+            addToast({ title: "Add at least one valid message", color: "warning" });
             return;
         }
 

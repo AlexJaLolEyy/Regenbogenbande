@@ -1,6 +1,8 @@
 "use client"
 
+import { MODAL_CLASSNAMES } from "@/src/lib/components/ui/form-kit";
 import { queryKeys } from "@/src/lib/queries/query-keys";
+import { formatDate } from "@/src/lib/utils/format";
 import { Picture, PictureListItem, Quote, QuoteListItem, QuoteMessage, Video, VideoListItem } from "@/src/lib/types/types";
 import {
     Button,
@@ -34,13 +36,15 @@ export default function ContentAdminPage() {
     const [previewItem, setPreviewItem] = useState<Video | Picture | Quote | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [notFound, setNotFound] = useState(false);
+    const [titleFilter, setTitleFilter] = useState("");
 
     const { data, isLoading } = useQuery({
         queryKey: queryKeys.admin.content(activeTab, page),
         queryFn: () => getPublishedContent(activeTab, page)
     });
 
-    const items = data?.items || [];
+    const allItems = data?.items || [];
     const total = data?.total || 0;
 
     const { isOpen: isUnpublishOpen, onOpen: onUnpublishOpen, onOpenChange: onUnpublishOpenChange } = useDisclosure();
@@ -80,11 +84,14 @@ export default function ContentAdminPage() {
         if (!searchId) return;
         setIsSearching(true);
         setPreviewItem(null);
+        setNotFound(false);
         try {
-            const item = await getContentById(activeTab, searchId);
+            const item = await getContentById(activeTab, searchId.trim());
             setPreviewItem(item);
+            setNotFound(!item);
         } catch (error) {
             console.error("Search failed", error);
+            setNotFound(true);
         } finally {
             setIsSearching(false);
         }
@@ -99,20 +106,20 @@ export default function ContentAdminPage() {
     const titleOf = (item: Video | Picture | Quote | VideoListItem | PictureListItem | QuoteListItem) =>
         'title' in item ? item.title : renderQuotePreview(item);
 
+    const items = titleFilter
+        ? allItems.filter((item) => titleOf(item).toLowerCase().includes(titleFilter.toLowerCase()))
+        : allItems;
+
     return (
         <div className="w-full">
-            {/* Custom Prismatic Background */}
-            
-            <div className="relative z-10">
+            <div className="relative z-10 px-4 pt-6 md:px-8">
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-12"
+                    className="mb-8"
                 >
-                    <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-2">
-                        Content <span className="text-foreground">Access</span>
-                    </h1>
-                    <p className="text-muted-foreground font-medium text-sm">Manage visibility and access control for collective media</p>
+                    <h1 className="mb-1 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Publishing</h1>
+                    <p className="text-sm text-muted-foreground">Choose which items are visible to guests. Everything else stays members-only.</p>
                 </motion.div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -125,14 +132,13 @@ export default function ContentAdminPage() {
                                 setPage(1);
                                 setPreviewItem(null);
                             }}
-                            color="primary"
-                            variant="bordered"
-                            className="p-1 bg-muted backdrop-blur-md rounded-2xl border border-border w-fit"
+                            aria-label="Content type"
+                            variant="underlined"
                             classNames={{
-                                tabList: "gap-2 border-0 bg-transparent p-0",
-                                cursor: "bg-primary text-primary-foreground rounded-xl",
-                                tab: "h-11 px-8 font-semibold transition-all",
-                                tabContent: "text-muted-foreground group-data-[selected=true]:text-primary-foreground"
+                                tabList: "gap-4 border-b border-divider p-0",
+                                cursor: "w-full bg-theme-accent",
+                                tab: "h-11 px-1",
+                                tabContent: "text-muted-foreground group-data-[selected=true]:text-foreground group-data-[selected=true]:font-medium"
                             }}
                         >
                             <Tab key="video" title="Videos" />
@@ -141,7 +147,21 @@ export default function ContentAdminPage() {
                         </Tabs>
 
                         <div className="bg-card/70 backdrop-blur-md border border-border rounded-2xl overflow-x-auto shadow-sm p-6">
-                            <h3 className="text-lg font-semibold text-muted-foreground mb-6 px-2">Published {activeTab}s <span className="text-foreground">({total})</span></h3>
+                            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h3 className="text-lg font-semibold text-foreground">Public {activeTab}s <span className="font-normal text-muted-foreground">({total})</span></h3>
+                                <Input
+                                    isClearable
+                                    aria-label="Filter by title"
+                                    placeholder="Filter this page by title..."
+                                    startContent={<Search size={16} className="text-muted-foreground" />}
+                                    value={titleFilter}
+                                    onValueChange={setTitleFilter}
+                                    onClear={() => setTitleFilter("")}
+                                    variant="bordered"
+                                    className="sm:max-w-64"
+                                    classNames={{ inputWrapper: "bg-muted border-border h-10 rounded-xl focus-within:border-theme-accent!" }}
+                                />
+                            </div>
 
                             {isLoading ? (
                                 <div className="space-y-3 p-2">
@@ -153,7 +173,7 @@ export default function ContentAdminPage() {
                                         <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-muted transition-colors border border-transparent hover:border-border group">
                                             <div className="relative w-20 h-12 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-border group-hover:border-border transition-all shadow-lg">
                                                 {activeTab === 'quote' ? (
-                                                    <div className="flex items-center justify-center h-full text-[10px] text-muted-foreground font-semibold">Quote</div>
+                                                    <div className="flex items-center justify-center h-full text-[11px] text-muted-foreground font-semibold">Quote</div>
                                                 ) : (
                                                     <Image
                                                         src={(item as VideoListItem | PictureListItem).thumbnailUrl}
@@ -164,14 +184,15 @@ export default function ContentAdminPage() {
                                                 )}
                                             </div>
                                             <div className="grow min-w-0">
-                                                <p className="font-bold truncate text-foreground">{titleOf(item)}</p>
-                                                <p className="text-[11px] font-bold text-muted-foreground">by {item.uploadedBy?.username} • {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : 'N/A'}</p>
+                                                <p className="truncate font-medium text-foreground">{titleOf(item)}</p>
+                                                <p className="text-xs text-muted-foreground">by {item.uploadedBy?.username} · {item.publishedAt ? formatDate(item.publishedAt) : 'N/A'}</p>
                                             </div>
+                                            <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">Public</span>
                                             <Button
                                                 size="sm"
                                                 color="danger"
                                                 variant="flat"
-                                                className="rounded-xl font-bold"
+                                                className="rounded-xl font-medium"
                                                 startContent={<EyeOff size={14} />}
                                                 onPress={() => handleToggle(item.id, true)}
                                             >
@@ -182,7 +203,7 @@ export default function ContentAdminPage() {
                                 </div>
                             ) : (
                                 <div className="py-20 text-center">
-                                    <p className="text-muted-foreground font-semibold text-sm">No published content found</p>
+                                    <p className="text-sm text-muted-foreground">{titleFilter ? "No items on this page match your filter." : "Nothing is public yet."}</p>
                                 </div>
                             )}
 
@@ -195,8 +216,8 @@ export default function ContentAdminPage() {
                                         color="primary"
                                         variant="flat"
                                         classNames={{
-                                            cursor: "bg-primary text-primary-foreground rounded-xl",
-                                            item: "rounded-xl font-bold",
+                                            cursor: "bg-accent-soft rounded-xl shadow-none",
+                                            item: "rounded-xl font-medium data-[active=true]:text-theme-accent",
                                             prev: "rounded-xl",
                                             next: "rounded-xl"
                                         }}
@@ -212,23 +233,29 @@ export default function ContentAdminPage() {
                             <h3 className="text-lg font-semibold text-foreground mb-6">Publish by ID</h3>
                             <div className="flex flex-col gap-6">
                                 <Input
-                                    label="CONTENT ID"
+                                    label="Item ID"
                                     placeholder="Paste ID here..."
-                                    variant="flat"
+                                    variant="bordered"
                                     value={searchId}
                                     onValueChange={setSearchId}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                     classNames={{
-                                        inputWrapper: "bg-muted h-14 rounded-2xl border border-border hover:border-border transition-all",
-                                        label: "text-muted-foreground font-bold",
+                                        inputWrapper: "bg-muted h-12 rounded-xl border border-border hover:border-foreground/30 focus-within:border-theme-accent!",
+                                        label: "text-muted-foreground",
                                         input: "font-mono"
                                     }}
                                     endContent={
-                                        <Button isIconOnly size="sm" variant="light" className="hover:bg-muted rounded-xl transition-all" onPress={handleSearch} isLoading={isSearching}>
+                                        <Button isIconOnly size="sm" variant="light" aria-label="Find item" className="hover:bg-muted rounded-xl transition-all" onPress={handleSearch} isLoading={isSearching}>
                                             <Search size={18} className="text-muted-foreground" />
                                         </Button>
                                     }
                                 />
+
+                                {notFound && (
+                                    <p role="alert" className="rounded-xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
+                                        No {activeTab} found with that ID. Check the ID and the selected tab.
+                                    </p>
+                                )}
 
                                 {previewItem && (
                                     <motion.div
@@ -236,8 +263,8 @@ export default function ContentAdminPage() {
                                         animate={{ opacity: 1, scale: 1 }}
                                         className="p-4 rounded-2xl bg-muted border border-border"
                                     >
-                                        <p className="text-[10px] text-foreground uppercase font-semibold tracking-widest mb-4">Identification Preview</p>
-                                        <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-black/40 border border-border shadow-2xl">
+                                        <p className="mb-4 flex items-center gap-2 text-xs font-medium text-muted-foreground">Preview {previewItem.isPublic && <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">Public</span>}</p>
+                                        <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-black/40 border border-border">
                                             {(activeTab === 'video' || activeTab === 'picture') && (
                                                 <Image
                                                     src={(previewItem as Video | Picture).thumbnailUrl}
@@ -252,13 +279,13 @@ export default function ContentAdminPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <p className="font-semibold truncate text-foreground uppercase tracking-tight text-lg">{"title" in previewItem ? previewItem.title : "Quote"}</p>
-                                        <p className="text-[11px] font-bold text-muted-foreground mb-6">Uploaded by {previewItem.uploadedBy?.username}</p>
+                                        <p className="truncate text-base font-semibold text-foreground">{"title" in previewItem ? previewItem.title : "Quote"}</p>
+                                        <p className="mb-6 text-xs text-muted-foreground">Uploaded by {previewItem.uploadedBy?.username}</p>
 
                                         <Button
                                             fullWidth
                                             color={previewItem.isPublic ? "danger" : "primary"}
-                                            className={`h-12 rounded-2xl font-semibold ${previewItem.isPublic ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-primary text-primary-foreground'}`}
+                                            className={`h-12 rounded-xl font-medium ${previewItem.isPublic ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-primary text-primary-foreground'}`}
                                             startContent={previewItem.isPublic ? <EyeOff size={18} /> : <Eye size={18} />}
                                             onPress={() => handleToggle(previewItem.id, previewItem.isPublic)}
                                             isLoading={isPublishing}
@@ -269,12 +296,6 @@ export default function ContentAdminPage() {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 px-6 py-4 bg-muted rounded-2xl border border-border backdrop-blur-md">
-                            <Search size={16} className="text-foreground shrink-0" />
-                            <p className="text-[10px] text-muted-foreground font-bold leading-relaxed">
-                                Tip: Pasting a direct ID sidesteps database hydration lag.
-                            </p>
-                        </div>
                     </div>
                 </div>
 
@@ -283,29 +304,18 @@ export default function ContentAdminPage() {
                     isOpen={isUnpublishOpen}
                     onOpenChange={onUnpublishOpenChange}
                     backdrop="blur"
-                    classNames={{
-                        base: "bg-elevated border border-border rounded-2xl",
-                    }}
+                    classNames={MODAL_CLASSNAMES}
                 >
                     <ModalContent>
                         {(onClose) => (
                             <>
-                                <ModalHeader className="flex flex-row gap-2 items-center whitespace-nowrap pt-8 px-8 pb-4 border-b border-border">
-                                    Revoke <span className="text-danger">Visibility</span>
-                                </ModalHeader>
-                                <ModalBody className="px-8 py-6">
-                                    <p className="text-muted-foreground">Are you sure you want to unpublish this {activeTab}?</p>
-                                    <p className="text-xs text-danger/60 mt-4 font-bold">
-                                        Action: Regular members will lose access, but the archive remains intact.
-                                    </p>
+                                <ModalHeader>Unpublish this {activeTab}?</ModalHeader>
+                                <ModalBody className="py-6">
+                                    <p className="text-sm text-muted-foreground">Guests will no longer see it. Members keep access and nothing is deleted.</p>
                                 </ModalBody>
-                                <ModalFooter className="px-8 pb-8">
-                                    <div className="grid grid-cols-2 gap-3 w-full">
-                                        <Button variant="flat" className="h-12 rounded-xl font-bold bg-muted border border-border" onPress={onClose}>CANCEL</Button>
-                                        <Button color="danger" className="h-12 rounded-xl font-bold" onPress={() => confirmUnpublish(onClose)}>
-                                            UNPUBLISH
-                                        </Button>
-                                    </div>
+                                <ModalFooter>
+                                    <Button variant="light" className="h-11 rounded-xl" onPress={onClose}>Cancel</Button>
+                                    <Button color="danger" className="h-11 rounded-xl font-medium" onPress={() => confirmUnpublish(onClose)}>Unpublish</Button>
                                 </ModalFooter>
                             </>
                         )}
