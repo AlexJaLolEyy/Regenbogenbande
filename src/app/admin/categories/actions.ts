@@ -2,12 +2,12 @@
 
 import { requireAdminOrOwner } from "@/src/lib/auth-utils";
 import { addCategory as _addCategory, deleteCategory as _deleteCategory, updateCategory as _updateCategory } from "@/src/lib/db/mutations/categories";
-import { getAllCategories as _getAllCategories } from "@/src/lib/db/selects/categories";
+import { getCategoriesWithCounts as _getCategoriesWithCounts } from "@/src/lib/db/selects/categories";
 import { revalidatePath } from "next/cache";
 
 export async function fetchCategories() {
     await requireAdminOrOwner();
-    return await _getAllCategories();
+    return await _getCategoriesWithCounts();
 }
 
 export async function createCategory(name: string, iconUrl?: string) {
