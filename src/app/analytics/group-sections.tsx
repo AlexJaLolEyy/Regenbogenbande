@@ -106,7 +106,7 @@ export async function GroupSections({ range, isAdmin }: { range: RangeKey; isAdm
                             <li key={`${o.type}-${o.id}`} className="flex items-center gap-3">
                                 <span className="w-12 font-mono text-xs text-faint">{o.year}</span>
                                 <Link href={contentHref(o.type, o.id)} className="flex-1 truncate hover:underline">{o.title || "Untitled"}</Link>
-                                <span className="text-[10px] uppercase tracking-wide text-faint">{o.type}</span>
+                                <span className="text-[11px] uppercase tracking-wide text-faint">{o.type}</span>
                             </li>
                         ))}
                     </ul>

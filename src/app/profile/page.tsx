@@ -1,52 +1,67 @@
 "use client"
 
-import { signOut, useSession } from "@/src/lib/auth-client";
-import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
-import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
-import { AccentId, useAccent } from "@/src/lib/hooks/use-accent";
-import { cn } from "@/src/lib/utils";
-import { Button, Input, Skeleton } from "@heroui/react";
-import { motion } from "framer-motion";
-import { Camera, Crown, LogOut, Monitor, Moon, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { updateDisplayName, updateProfilePicture } from "./actions";
-
-const FIELD = {
-    inputWrapper: "bg-muted h-12 rounded-xl border border-border hover:border-foreground/30 transition-colors data-[focus=true]:border-theme-accent",
-    label: "text-sm font-medium text-muted-foreground",
-}
+import { signOut, useSession } from "@/src/lib/auth-client"
+import { getEffectiveRole } from "@/src/lib/auth-utils-shared"
+import { ACCENT_OPTIONS } from "@/src/lib/accents"
+import { RolePill } from "@/src/lib/components/navigation/role-pill"
+import { FIELD_INPUT, PRIMARY_CTA } from "@/src/lib/components/ui/form-kit"
+import { UserAvatar } from "@/src/lib/components/ui/user-avatar"
+import { useAccent } from "@/src/lib/hooks/use-accent"
+import { cn } from "@/src/lib/utils"
+import { addToast, Button, Input, Skeleton } from "@heroui/react"
+import { motion } from "framer-motion"
+import { Camera, Check, LogOut } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
+import { updateDisplayName, updateProfilePicture } from "./actions"
 
 const THEME_OPTIONS = [
-    { id: "light", label: "Light", icon: Sun },
-    { id: "dark", label: "Dark", icon: Moon },
-    { id: "system", label: "System", icon: Monitor },
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+    { id: "system", label: "System" },
 ] as const
 
-// Accent palettes are defined in globals.css ([data-accent]).
-const ACCENTS: { id: AccentId; label: string; color: string }[] = [
-    { id: "neutral", label: "Neutral", color: "var(--foreground)" },
-    { id: "ocean", label: "Ocean Blue", color: "#3E82C7" },
-    { id: "forest", label: "Forest Green", color: "#3F7D5B" },
-    { id: "teal", label: "Teal", color: "#2E9090" },
-    { id: "wine", label: "Wine Red", color: "#9C3B49" },
-    { id: "pink", label: "Dusty Pink", color: "#C56A8E" },
-    { id: "violet", label: "Violet", color: "#7A6AC6" },
-]
+/** Tiny window mock: sidebar + content lines, in fixed preview colors. */
+function WindowMock({ mode }: { mode: "light" | "dark" }) {
+    return (
+        <div data-preview={mode} className="flex h-full w-full gap-1.5 p-2" style={{ background: "var(--pv-bg)" }}>
+            <div className="w-1/4 rounded-sm" style={{ background: "var(--pv-surface)", border: "1px solid var(--pv-line)" }} />
+            <div className="flex flex-1 flex-col gap-1.5">
+                <div className="h-2 w-2/3 rounded-sm" style={{ background: "var(--pv-ink)", opacity: 0.7 }} />
+                <div className="flex flex-1 gap-1.5">
+                    <div className="flex-1 rounded-sm" style={{ background: "var(--pv-surface)", border: "1px solid var(--pv-line)" }} />
+                    <div className="flex-1 rounded-sm" style={{ background: "var(--pv-surface)", border: "1px solid var(--pv-line)" }} />
+                </div>
+            </div>
+        </div>
+    )
+}
 
-const Card = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-    <div className={cn("rounded-2xl border border-border bg-card/70 p-8 shadow-sm backdrop-blur-md", className)}>
-        {children}
-    </div>
-)
+function ThemePreview({ id }: { id: (typeof THEME_OPTIONS)[number]["id"] }) {
+    if (id === "system") {
+        return (
+            <div className="relative h-full w-full">
+                <div className="absolute inset-0"><WindowMock mode="light" /></div>
+                <div className="absolute inset-0" style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}><WindowMock mode="dark" /></div>
+            </div>
+        )
+    }
+    return <WindowMock mode={id} />
+}
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="mb-6 text-sm font-medium text-muted-foreground">{children}</h3>
+const Section = ({ title, description, children }: { title: string; description: string; children: React.ReactNode }) => (
+    <section className="grid gap-6 border-b border-divider py-8 first:pt-0 last:border-b-0 md:grid-cols-3">
+        <div>
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+        <div className="md:col-span-2">{children}</div>
+    </section>
 )
 
 export default function ProfilePage() {
-    const { data: session, isPending: isSessionPending } = useSession();
+    const { data: session, isPending: isSessionPending } = useSession()
     const router = useRouter()
     const { theme, setTheme } = useTheme()
     const { accent: activeAccent, setAccent } = useAccent()
@@ -54,31 +69,27 @@ export default function ProfilePage() {
     const [isLoading, setIsLoading] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
     const [mounted, setMounted] = useState(false)
-    const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null)
-    const role = getEffectiveRole(session);
+    const role = getEffectiveRole(session)
 
-    // Form states - use null for initial state to allow fallback to session name
+    // null = not edited yet, fall back to the session name
     const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
-    const displayName = localDisplayName ?? session?.user?.name ?? "";
+    const displayName = localDisplayName ?? session?.user?.name ?? ""
 
     useEffect(() => {
         setMounted(true)
     }, [])
     useEffect(() => {
-        if (!isSessionPending && !session?.user) {
-            router.push('/login');
-        }
-    }, [session, isSessionPending, router]);
+        if (!isSessionPending && !session?.user) router.push("/login")
+    }, [session, isSessionPending, router])
 
     const handleUpdateDisplayName = async () => {
         setIsLoading(true)
-        setMessage(null)
         const res = await updateDisplayName(displayName)
         if (res.success) {
-            setMessage({ type: "success", text: "Display name updated." })
-            setLocalDisplayName(null);
+            addToast({ title: "Display name updated", color: "success" })
+            setLocalDisplayName(null)
         } else {
-            setMessage({ type: "error", text: res.error || "Failed to update display name." })
+            addToast({ title: res.error || "Failed to update display name", color: "danger" })
         }
         setIsLoading(false)
     }
@@ -89,21 +100,18 @@ export default function ProfilePage() {
         if (!file) return
 
         setIsUploading(true)
-        setMessage(null)
         try {
             const formData = new FormData()
             formData.append("avatar", file)
             const uploadRes = await fetch("/api/profile/avatar", { method: "POST", body: formData })
             const uploadData = await uploadRes.json()
-            if (!uploadRes.ok || !uploadData.url) {
-                throw new Error(uploadData.error || "Upload failed")
-            }
+            if (!uploadRes.ok || !uploadData.url) throw new Error(uploadData.error || "Upload failed")
             const res = await updateProfilePicture(uploadData.url)
             if (!res.success) throw new Error(res.error)
-            setMessage({ type: "success", text: "Profile picture updated." })
+            addToast({ title: "Profile picture updated", color: "success" })
             router.refresh()
         } catch (err) {
-            setMessage({ type: "error", text: err instanceof Error ? err.message : "Failed to update profile picture." })
+            addToast({ title: err instanceof Error ? err.message : "Failed to update profile picture", color: "danger" })
         } finally {
             setIsUploading(false)
         }
@@ -115,190 +123,168 @@ export default function ProfilePage() {
                 onSuccess: () => {
                     router.push("/login")
                     router.refresh()
-                }
-            }
+                },
+            },
         })
     }
 
     if (isSessionPending) {
         return (
             <div className="w-full text-foreground">
-                <div className="container mx-auto max-w-5xl p-6 pt-8">
+                <div className="container mx-auto max-w-4xl p-6 pt-8">
                     <Skeleton className="mb-2 h-9 w-40 rounded-lg" />
                     <Skeleton className="mb-10 h-4 w-64 rounded" />
-                    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                        <Skeleton className="h-72 rounded-2xl md:col-span-1" />
-                        <Skeleton className="h-72 rounded-2xl md:col-span-2" />
-                    </div>
+                    <Skeleton className="h-72 rounded-2xl" />
                 </div>
             </div>
         )
     }
 
+    const accentLabel = ACCENT_OPTIONS.find((a) => a.id === activeAccent)?.label ?? "Default"
+
     return (
         <div className="w-full text-foreground">
-            <div className="container mx-auto max-w-5xl p-6 pt-8">
-                <motion.div
-                    initial={{ opacity: 0, y: -12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-10"
-                >
-                    <h1 className="mb-1 text-3xl font-semibold tracking-tight">Profile</h1>
-                    <p className="text-sm text-muted-foreground">Manage your account and appearance</p>
+            <div className="container mx-auto max-w-4xl p-6 pt-8">
+                <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                    <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">Settings</h1>
+                    <p className="text-sm text-muted-foreground">Manage your profile, appearance and account</p>
                 </motion.div>
-                        <div className="mt-4 grid grid-cols-1 gap-8 md:grid-cols-3">
-                            {/* Profile card */}
-                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="md:col-span-1">
-                                <Card className="flex flex-col items-center gap-6">
-                                    <div className="relative">
-                                        <UserAvatar
-                                            src={session?.user?.image || undefined}
-                                            className="h-32 w-32 text-4xl ring-4 ring-border"
-                                            name={session?.user?.name?.[0]}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isUploading || role === "guest"}
-                                            aria-label="Change profile picture"
-                                            className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-card bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-                                        >
-                                            {isUploading ? (
-                                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                                            ) : (
-                                                <Camera size={16} />
-                                            )}
-                                        </button>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/webp"
-                                            className="hidden"
-                                            onChange={handleAvatarSelected}
-                                        />
-                                    </div>
 
-                                    <div className="text-center">
-                                        <h2 className="mb-1 text-2xl font-semibold tracking-tight">{session?.user?.name}</h2>
-                                        <p className="text-sm text-muted-foreground">{session?.user?.email || "No email"}</p>
-
-                                        <div className="mt-5 flex items-center justify-center">
-                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                                                {role === 'owner' ? <Crown size={12} /> : role === 'admin' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
-                                                <span className="capitalize">{role}</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </motion.div>
-
-                            {/* Settings */}
-                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 md:col-span-2">
-                                <Card>
-                                    <SectionTitle>Account</SectionTitle>
-                                    <div className="flex flex-col gap-6">
-                                        <Input
-                                            label="Display name"
-                                            labelPlacement="outside"
-                                            placeholder="Enter your name"
-                                            value={displayName}
-                                            onValueChange={setLocalDisplayName}
-                                            variant="bordered"
-                                            classNames={FIELD}
-                                        />
-                                        <Input
-                                            label="Email"
-                                            labelPlacement="outside"
-                                            value={session?.user?.email || ""}
-                                            isReadOnly
-                                            variant="bordered"
-                                            description={<span className="text-xs text-faint">Linked to your Discord account</span>}
-                                            classNames={{ ...FIELD, inputWrapper: cn(FIELD.inputWrapper, "opacity-60") }}
-                                        />
-                                    </div>
-
-                                    {message && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.97 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className={cn(
-                                                "mt-6 rounded-xl border p-3 text-center text-sm",
-                                                message.type === 'success'
-                                                    ? 'border-success/30 bg-success/10 text-success'
-                                                    : 'border-danger/30 bg-danger/10 text-danger'
-                                            )}
-                                        >
-                                            {message.text}
-                                        </motion.div>
-                                    )}
-
-                                    <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-divider pt-6 sm:flex-row">
-                                        <Button
-                                            variant="flat"
-                                            className="h-11 w-full rounded-xl bg-danger/10 px-6 font-medium text-danger hover:bg-danger/20 sm:w-auto"
-                                            startContent={<LogOut size={18} />}
-                                            onPress={handleLogout}
-                                        >
-                                            Log out
-                                        </Button>
-                                        <Button
-                                            className="h-11 w-full rounded-xl bg-primary px-8 font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
-                                            onPress={handleUpdateDisplayName}
-                                            isLoading={isLoading}
-                                        >
-                                            Save changes
-                                        </Button>
-                                    </div>
-                                </Card>
-
-                                <Card>
-                                    <SectionTitle>Appearance</SectionTitle>
-
-                                    <p className="mb-3 text-sm font-medium text-foreground">Theme</p>
-                                    <div className="mb-8 inline-flex gap-1 rounded-xl border border-border bg-muted p-1">
-                                        {THEME_OPTIONS.map(({ id, label, icon: Icon }) => {
-                                            const active = mounted && theme === id
-                                            return (
-                                                <button
-                                                    key={id}
-                                                    type="button"
-                                                    onClick={() => setTheme(id)}
-                                                    aria-pressed={active}
-                                                    className={cn(
-                                                        "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors",
-                                                        active
-                                                            ? "bg-primary font-medium text-primary-foreground"
-                                                            : "text-muted-foreground hover:text-foreground"
-                                                    )}
-                                                >
-                                                    <Icon size={14} /> {label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-
-                                    <p className="mb-1 text-sm font-medium text-foreground">Accent color</p>
-                                    <p className="mb-3 text-xs text-faint">Used sparingly for focus rings, active items and charts.</p>
-                                    <div className="flex flex-wrap gap-3">
-                                        {ACCENTS.map((accent) => (
-                                            <button
-                                                key={accent.id}
-                                                type="button"
-                                                onClick={() => setAccent(accent.id)}
-                                                title={accent.label}
-                                                aria-label={accent.label}
-                                                aria-pressed={mounted && activeAccent === accent.id}
-                                                className={cn(
-                                                    "h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 outline-offset-2",
-                                                    mounted && activeAccent === accent.id ? "border-foreground" : "border-transparent"
-                                                )}
-                                                style={{ background: accent.color }}
-                                            />
-                                        ))}
-                                    </div>
-                                </Card>
-                            </motion.div>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-card/70 px-6 py-8 shadow-sm backdrop-blur-md md:px-8">
+                    <Section title="Profile" description="Your avatar and the name other people see.">
+                        <div className="flex flex-col gap-6">
+                            <div className="flex items-center gap-5">
+                                <div className="relative">
+                                    <UserAvatar
+                                        src={session?.user?.image || undefined}
+                                        className="h-20 w-20 text-2xl ring-2 ring-border"
+                                        name={session?.user?.name?.[0]}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading || role === "guest"}
+                                        aria-label="Change profile picture"
+                                        className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-lg border-2 border-card bg-primary text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 outline-theme-accent disabled:opacity-50"
+                                    >
+                                        {isUploading ? (
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                                        ) : (
+                                            <Camera size={14} />
+                                        )}
+                                    </button>
+                                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarSelected} />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-semibold tracking-tight">{session?.user?.name}</p>
+                                    <div className="mt-1"><RolePill role={role} /></div>
+                                </div>
+                            </div>
+                            <Input
+                                label="Display name"
+                                labelPlacement="outside"
+                                placeholder="Enter your name"
+                                value={displayName}
+                                onValueChange={setLocalDisplayName}
+                                variant="bordered"
+                                classNames={FIELD_INPUT}
+                            />
+                            <div className="flex justify-end">
+                                <Button className={cn(PRIMARY_CTA, "flex-none px-8")} onPress={handleUpdateDisplayName} isLoading={isLoading}>
+                                    Save changes
+                                </Button>
+                            </div>
                         </div>
+                    </Section>
+
+                    <Section title="Appearance" description="Theme and accent color. The accent is used sparingly for focus, active items and charts.">
+                        <p className="mb-3 text-sm font-medium">Theme</p>
+                        <div className="mb-8 grid grid-cols-3 gap-3" role="radiogroup" aria-label="Theme">
+                            {THEME_OPTIONS.map(({ id, label }) => {
+                                const active = mounted && theme === id
+                                return (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={active}
+                                        onClick={() => setTheme(id)}
+                                        className={cn(
+                                            "group flex flex-col gap-2 rounded-xl border p-2 text-left transition-colors focus-visible:outline-2 outline-theme-accent",
+                                            active ? "border-theme-accent bg-accent-soft" : "border-border hover:border-foreground/30"
+                                        )}
+                                    >
+                                        <div className="aspect-video overflow-hidden rounded-lg border border-border">
+                                            <ThemePreview id={id} />
+                                        </div>
+                                        <span className="flex items-center justify-between px-1 text-sm">
+                                            {label}
+                                            {active && <Check size={14} className="text-theme-accent" />}
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        <p className="mb-3 text-sm font-medium">Accent color</p>
+                        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Accent color">
+                            {ACCENT_OPTIONS.map((a) => {
+                                const active = mounted && activeAccent === a.id
+                                return (
+                                    <button
+                                        key={a.id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={active}
+                                        onClick={() => setAccent(a.id)}
+                                        className={cn(
+                                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-2 outline-theme-accent",
+                                            active ? "border-foreground/40 bg-muted font-medium" : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                                        )}
+                                    >
+                                        <span data-swatch={a.id} className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white">
+                                            {active && <Check size={12} className={a.id === "neutral" ? "text-background" : ""} />}
+                                        </span>
+                                        {a.label}
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/50 p-3">
+                            <span className="text-xs text-faint">Preview · {accentLabel}</span>
+                            <span className="inline-flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm">
+                                <span className="h-4 w-0.5 rounded-full bg-theme-accent" />
+                                <span className="text-theme-accent">Active item</span>
+                            </span>
+                            <span className="rounded-lg border-2 border-theme-accent px-3 py-1 text-sm">Focus ring</span>
+                        </div>
+                    </Section>
+
+                    <Section title="Account" description="Sign-in details for this account.">
+                        <div className="flex flex-col gap-6">
+                            <Input
+                                label="Email"
+                                labelPlacement="outside"
+                                value={session?.user?.email || ""}
+                                isReadOnly
+                                variant="bordered"
+                                description={<span className="text-xs text-faint">Linked to your Discord account</span>}
+                                classNames={{ ...FIELD_INPUT, inputWrapper: cn(FIELD_INPUT.inputWrapper, "opacity-60") }}
+                            />
+                            <div>
+                                <Button
+                                    variant="bordered"
+                                    className="h-11 rounded-xl border-danger/40 px-6 font-medium text-danger hover:bg-danger/10"
+                                    startContent={<LogOut size={18} />}
+                                    onPress={handleLogout}
+                                >
+                                    Sign out
+                                </Button>
+                            </div>
+                        </div>
+                    </Section>
+                </motion.div>
             </div>
         </div>
     )

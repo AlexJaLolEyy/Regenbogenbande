@@ -359,3 +359,7 @@ html[data-accent] {
 @keyframes aura-drift-a { 0%,100% { transform: translate3d(-8%, -6%, 0) scale(1); } 50% { transform: translate3d(10%, 8%, 0) scale(1.12); } }
 @keyframes aura-drift-b { 0%,100% { transform: translate3d(8%, 4%, 0) scale(1.05); } 50% { transform: translate3d(-10%, -8%, 0) scale(0.95); } }
 @keyframes aura-drift-c { 0%,100% { transform: translate3d(0, 8%, 0) scale(0.95); } 50% { transform: translate3d(6%, -10%, 0) scale(1.1); } }
+
+/* Theme preview cards in Settings (fixed colors, independent of current theme). */
+[data-preview="light"] { --pv-bg: #EFEBE1; --pv-surface: #FBFAF5; --pv-line: #E0DACC; --pv-ink: #23262E; }
+[data-preview="dark"]  { --pv-bg: #12151C; --pv-surface: #1C212C; --pv-line: #2A303D; --pv-ink: #E7E9EE; }

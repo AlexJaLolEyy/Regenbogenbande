@@ -8,7 +8,7 @@ import { GroupSections } from "./group-sections";
 import { MeSections } from "./me-sections";
 import { SectionSkeleton } from "./parts";
 
-export const metadata = { title: "Analytics" };
+export const metadata = { title: "Statistics" };
 
 const RANGE_LABELS: Record<(typeof RANGE_KEYS)[number], string> = {
     "7d": "7 days",
@@ -21,7 +21,7 @@ const RANGE_LABELS: Record<(typeof RANGE_KEYS)[number], string> = {
 const pill = (active: boolean) =>
     cn(
         "rounded-lg px-4 py-2 text-sm transition-colors",
-        active ? "bg-primary font-medium text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        active ? "bg-accent-soft font-medium text-theme-accent" : "text-muted-foreground hover:text-foreground"
     );
 
 export default async function AnalyticsPage({
@@ -43,7 +43,7 @@ export default async function AnalyticsPage({
         <div className="w-full text-foreground">
             <div className="container mx-auto max-w-6xl p-6 pt-8">
                 <div className="mb-8">
-                    <h1 className="mb-1 text-3xl font-semibold tracking-tight">Analytics</h1>
+                    <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">Statistics</h1>
                     <p className="text-sm text-muted-foreground">
                         {tab === "me" ? "Your activity and the reach of your uploads" : "How the whole Bande is doing"} · {range.label}
                     </p>

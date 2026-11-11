@@ -67,7 +67,7 @@ export function ContentList({
                     <Link href={contentHref(r.type, r.id)} className="flex-1 truncate hover:underline">
                         {r.title || "Untitled"}
                     </Link>
-                    <span className="text-[10px] uppercase tracking-wide text-faint">{r.type}</span>
+                    <span className="text-[11px] uppercase tracking-wide text-faint">{r.type}</span>
                     <span className="w-20 text-right font-mono text-muted-foreground">
                         {metric === "views" && `${r.views} views`}
                         {metric === "rating" && `${(r.ratingAvg ?? 0).toFixed(1)} ★ (${r.ratingCount})`}

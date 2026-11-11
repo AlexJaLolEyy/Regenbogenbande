@@ -159,7 +159,7 @@ export function Heatmap({ data }: { data: number[][] }) {
                 </div>
                 {data.map((row, dow) => (
                     <div key={dow} className="mb-0.5 flex items-center gap-1">
-                        <span className="w-8 text-[10px] text-faint">{DAYS[dow]}</span>
+                        <span className="w-8 text-[11px] text-faint">{DAYS[dow]}</span>
                         <div className="grid flex-1 gap-0.5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
                             {row.map((count, hour) => (
                                 <div

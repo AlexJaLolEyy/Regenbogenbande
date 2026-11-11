@@ -12,7 +12,7 @@ const LABELS: Record<string, string> = {
   videos: "Videos",
   pictures: "Pictures",
   quotes: "Quotes",
-  profile: "Profile",
+  profile: "Settings",
   admin: "Admin",
   categories: "Categories",
   users: "Users",

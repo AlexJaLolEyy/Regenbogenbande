@@ -2,6 +2,7 @@ import { getMeAnalytics } from "@/src/lib/analytics/me";
 import type { ResolvedRange } from "@/src/lib/analytics/range";
 import { Heatmap, RatingBars, UploadsChart, ViewsChart } from "@/src/lib/components/analytics/charts-lazy";
 import { StatTile } from "@/src/lib/components/ui/stat-tile";
+import { Eye, Film, MessageSquare, Star, Tag, ThumbsUp, Upload, Quote } from "lucide-react";
 import Link from "next/link";
 import { ChartBox, ContentList, Section } from "./parts";
 
@@ -16,15 +17,29 @@ export async function MeSections({ userId, range }: { userId: string; range: Res
 
     return (
         <div className="flex flex-col gap-6">
+            {kpis.uploads.total === 0 && (
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-10 text-center">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-theme-accent"><Film size={20} /></span>
+                    <div>
+                        <p className="font-medium">No uploads in this period</p>
+                        <p className="text-sm text-muted-foreground">Your upload statistics will show up here.</p>
+                    </div>
+                    <Link href="/videos/upload" className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90">
+                        Upload your first clip
+                    </Link>
+                </div>
+            )}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <StatTile
                     label="Uploads"
+                    icon={Upload}
                     value={kpis.uploads.total}
                     color="var(--theme-accent)"
                     hint={`${kpis.uploads.video} videos · ${kpis.uploads.picture} pictures · ${kpis.uploads.quote} quotes`}
                 />
                 <StatTile
                     label="Views received"
+                    icon={Eye}
                     value={kpis.viewsReceived.current}
                     color="var(--chart-2)"
                     delta={pct(kpis.viewsReceived.current, kpis.viewsReceived.previous)}
@@ -32,15 +47,16 @@ export async function MeSections({ userId, range }: { userId: string; range: Res
                 />
                 <StatTile
                     label="Average rating received"
+                    icon={Star}
                     value={kpis.avgRatingReceived != null ? kpis.avgRatingReceived.toFixed(1) : "–"}
                     color="var(--gold)"
                     hint="all time"
                 />
-                <StatTile label="Ratings given" value={kpis.ratingsGiven} color="var(--chart-3)" />
-                <StatTile label="Comments written" value={kpis.commentsWritten} />
-                <StatTile label="Comment karma" value={kpis.commentKarma} hint="net votes, all time" />
-                <StatTile label="Times tagged" value={kpis.timesTagged} />
-                <StatTile label="Times quoted" value={kpis.timesQuoted} />
+                <StatTile icon={ThumbsUp} label="Ratings given" value={kpis.ratingsGiven} color="var(--chart-3)" />
+                <StatTile icon={MessageSquare} label="Comments written" value={kpis.commentsWritten} />
+                <StatTile icon={ThumbsUp} label="Comment karma" value={kpis.commentKarma} hint="net votes, all time" />
+                <StatTile icon={Tag} label="Times tagged" value={kpis.timesTagged} />
+                <StatTile icon={Quote} label="Times quoted" value={kpis.timesQuoted} />
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
