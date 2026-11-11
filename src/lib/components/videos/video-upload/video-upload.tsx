@@ -1,4 +1,5 @@
 "use client"
+import { FIELD_INPUT, FIELD_TEXTAREA, FIELD_SELECT, PROGRESS_CLASSNAMES, PRIMARY_CTA, SECONDARY_CTA } from "@/src/lib/components/ui/form-kit";
 import { CloudUpload, Film, Info, Link as LinkIcon, Scissors, X } from "lucide-react";
 
 import { createVideo } from "@/src/app/(content)/videos/(detail)/upload/actions";
@@ -337,7 +338,7 @@ export default function VideoUpload() {
   }
 
   return (
-    <PageShell variant="aurora">
+    <PageShell variant="scroll">
       <div className="w-full h-full pt-8 pb-4 md:pb-8 px-4 md:px-8 min-h-screen">
 
         <Modal isOpen={errorModalOpen} onOpenChange={setErrorModalOpen} backdrop="blur">
@@ -518,10 +519,7 @@ export default function VideoUpload() {
                               value={linkUrl}
                               onValueChange={setLinkUrl}
                               variant="bordered"
-                              classNames={{
-                                inputWrapper: "bg-muted border-border h-12 hover:border-border transition-colors focus-within:border-theme-accent!",
-                                input: "text-foreground placeholder:text-faint"
-                              }}
+                              classNames={FIELD_INPUT}
                             />
                             <Button
                               type="button"
@@ -572,7 +570,7 @@ export default function VideoUpload() {
                       </Button>
                     )}
                     {editSpec && editSpec.segments.length > 0 && (
-                      <Chip size="sm" variant="flat" className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 text-xs font-medium">
+                      <Chip size="sm" variant="flat" className="bg-success/15 text-success border border-success/20 text-xs font-medium">
                         Edited: {editSpec.segments.length} segment{editSpec.segments.length !== 1 ? 's' : ''}
                       </Chip>
                     )}
@@ -664,15 +662,11 @@ export default function VideoUpload() {
                           label="Title"
                           variant="bordered"
                           labelPlacement="outside"
-                          placeholder="e.g. Wieso hat der ne lilane RPG?"
+                          placeholder="e.g. The funniest clutch of the night"
                           isRequired
                           isInvalid={!!errors.title}
                           errorMessage="Title is required"
-                          classNames={{
-                            inputWrapper: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                            input: "text-foreground placeholder:text-faint",
-                            label: "text-sm font-medium text-muted-foreground"
-                          }}
+                          classNames={FIELD_INPUT}
                         />
                       )}
                     />
@@ -684,11 +678,7 @@ export default function VideoUpload() {
                       labelPlacement="outside"
                       placeholder="Select Category"
                       isRequired
-                      classNames={{
-                        trigger: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                        label: "text-sm font-medium text-muted-foreground",
-                        value: "text-foreground font-medium"
-                      }}
+                      classNames={FIELD_SELECT}
                       {...register("categoryId", { required: true })}
                       items={categories}
                       renderValue={(items) => {
@@ -735,11 +725,7 @@ export default function VideoUpload() {
                         labelPlacement="outside"
                         placeholder="Tell the story behind this clip..."
                         minRows={4}
-                        classNames={{
-                          inputWrapper: "bg-muted border-border hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                          input: "text-foreground leading-relaxed placeholder:text-faint",
-                          label: "text-sm font-medium text-muted-foreground"
-                        }}
+                        classNames={FIELD_TEXTAREA}
                       />
                     )}
                   />
@@ -776,11 +762,7 @@ export default function VideoUpload() {
                     selectionMode="multiple"
                     isRequired
                     isInvalid={!!errors.participants}
-                    classNames={{
-                      trigger: "bg-muted border-border min-h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                      label: "text-sm font-medium text-muted-foreground",
-                      value: "text-foreground"
-                    }}
+                    classNames={FIELD_SELECT}
                     {...register("participants", { required: true })}
                     items={participants}
                     isMultiline
@@ -874,11 +856,7 @@ export default function VideoUpload() {
                         aria-label="Upload progress"
                         value={uploadStatus.progress}
                         isIndeterminate={uploadStatus.progress === undefined}
-                        classNames={{
-                          base: "h-1.5",
-                          indicator: "bg-theme-accent",
-                          track: "bg-muted"
-                        }}
+                        classNames={PROGRESS_CLASSNAMES}
                       />
                     </motion.div>
                   )}
@@ -886,7 +864,7 @@ export default function VideoUpload() {
                   <div className="flex gap-4">
                     <Button
                       size="lg"
-                      className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
+                      className={PRIMARY_CTA}
                       startContent={<Film size="1em" />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
@@ -898,7 +876,7 @@ export default function VideoUpload() {
                       href="/videos"
                       variant="bordered"
                       size="lg"
-                      className="px-8 h-12 rounded-xl border-border text-foreground hover:bg-muted font-medium text-sm"
+                      className={SECONDARY_CTA}
                     >
                       Cancel
                     </Button>

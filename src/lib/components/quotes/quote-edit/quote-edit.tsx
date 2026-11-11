@@ -1,4 +1,5 @@
 "use client";
+import { FIELD_SELECT, PRIMARY_CTA, SECONDARY_CTA, PROGRESS_CLASSNAMES } from "@/src/lib/components/ui/form-kit";
 import { computeBubbleLayout } from "../bubble-layout";
 import { GripHorizontal, Info, MessageCircleMore, Plus, Quote as QuoteIcon, Save, Trash2 } from "lucide-react";
 
@@ -7,7 +8,7 @@ import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { getAllUsers } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
-import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
+import { PageShell } from "@/src/lib/components/ui/page-shell";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { QuoteActionInput } from "@/src/lib/utils/quote-utils";
 import { addToast, Button, Chip, DateInput, Progress, Select, SelectItem, Textarea } from "@heroui/react";
@@ -158,13 +159,13 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
     const getUser = (id: string) => users.find(u => u.id === id);
 
     return (
-        <AuroraBackground className="fixed inset-x-0 bottom-0 top-12 md:left-(--sidebar-w) z-0">
-            <div className="relative z-10 w-full h-full overflow-y-auto pt-8 pb-32 px-4 md:px-12">
+        <PageShell variant="scroll">
+            <div className="w-full px-4 pb-16 pt-8 md:px-12">
 
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="w-full max-w-400 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-2 overflow-hidden shadow-2xl relative mx-auto"
+                    className="w-full max-w-400 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-2 overflow-hidden shadow-sm relative mx-auto"
                 >
 
                     <div className="flex flex-col lg:flex-row h-full min-h-187.5">
@@ -219,7 +220,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                     <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[80%]`}>
                                                         <div className="text-xs font-medium text-muted-foreground mb-1 px-1 flex items-center gap-1">
                                                             {user?.username || "Selecting..."}
-                                                            {user?.status === 'INVITED' && <span className="text-[8px] text-warning opacity-60">(Pending)</span>}
+                                                            {user?.status === 'INVITED' && <span className="text-[11px] text-warning opacity-60">(Pending)</span>}
                                                         </div>
                                                         <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-xl border ${isRight
                                                             ? 'bg-muted text-foreground border-border rounded-tr-none'
@@ -247,7 +248,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                         {/* Right Column: Builder Panel */}
                         <div className="lg:w-[55%] p-8 lg:p-10 flex flex-col h-187.5">
                             <div className="flex justify-between items-center mb-8">
-                                <h1 className="text-2xl font-bold text-foreground">Edit Quote #{quote.id}</h1>
+                                <h1 className="text-2xl font-bold text-foreground">Edit quote</h1>
                                 <div className="flex gap-2">
                                     <Chip variant="flat" className="bg-muted text-faint border border-border">
                                         {messages.length} Items
@@ -336,11 +337,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 isRequired
                                                 isInvalid={!!errors.participants}
                                                 errorMessage="At least one participant is required"
-                                                classNames={{
-                                                    trigger: "bg-muted border-border min-h-12",
-                                                    label: "text-faint",
-                                                    value: "text-foreground"
-                                                }}
+                                                classNames={FIELD_SELECT}
                                                 items={users}
                                                 isMultiline
                                                 selectedKeys={new Set(field.value?.map(u => u.id) || [])}
@@ -356,7 +353,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                             <UserAvatar src={user.profilePicture || undefined} size="sm" className={user.status === 'INVITED' ? 'bg-warning/20' : ''} />
                                                             <span>{user.username}</span>
                                                             {user.status === 'INVITED' && (
-                                                                <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[10px]">Pending</Chip>
+                                                                <Chip size="sm" variant="flat" color="warning" className="ml-auto h-5 text-[11px]">Pending</Chip>
                                                             )}
                                                         </div>
                                                     </SelectItem>
@@ -422,7 +419,7 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                                         >
                                                                             <div className="flex items-center gap-2">
                                                                                 <span>{u.username}</span>
-                                                                                {u.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-4 text-[8px]">Pending</Chip>}
+                                                                                {u.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-5 text-[11px]">Pending</Chip>}
                                                                             </div>
                                                                         </SelectItem>
                                                                     )}
@@ -485,51 +482,50 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                                                 aria-label="Action progress"
                                                 value={status.progress}
                                                 isIndeterminate={status.progress === undefined}
-                                                color={status.stage === 'error' ? 'danger' : status.stage === 'done' ? 'success' : 'primary'}
+                                                color={status.stage === 'error' ? 'danger' : status.stage === 'done' ? 'success' : 'default'}
+ classNames={status.stage === 'error' || status.stage === 'done' ? undefined : PROGRESS_CLASSNAMES}
                                                 size="sm"
                                             />
                                         </div>
                                     )}
 
-                                    <div className="flex justify-between items-center gap-4">
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="flat"
-                                                className="bg-muted text-foreground font-medium h-12 px-6 rounded-2xl"
-                                                startContent={<Plus size="1em" />}
-                                                onPress={() => addMessage(false)}
-                                            >
-                                                Add Message
-                                            </Button>
-                                            <Button
-                                                variant="flat"
-                                                className="bg-muted text-muted-foreground font-medium h-12 px-6 rounded-2xl border border-border hover:bg-muted"
-                                                startContent={<Info size="1em" />}
-                                                onPress={() => addMessage(true)}
-                                            >
-                                                Add Context
-                                            </Button>
-                                        </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button
+                                            variant="flat"
+                                            className="h-10 rounded-xl bg-muted px-4 font-medium text-foreground"
+                                            startContent={<Plus size="1em" />}
+                                            onPress={() => addMessage(false)}
+                                        >
+                                            Add message
+                                        </Button>
+                                        <Button
+                                            variant="flat"
+                                            className="h-10 rounded-xl border border-border bg-muted px-4 font-medium text-muted-foreground hover:text-foreground"
+                                            startContent={<Info size="1em" />}
+                                            onPress={() => addMessage(true)}
+                                        >
+                                            Add context
+                                        </Button>
+                                    </div>
 
-                                        <div className="flex gap-3 flex-1">
-                                            <Button
-                                                className="flex-1 bg-primary text-foreground font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
-                                                startContent={<Save size="1em" />}
-                                                onPress={() => handleSubmit(onSubmit)()}
-                                                isLoading={status.stage === 'saving'}
-                                                isDisabled={!canEdit || isSessionPending}
-                                            >
-                                                Save Changes
-                                            </Button>
-                                            <Button
-                                                as={Link}
-                                                href={`/quotes/${quote.id}`}
-                                                variant="bordered"
-                                                className="px-8 h-12 rounded-2xl border-border text-foreground hover:bg-muted font-medium"
-                                            >
-                                                Cancel
-                                            </Button>
-                                        </div>
+                                    <div className="flex justify-end gap-3">
+                                        <Button
+                                            as={Link}
+                                            href={`/quotes/${quote.id}`}
+                                            variant="bordered"
+                                            className={SECONDARY_CTA}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            className={PRIMARY_CTA + " flex-none px-8"}
+                                            startContent={<Save size="1em" />}
+                                            onPress={() => handleSubmit(onSubmit)()}
+                                            isLoading={status.stage === 'saving'}
+                                            isDisabled={!canEdit || isSessionPending}
+                                        >
+                                            Save changes
+                                        </Button>
                                     </div>
                                 </motion.div>
                             </motion.div>
@@ -538,6 +534,6 @@ export default function QuoteEdit({ quote }: { quote: Quote }) {
                     </div>
                 </motion.div>
             </div>
-        </AuroraBackground>
+        </PageShell>
     );
 }

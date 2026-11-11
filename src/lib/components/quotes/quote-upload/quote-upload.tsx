@@ -1,4 +1,5 @@
 "use client";
+import { FIELD_TEXTAREA, PROGRESS_CLASSNAMES, PRIMARY_CTA, SECONDARY_CTA } from "@/src/lib/components/ui/form-kit";
 import { computeBubbleLayout } from "../bubble-layout";
 import { GripHorizontal, Info, MessageCircleMore, Plus, Quote, Save, Trash2 } from "lucide-react";
 
@@ -171,7 +172,7 @@ export default function QuoteUpload() {
   const getParticipant = (id: string) => participants.find(p => p.id === id);
 
   return (
-    <PageShell variant="aurora">
+    <PageShell variant="scroll">
       <div className="fixed inset-x-0 bottom-0 top-12 md:left-(--sidebar-w) pt-4 pb-4 md:pb-8 px-4 md:px-8">
         <div className="flex flex-col xl:flex-row gap-8 xl:items-stretch max-w-400 mx-auto h-full">
 
@@ -233,7 +234,7 @@ export default function QuoteUpload() {
                             <div className={`flex flex-col ${isRight ? 'items-end' : 'items-start'} max-w-[85%]`}>
                               <div className="text-xs font-medium text-faint mb-1 px-1 flex items-center gap-1">
                                 {displayName}
-                                {participant?.status === 'INVITED' && <span className="text-[8px] text-warning/60 italic">(Pending)</span>}
+                                {participant?.status === 'INVITED' && <span className="text-[11px] text-warning/60 italic">(Pending)</span>}
                               </div>
                               <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-2xl border transition-all duration-300 ${isRight
                                 ? 'bg-muted text-foreground border-border rounded-tr-none'
@@ -279,7 +280,7 @@ export default function QuoteUpload() {
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
                   <Save size="1em" className="text-muted-foreground text-sm" />
-                  Redact Quote
+                  Create quote
                 </h2>
                 <Chip variant="flat" size="sm" className="bg-muted text-foreground border border-border font-bold px-3">
                   {messages.length} ITEMS
@@ -446,7 +447,7 @@ export default function QuoteUpload() {
                                           >
                                             <div className="flex items-center justify-between gap-2 w-full">
                                               <span className="text-xs font-medium">{p.username}</span>
-                                              {p.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-3.5 text-[7px] font-bold">PENDING</Chip>}
+                                              {p.status === 'INVITED' && <Chip size="sm" variant="flat" color="warning" className="h-5 text-[11px] font-medium">Pending</Chip>}
                                             </div>
                                           </SelectItem>
                                         )}
@@ -488,10 +489,7 @@ export default function QuoteUpload() {
                                   minRows={1}
                                   maxRows={5}
                                   variant="bordered"
-                                  classNames={{
-                                    inputWrapper: "bg-muted border-border hover:border-foreground/30 focus-within:border-theme-accent! transition-all rounded-2xl p-4",
-                                    input: "text-foreground text-sm leading-relaxed placeholder:text-faint"
-                                  }}
+                                  classNames={FIELD_TEXTAREA}
                                   value={msg.message}
                                   onValueChange={(val) => updateMessage(msg.id, 'message', val)}
                                 />
@@ -524,11 +522,7 @@ export default function QuoteUpload() {
                       <Progress
                         value={uploadStatus.progress}
                         isIndeterminate={uploadStatus.progress === undefined}
-                        classNames={{
-                          base: "h-1.5",
-                          indicator: "bg-theme-accent",
-                          track: "bg-muted"
-                        }}
+                        classNames={PROGRESS_CLASSNAMES}
                       />
                     </motion.div>
                   )}
@@ -536,7 +530,7 @@ export default function QuoteUpload() {
                   <div className="flex gap-4">
                     <Button
                       size="lg"
-                      className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
+                      className={PRIMARY_CTA}
                       startContent={<Save size="1em" />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage === 'saving'}
@@ -548,7 +542,7 @@ export default function QuoteUpload() {
                       href="/quotes"
                       variant="bordered"
                       size="lg"
-                      className="px-8 h-12 rounded-xl border-border text-foreground hover:bg-muted font-medium text-sm"
+                      className={SECONDARY_CTA}
                     >
                       Cancel
                     </Button>

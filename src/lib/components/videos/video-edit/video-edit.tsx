@@ -1,4 +1,5 @@
 "use client";
+import { FIELD_INPUT, FIELD_TEXTAREA, FIELD_SELECT, PRIMARY_CTA, SECONDARY_CTA } from "@/src/lib/components/ui/form-kit";
 import { Info, SquarePen, Upload } from "lucide-react";
 
 import { updateVideoElement } from "@/src/app/(content)/videos/(detail)/[id]/edit/actions";
@@ -6,7 +7,7 @@ import { UserAvatar } from "@/src/lib/components/ui/user-avatar";
 import { getAllCategories, getAllUsers } from "@/src/lib/actions/data-fetching";
 import { useSession } from "@/src/lib/auth-client";
 import { getEffectiveRole } from "@/src/lib/auth-utils-shared";
-import { AuroraBackground } from "@/src/lib/components/home/aurora-background";
+import { PageShell } from "@/src/lib/components/ui/page-shell";
 import { queryKeys } from "@/src/lib/queries/query-keys";
 import { VideoActionInput } from "@/src/lib/utils/video-utils";
 import { Button, Chip, DateInput, Input, Progress, Select, SelectItem, Textarea } from "@heroui/react";
@@ -82,13 +83,13 @@ export default function VideoEdit({ video }: { video: Video }) {
     };
 
     return (
-        <AuroraBackground className="fixed inset-x-0 bottom-0 top-12 md:left-(--sidebar-w) z-0">
-            <div className="relative z-10 w-full h-full overflow-y-auto pt-8 pb-32 px-4 md:px-12">
+        <PageShell variant="scroll">
+            <div className="w-full px-4 pb-16 pt-8 md:px-12">
 
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="w-full max-w-400 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-2 overflow-hidden shadow-2xl relative mx-auto"
+                    className="w-full max-w-400 bg-card/70 backdrop-blur-md border border-border rounded-2xl p-2 overflow-hidden shadow-sm relative mx-auto"
                 >
 
                     <div className="flex flex-col lg:flex-row h-full">
@@ -97,8 +98,8 @@ export default function VideoEdit({ video }: { video: Video }) {
 
                             <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-30">
                                 <div className="flex gap-2">
-                                    <Chip size="sm" variant="shadow" classNames={{ base: "bg-black/60 backdrop-blur-md border border-border", content: "text-white/80 font-mono text-[10px]" }}>{video.videoUrl.split("?")[0].split(".").pop()?.toUpperCase() || "VIDEO"}</Chip>
-                                    <Chip size="sm" variant="shadow" classNames={{ base: "bg-black/60 backdrop-blur-md border border-border", content: "text-white/80 text-[10px]" }}>{video.category.name}</Chip>
+                                    <Chip size="sm" variant="shadow" classNames={{ base: "bg-black/60 backdrop-blur-md border border-border", content: "text-white/80 font-mono text-[11px]" }}>{video.videoUrl.split("?")[0].split(".").pop()?.toUpperCase() || "VIDEO"}</Chip>
+                                    <Chip size="sm" variant="shadow" classNames={{ base: "bg-black/60 backdrop-blur-md border border-border", content: "text-white/80 text-[11px]" }}>{video.category.name}</Chip>
                                 </div>
                                 <Chip size="sm" variant="flat" className="bg-muted text-muted-foreground border border-border">Edit mode</Chip>
                             </div>
@@ -165,11 +166,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     isRequired
                                                     isInvalid={!!errors.title}
                                                     errorMessage="Title is required"
-                                                    classNames={{
-                                                        inputWrapper: "bg-muted border-border h-12 hover:border-border transition-colors",
-                                                        input: "text-foreground font-medium",
-                                                        label: "text-muted-foreground"
-                                                    }}
+                                                    classNames={FIELD_INPUT}
                                                 />
                                             )}
                                         />
@@ -192,11 +189,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     labelPlacement="outside"
                                                     placeholder="Tell the story..."
                                                     minRows={3}
-                                                    classNames={{
-                                                        inputWrapper: "bg-muted border-border hover:border-border transition-colors",
-                                                        input: "text-foreground",
-                                                        label: "text-muted-foreground"
-                                                    }}
+                                                    classNames={FIELD_TEXTAREA}
                                                 />
                                             )}
                                         />
@@ -259,11 +252,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     isRequired
                                                     isInvalid={!!errors.categoryId}
                                                     errorMessage="Category is required"
-                                                    classNames={{
-                                                        trigger: "bg-muted border-border h-12",
-                                                        label: "text-muted-foreground",
-                                                        value: "text-foreground"
-                                                    }}
+                                                    classNames={FIELD_SELECT}
                                                     items={categories}
                                                     selectedKeys={field.value ? [field.value] : []}
                                                     onSelectionChange={(keys) => field.onChange(Array.from(keys)[0])}
@@ -304,7 +293,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                             <Button
                                                 size="sm"
                                                 variant="light"
-                                                className="text-[10px] text-muted-foreground h-auto p-0 min-w-0"
+                                                className="text-[11px] text-muted-foreground h-auto p-0 min-w-0"
                                                 onPress={() => setManualDateOverride(!manualDateOverride)}
                                             >
                                                 {manualDateOverride ? "Cancel manual override" : "Change recorded date"}
@@ -332,11 +321,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                                     isRequired
                                                     isInvalid={!!errors.participants}
                                                     errorMessage="At least one participant is required"
-                                                    classNames={{
-                                                        trigger: "bg-muted border-border min-h-12",
-                                                        label: "text-muted-foreground",
-                                                        value: "text-foreground"
-                                                    }}
+                                                    classNames={FIELD_SELECT}
                                                     items={users}
                                                     isMultiline
                                                     selectedKeys={new Set(field.value?.map(u => u.id) || [])}
@@ -375,7 +360,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                             aria-label="Action progress"
                                             value={status.progress}
                                             isIndeterminate={status.progress === undefined}
-                                            color={status.stage === 'error' ? 'danger' : status.stage === 'done' ? 'success' : 'primary'}
+                                            color={status.stage === 'error' ? 'danger' : status.stage === 'done' ? 'success' : 'default'}
                                             size="sm"
                                         />
                                     </div>
@@ -384,7 +369,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                     <Button
                                         color="primary"
                                         size="lg"
-                                        className="flex-1 font-bold h-12 rounded-2xl shadow-lg shadow-primary/20"
+                                        className={PRIMARY_CTA}
                                         startContent={<Upload size="1em" />}
                                         onPress={() => handleSubmit(onSubmit)()}
                                         isDisabled={!canEdit || isSessionPending}
@@ -397,7 +382,7 @@ export default function VideoEdit({ video }: { video: Video }) {
                                         href={`/videos/${video.id}`}
                                         variant="bordered"
                                         size="lg"
-                                        className="px-8 h-12 rounded-2xl border-border text-foreground hover:bg-muted"
+                                        className={SECONDARY_CTA}
                                     >
                                         Cancel
                                     </Button>
@@ -407,6 +392,6 @@ export default function VideoEdit({ video }: { video: Video }) {
                     </div>
                 </motion.div>
             </div>
-        </AuroraBackground>
+        </PageShell>
     );
 }

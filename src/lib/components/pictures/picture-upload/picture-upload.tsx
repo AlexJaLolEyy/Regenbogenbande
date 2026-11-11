@@ -1,4 +1,5 @@
 "use client"
+import { FIELD_INPUT, FIELD_TEXTAREA, FIELD_SELECT, PROGRESS_CLASSNAMES, PRIMARY_CTA, SECONDARY_CTA } from "@/src/lib/components/ui/form-kit";
 import { CircleArrowUp, Crop, Image as ImageIcon, Info, X } from "lucide-react";
 
 import { createPicture } from "@/src/app/(content)/pictures/(detail)/upload/actions";
@@ -88,13 +89,6 @@ export default function PictureUpload() {
     message: string;
   }>({ stage: 'idle', message: '' });
 
-  const [uploadStats, setUploadStats] = useState<{
-    originalSize?: string;
-    finalSize?: string;
-    sizeReduction?: string;
-    formatChanged?: boolean;
-  }>({});
-
   const [imageMetadata, setImageMetadata] = useState<{
     size?: string;
     resolution?: string;
@@ -122,7 +116,6 @@ export default function PictureUpload() {
     setCreationDate(null);
     setImageMetadata({});
     setUploadStatus({ stage: 'idle', message: '' });
-    setUploadStats({});
   };
 
   const handleFileChange = (file: File) => {
@@ -131,7 +124,6 @@ export default function PictureUpload() {
       setCreationDate(null);
       setImageMetadata({});
       setUploadStatus({ stage: 'idle', message: '' });
-      setUploadStats({});
 
       // Extract basic metadata
       setImageMetadata({
@@ -211,15 +203,6 @@ export default function PictureUpload() {
       setUploadStatus({ stage: 'uploading', message: 'Uploading to server...', progress: 50 });
 
       const uploadResult = await uploadResponse.json();
-      if (uploadResult.originalSize && uploadResult.finalSize) {
-        setUploadStats({
-          originalSize: formatFileSize(uploadResult.originalSize),
-          finalSize: formatFileSize(uploadResult.finalSize),
-          sizeReduction: uploadResult.reductionPercent || '0%',
-          formatChanged: uploadResult.formatChanged,
-        });
-      }
-
       const imagePath = uploadResult.path;
       const thumbnailPath = uploadResult.thumbnailPath;
 
@@ -241,7 +224,7 @@ export default function PictureUpload() {
   }
 
   return (
-    <PageShell variant="aurora">
+    <PageShell variant="scroll">
       <div className="w-full h-full pt-8 pb-4 md:pb-8 px-4 md:px-8 min-h-screen">
 
         {/* Image Crop Modal */}
@@ -469,11 +452,7 @@ export default function PictureUpload() {
                           isRequired
                           isInvalid={!!errors.title}
                           errorMessage="Title is required"
-                          classNames={{
-                            inputWrapper: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                            input: "text-foreground placeholder:text-faint",
-                            label: "text-sm font-medium text-muted-foreground"
-                          }}
+                          classNames={FIELD_INPUT}
                         />
                       )}
                     />
@@ -485,11 +464,7 @@ export default function PictureUpload() {
                       labelPlacement="outside"
                       placeholder="Select Category"
                       isRequired
-                      classNames={{
-                        trigger: "bg-muted border-border h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                        label: "text-sm font-medium text-muted-foreground",
-                        value: "text-foreground font-medium"
-                      }}
+                      classNames={FIELD_SELECT}
                       {...register("categoryId", { required: true })}
                       items={categories}
                       renderValue={(items) => {
@@ -536,11 +511,7 @@ export default function PictureUpload() {
                         labelPlacement="outside"
                         placeholder="Tell the story behind this image..."
                         minRows={4}
-                        classNames={{
-                          inputWrapper: "bg-muted border-border hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                          input: "text-foreground leading-relaxed placeholder:text-faint",
-                          label: "text-sm font-medium text-muted-foreground"
-                        }}
+                        classNames={FIELD_TEXTAREA}
                       />
                     )}
                   />
@@ -577,11 +548,7 @@ export default function PictureUpload() {
                     selectionMode="multiple"
                     isRequired
                     isInvalid={!!errors.participants}
-                    classNames={{
-                      trigger: "bg-muted border-border min-h-12 hover:border-foreground/30 transition-colors focus-within:border-theme-accent!",
-                      label: "text-sm font-medium text-muted-foreground",
-                      value: "text-foreground"
-                    }}
+                    classNames={FIELD_SELECT}
                     {...register("participants", { required: true })}
                     items={participants}
                     isMultiline
@@ -675,11 +642,7 @@ export default function PictureUpload() {
                         aria-label="Upload progress"
                         value={uploadStatus.progress}
                         isIndeterminate={uploadStatus.progress === undefined}
-                        classNames={{
-                          base: "h-1.5",
-                          indicator: "bg-theme-accent",
-                          track: "bg-muted"
-                        }}
+                        classNames={PROGRESS_CLASSNAMES}
                       />
                     </motion.div>
                   )}
@@ -687,7 +650,7 @@ export default function PictureUpload() {
                   <div className="flex gap-4">
                     <Button
                       size="lg"
-                      className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 text-sm"
+                      className={PRIMARY_CTA}
                       startContent={<CircleArrowUp size="1em" />}
                       onPress={() => handleSubmit(onSubmit)()}
                       isLoading={uploadStatus.stage !== 'idle' && uploadStatus.stage !== 'done' && uploadStatus.stage !== 'error'}
@@ -699,7 +662,7 @@ export default function PictureUpload() {
                       href="/pictures"
                       variant="bordered"
                       size="lg"
-                      className="px-8 h-12 rounded-xl border-border text-foreground hover:bg-muted font-medium text-sm"
+                      className={SECONDARY_CTA}
                     >
                       Cancel
                     </Button>
