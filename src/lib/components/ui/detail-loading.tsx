@@ -1,4 +1,6 @@
-﻿import { Skeleton } from "@heroui/react";
+﻿"use client";
+
+import { Skeleton } from "@heroui/react";
 
 /** Route-level loading skeleton for detail pages. */
 export function DetailLoading() {
